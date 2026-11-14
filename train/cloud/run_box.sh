@@ -1,7 +1,7 @@
 #!/bin/bash
 # One pipeline stage on the box, logged to train/logs/<stage>.log; prints STAGE_OK / STAGE_FAILED at the end.
 # usage (on the box, in /root/jp, inside tmux): bash train/cloud/run_box.sh <stage>
-# stages: gen baselines base_smoke base mask sft sample relabel round2
+# stages: gen baselines base_smoke base mask sft sft_full sample relabel round2
 set -o pipefail
 cd /root/jp
 . /root/venv/bin/activate
@@ -27,6 +27,10 @@ run() {
     mask)       python train/sft.py --data train/data/sft_ref.jsonl --limit 320 --max-steps 20 --liger --out train/ckpt/mask ;;
     sft)        python train/sft.py --data train/data/sft_ref.jsonl --limit $SFT_LIMIT --liger --out train/ckpt/sft --merge-out train/ckpt/sft-merged &&
                 python train/eval_llm.py --model train/ckpt/sft-merged $EVAL --name sft ;;
+    sft_full)   # every teacher example, 2 epochs, data parallel over all GPUs on the box
+                n=$(nvidia-smi -L | wc -l)
+                torchrun --nproc_per_node $n train/sft.py --data train/data/sft_ref.jsonl --epochs 2 --accum $(( 16 / n > 0 ? 16 / n : 1 ))                   --liger --out train/ckpt/sft_full --merge-out train/ckpt/sft_full-merged &&
+                python train/eval_llm.py --model train/ckpt/sft_full-merged $EVAL --name sft_full ;;
     sample)     python train/rollout.py --model train/ckpt/sft-merged --seeds $DAGGER_SEEDS --k 6 --temperature 0.8 \
                   --out train/data/dagger_samples.jsonl &&
                 python train/rollout.py --model train/ckpt/sft-merged --seeds $DAGGER_SEEDS --k 1 --temperature 0 \

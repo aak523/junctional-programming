@@ -4,10 +4,12 @@ usage: python train/sft.py --data train/data/sft_ref.jsonl --out train/ckpt/sft 
        python train/sft.py --data train/data/round2.jsonl --init-adapter train/ckpt/sft --lr 5e-5 --out train/ckpt/dagger \
          --merge-out train/ckpt/dagger-merged
        python train/sft.py --data train/data/smoke.jsonl --max-steps 20 --out train/ckpt/smoke    (loss-mask check)
+Several GPUs: torchrun --nproc_per_node N train/sft.py ... --accum 16/N (data parallel; same effective batch).
 """
 import argparse
 import json
 import math
+import os
 import random
 import sys
 from pathlib import Path
@@ -81,7 +83,8 @@ def main():
         model = PeftModel.from_pretrained(model, a.init_adapter, is_trainable=True)
     else:
         peft_config = LoraConfig(r=32, lora_alpha=64, lora_dropout=0.05, target_modules="all-linear", task_type="CAUSAL_LM")
-    steps = a.max_steps if a.max_steps > 0 else math.ceil(len(ds) * a.epochs / (a.batch * a.accum))
+    world = int(os.environ.get("WORLD_SIZE", 1))
+    steps = a.max_steps if a.max_steps > 0 else math.ceil(len(ds) * a.epochs / (a.batch * a.accum * world))
     cfg = SFTConfig(output_dir=a.out, max_length=a.max_length, completion_only_loss=True, per_device_train_batch_size=a.batch,
                     gradient_accumulation_steps=a.accum, learning_rate=a.lr, lr_scheduler_type="cosine",
                     warmup_steps=max(1, int(0.03 * steps)), num_train_epochs=a.epochs, max_steps=a.max_steps, bf16=cuda,
@@ -92,6 +95,8 @@ def main():
     check_mask(trainer, tok, ds)
     trainer.train()
     trainer.save_model(a.out)
+    if not trainer.accelerator.is_main_process:
+        return
     tok.save_pretrained(a.out)
     if a.merge_out:
         merged = trainer.model.merge_and_unload()
