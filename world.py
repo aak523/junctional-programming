@@ -51,6 +51,7 @@ BROKER_REFUND = 0.8
 BROKER_DECAY_P, BROKER_DECAY_RANGE = 0.4, (8, 15)  # a reliable broker silently turns unreliable (once, at a hidden month)
 GROWTH = (0.03, 0.07)                     # inference growth per month
 GROWTH_SWITCH_P, GROWTH_SWITCH_RANGE = 0.5, (8, 15)  # growth silently switches to the other value (once)
+DEMAND0, DEMAND_NOISE = 6.0, 0.05         # kH at month 0; lognormal noise around the demand trend each month
 CASH0, FUNDING, CREDIT, RATE = 400.0, 40.0, 500.0, 0.02  # $M cash, monthly funding, credit line, monthly interest on debt
 
 BEARISH = ["CoWoS packaging lines reported fully booked through next year.",
@@ -74,7 +75,7 @@ class World:
         self.launch = rng.randint(*LAUNCH_RANGE)
         self.export = rng.randint(5, 15) if rng.random() < 0.5 else None
         g = rng.choice(GROWTH)
-        noise = [rng.gauss(0, 0.05) for _ in range(T)]
+        noise = [rng.gauss(0, DEMAND_NOISE) for _ in range(T)]
         c = [1.6]
         for k in range(1, T + 1):
             x = c[-1] * DRIFT[r[k - 1]] * math.exp(rng.gauss(0, DRIFT_NOISE))
@@ -90,7 +91,7 @@ class World:
         self.growth_switch = rng.randint(*GROWTH_SWITCH_RANGE) if rng.random() < GROWTH_SWITCH_P else None
         g2 = GROWTH[1] if g == GROWTH[0] else GROWTH[0]
         self.growth = [g if self.growth_switch is None or k < self.growth_switch else g2 for k in range(T)]
-        self.demand = [round(6.0 * math.exp(sum(self.growth[:k]) + noise[k]), 2) for k in range(T)]
+        self.demand = [round(DEMAND0 * math.exp(sum(self.growth[:k]) + noise[k]), 2) for k in range(T)]
         self.broker_reliable, self.broker_decay, self.broker_u = {}, {}, {}
         for b in BROKERS:
             self.broker_reliable[b] = rng.random() < 0.5
