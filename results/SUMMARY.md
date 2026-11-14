@@ -57,3 +57,18 @@ container with a secret seed. The agent reaches it only over the network, and th
 - 3 seeds × 2 attempts. More seeds and other models would tighten the claim.
 - The reference misses a training run in about 10% of training-seed worlds where the market turns tight late. That's the
   cost of not knowing the future, which the oracle doesn't pay.
+
+## Gemini 4 via Harbor + OpenCode (added later the same day)
+Each trial plays a fresh random world, so compare against the reference on the same world. Reward = oracle cost ÷ agent cost.
+
+| Model, time limit | Months played | Gemini reward | Reference, same world | Gemini as % of reference |
+|---|---|---|---|---|
+| Hydrogen, 30 min | 24 (finished) | 0.86 | 0.92 | 94% |
+| Hydrogen, 30 min | 21, then timed out | 0.93 | 0.98 | 95% |
+| Hydrogen, 30 min | 24, timed out at the end | 0.74 | 0.91 | 82% |
+| Carbon, 10 min (3 runs) | 2–6 | 0.25–0.37 | 0.87–0.94 | 29–40% |
+| Carbon, 30 min (2 runs) | 9, 11 | 0.37, 0.30 | 0.93, 0.80 | 37–40% |
+
+- **Hydrogen** never beat the reference (it won 3 of 3). But at about 90% of the reference it is on the go/no-go line, so the large gap is an Opus result, not yet a general one.
+- **Carbon** takes about 90 s per step and analyses for 8–12 minutes before its first move, so it cannot finish 24 months in 30 minutes; its scores measure speed.
+- Logs: `harbor/jobs/gemini-4-hydrogen-30min/`, `gemini-4-carbon-30min/`, `gemini-4-carbon-10min/`.
