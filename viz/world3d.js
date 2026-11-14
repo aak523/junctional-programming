@@ -5,47 +5,16 @@ import { EffectComposer } from './vendor/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from './vendor/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
+import { Campus as CampusObject, PAD_R, PAD_TOP, FLOOR_H, KH, STATUS } from './campus3d.js';
+import { useTheme } from './theme3d.js';
 
 // ---------------------------------------------------------------- theme
-// Two keys of the same design: ink-on-white, or light-on-black. Picked from the URL at
-// load time so every material is built once, in the right key.
-const THEME = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark';
-document.documentElement.dataset.theme = THEME;
-const LIGHT = THEME === 'light';
-
-const THEMES = {
-  dark: {
-    bg: 0x08090b, ocean: 0x0b0e12, land: 0x191d23,
-    graticule: 0xffffff, gratA: 0.055, coast: 0xf2f1ec, coastA: 0.85,
-    stars: false, pad: 0x101317, towerOff: 0x1b1f25, crown: 0xf2f1ec, hub: 0x14181d, steel: 0x6b7076,
-    sub: 0x272b31, tick: 0xf2f1ec, packet: 0xf2f1ec, lane: 0.07, laneHot: 0.38,
-    emissive: 1, bloom: true, amb: 0.40, keyLight: 0.95, fillLight: 0.30, fillHue: 0x3f4a57,
-    ink: '#f2f1ec', ink2: '#9a9a94', muted: '#5f5f5b', genN: '#8f86d8',
-    site: { us: 0xf2f1ec, eu: 0xb6b6af, ap: 0x7c7c76 },
-  },
-  light: {
-    bg: 0xf7f6f2, ocean: 0xe6eaee, land: 0xfbfaf7,
-    graticule: 0x121211, gratA: 0.07, coast: 0x121211, coastA: 0.8,
-    stars: false, pad: 0xefeee9, towerOff: 0xd6d5cf, crown: 0x121211, hub: 0xe6e5e0, steel: 0x56565a,
-    sub: 0xdcdbd5, tick: 0x121211, packet: 0x121211, lane: 0.20, laneHot: 0.75,
-    emissive: 0.12, bloom: false, amb: 3.4, keyLight: 0.55, fillLight: 0.18, fillHue: 0xdfe2e4,
-    ink: '#121211', ink2: '#56565a', muted: '#86868a', genN: '#4a3aa7',
-    site: { us: 0x121211, eu: 0x56565a, ap: 0x8c8c90 },
-  },
-};
-const T = THEMES[THEME];
-const css = hex => '#' + hex.toString(16).padStart(6, '0');
-const metal = v => LIGHT ? v * 0.12 : v;   // the paper key has no shine to catch
+const { key: THEME, LIGHT, T, css, metal } = useTheme();
 const SITE_COLOR = T.site;
 const SITE_NAME  = { us: 'US', eu: 'EU', ap: 'AP' };
-const STATUS = { good: 0x0ca30c, warning: 0xfab219, serious: 0xec835a, critical: 0xd03b3b };
 const INK = T.tick, STEEL = T.steel;
 
-const R = 74;                // globe radius
-const PAD_R = 8;             // campus platform radius
-const PAD_TOP = 1.9;         // local height of the platform deck
-const KH = 0.34;             // world units per kH on the ground gauges
-const FLOOR_H = 3.0;         // tower height per kH of compute
+const R = 74;                // globe radius — the campus carries its own dimensions
 
 // lat, lon. The sites are the three classic datacentre regions; the vendor is the fab.
 const SITE_GEO = { us: [39.0, -77.5], eu: [50.1, 8.7], ap: [1.35, 103.8] };
@@ -271,130 +240,16 @@ function hexCss(n) { return '#' + n.toString(16).padStart(6, '0'); }
 const trim = v => (Math.round(v * 10) / 10).toString();
 
 // ---------------------------------------------------------------- campus
-const towerGeo = new THREE.BoxGeometry(1, 1, 1);
-towerGeo.translate(0, 0.5, 0);
-const crownGeo = new THREE.BoxGeometry(1, 1, 1);
-crownGeo.translate(0, 0.5, 0);
-
-class Campus {
+// The object itself lives in campus3d.js (and can be studied alone in campus.html);
+// here it only has to stand on the sphere and carry its labels.
+class Campus extends CampusObject {
   constructor(site, slots) {
+    super({ theme: T, color: SITE_COLOR[site], slots, metal });
     this.site = site;
-    this.color = SITE_COLOR[site];
-    this.group = new THREE.Group();
+    this.pad.userData.site = site;
     standOn(this.group, SITE_POS[site]);
     scene.add(this.group);
 
-    const pad = new THREE.Mesh(
-      new THREE.CylinderGeometry(PAD_R, PAD_R - 1.2, 2.6, 64),
-      new THREE.MeshStandardMaterial({ color: T.pad, roughness: 0.75, metalness: metal(0.25) })
-    );
-    pad.position.y = PAD_TOP - 1.3; pad.receiveShadow = true;
-    pad.userData.site = site;
-    this.group.add(pad);
-    this.pad = pad;
-
-    const rim = new THREE.Mesh(
-      new THREE.TorusGeometry(PAD_R + 0.2, 0.11, 8, 96),
-      new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 1.4 * T.emissive, roughness: 0.4 })
-    );
-    rim.rotation.x = Math.PI / 2; rim.position.y = PAD_TOP + 0.05;
-    this.group.add(rim);
-
-    // tower grid
-    const n = Math.max(9, slots);
-    const cols = Math.ceil(Math.sqrt(n));
-    const span = (PAD_R * 1.42);
-    const step = span / cols;
-    this.step = step;
-    this.towers = [];
-    for (let i = 0; i < cols * cols; i++) {
-      const cx = (i % cols - (cols - 1) / 2) * step;
-      const cz = (Math.floor(i / cols) - (cols - 1) / 2) * step;
-      const mat = new THREE.MeshStandardMaterial({ color: T.towerOff, emissive: 0x000000, roughness: 0.45, metalness: metal(0.35) });
-      const m = new THREE.Mesh(towerGeo, mat);
-      m.position.set(cx, PAD_TOP, cz);
-      m.scale.set(step * 0.52, 0.001, step * 0.52);
-      m.castShadow = true; m.receiveShadow = true;
-      m.visible = false;
-      const crown = new THREE.Mesh(crownGeo, new THREE.MeshStandardMaterial({
-        color: T.crown, emissive: T.crown, emissiveIntensity: 0.5 * T.emissive, roughness: 0.4 }));
-      crown.scale.set(1.12, 0.05, 1.12);
-      crown.position.y = 1;        // sits on top in local (scaled) space
-      crown.visible = false;
-      m.add(crown);
-      m.userData.crown = crown;
-      this.group.add(m);
-      this.towers.push(m);
-    }
-
-    // floating reserved slabs
-    const slab = (color, y, op) => {
-      const mm = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 0.55, 6),
-        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 * T.emissive,
-          transparent: true, opacity: op, roughness: 0.3 })
-      );
-      mm.position.set(0, y, 0); mm.visible = false;
-      this.group.add(mm);
-      return mm;
-    };
-    this.resSlab = slab(this.color, 7.5, 0.34);
-    this.optSlab = slab(STATUS.warning, 7.5, 0.40);
-
-    // spot pillars
-    this.spots = [];
-    for (let i = 0; i < 6; i++) {
-      const p = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.16, 7, 8, 1, true),
-        new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color,
-          emissiveIntensity: 1.1 * T.emissive, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
-      );
-      const a = -0.95 + i * 0.38;
-      p.position.set(Math.sin(a) * (PAD_R - 1.0), PAD_TOP + 3.5, Math.cos(a) * (PAD_R - 1.0));
-      p.visible = false;
-      this.group.add(p);
-      this.spots.push(p);
-    }
-
-    // substation: height = energised MW, ghost box = contracted but not yet live
-    const sub = new THREE.Mesh(towerGeo, new THREE.MeshStandardMaterial({
-      color: T.sub, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: metal(0.5) }));
-    sub.position.set(0, PAD_TOP, -(PAD_R + 2.6));
-    sub.scale.set(2.8, 0.001, 2.8);
-    sub.castShadow = true;
-    this.group.add(sub);
-    this.sub = sub;
-    const ghost = new THREE.Mesh(towerGeo, new THREE.MeshBasicMaterial({
-      color: STATUS.warning, wireframe: true, transparent: true, opacity: 0.35 }));
-    ghost.position.copy(sub.position);
-    ghost.scale.set(3.0, 0.001, 3.0);
-    ghost.visible = false;
-    this.group.add(ghost);
-    this.ghost = ghost;
-
-    // ground bar: served | training | unserved, with a demand tick
-    this.bar = new THREE.Group();
-    this.bar.position.set(0, PAD_TOP + 0.1, PAD_R + 2.0);
-    this.group.add(this.bar);
-    const seg = (color, op, emi) => {
-      const g2 = new THREE.BoxGeometry(1, 0.4, 3.0);
-      g2.translate(0.5, 0, 0);
-      const mm = new THREE.Mesh(g2, new THREE.MeshStandardMaterial({
-        color, emissive: color, emissiveIntensity: emi * T.emissive, transparent: op < 1, opacity: op, roughness: 0.5 }));
-      mm.visible = false;
-      this.bar.add(mm);
-      return mm;
-    };
-    this.segServed = seg(this.color, 1, 0.75);
-    this.segTrain = seg(this.color, 0.42, 0.3);
-    this.segUnserved = seg(STATUS.critical, 1, 1.0);
-    this.tick = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 1.1, 3.9),
-      new THREE.MeshStandardMaterial({ color: INK, emissive: INK, emissiveIntensity: 0.9 * T.emissive })
-    );
-    this.bar.add(this.tick);
-
-    // labels
     const name = labelSprite(SITE_NAME[site], { color: hexCss(this.color), size: 64, weight: 700 });
     track(name, 5.5, this.group, new THREE.Vector3(0, 7, 0), 26);
     this.nameSprite = name;
@@ -403,92 +258,6 @@ class Campus {
     track(stat, 3.0, this.group, new THREE.Vector3(0, 7, 0), 20);
     this.statSprite = stat;
     this.labels = [name, stat];
-
-    // event ring pool (broker delivered / cancelled)
-    this.rings = [];
-    for (let i = 0; i < 3; i++) {
-      const r = new THREE.Mesh(
-        new THREE.TorusGeometry(1, 0.22, 8, 64),
-        new THREE.MeshBasicMaterial({ color: STATUS.good, transparent: true, opacity: 0 })
-      );
-      r.rotation.x = Math.PI / 2; r.position.y = PAD_TOP + 0.3; r.visible = false;
-      this.group.add(r);
-      this.rings.push(r);
-    }
-  }
-
-  burst(color) {
-    const r = this.rings.find(x => !x.visible) || this.rings[0];
-    r.material.color.setHex(color);
-    r.visible = true; r.userData.t = 0;
-  }
-
-  update(d, time) {
-    const { ownedH, ownedN, poweredH, poweredN, reserved, option, spot, mw, mwPending,
-            served, training, unserved, demand } = d;
-    // towers: H first, then N
-    const nH = Math.ceil(ownedH - 1e-6), nN = Math.ceil(ownedN - 1e-6);
-    for (let i = 0; i < this.towers.length; i++) {
-      const t = this.towers[i];
-      let gen = null, frac = 0, lit = 0;
-      if (i < nH) { gen = 'H'; frac = Math.min(1, ownedH - i); lit = Math.min(1, Math.max(0, poweredH - i)); }
-      else if (i < nH + nN) { const j = i - nH; gen = 'N'; frac = Math.min(1, ownedN - j); lit = Math.min(1, Math.max(0, poweredN - j)); }
-      if (!gen) { t.visible = false; continue; }
-      t.visible = true;
-      const compute = gen === 'N' ? 2 : 1;
-      const target = Math.max(0.15, frac * compute * FLOOR_H);
-      t.scale.y += (target - t.scale.y) * 0.16;
-      const m = t.material;
-      const want = lit > 0.5 ? this.color : T.towerOff;
-      m.color.lerp(new THREE.Color(want), 0.12);
-      m.emissive.lerp(new THREE.Color(lit > 0.5 ? this.color : 0x000000), 0.12);
-      const pulse = 0.55 + 0.16 * Math.sin(time * 1.7 + i * 0.9);
-      m.emissiveIntensity += ((lit > 0.5 ? pulse * T.emissive : 0) - m.emissiveIntensity) * 0.15;
-      t.userData.crown.visible = gen === 'N';
-    }
-    // reserved / option slabs
-    const slabW = (kh) => Math.max(0.001, kh * 0.8);
-    this.resSlab.visible = reserved > 0.01;
-    this.resSlab.scale.x += (slabW(reserved) - this.resSlab.scale.x) * 0.15;
-    this.resSlab.position.set(-(PAD_R + 2.5 + this.resSlab.scale.x / 2), 7.5 + Math.sin(time * 0.8) * 0.4, 0);
-    this.optSlab.visible = option > 0.01;
-    this.optSlab.scale.x += (slabW(option) - this.optSlab.scale.x) * 0.15;
-    this.optSlab.position.set(PAD_R + 2.5 + this.optSlab.scale.x / 2, 7.5 + Math.sin(time * 0.8 + 1.2) * 0.4, 0);
-    // spot pillars
-    for (let i = 0; i < this.spots.length; i++) {
-      const on = spot > i * 0.9;
-      this.spots[i].visible = on;
-      if (on) this.spots[i].material.opacity = 0.28 + 0.3 * Math.abs(Math.sin(time * 3 + i));
-    }
-    // power
-    const target = Math.max(0.001, mw * 0.22);
-    this.sub.scale.y += (target - this.sub.scale.y) * 0.14;
-    this.ghost.visible = mwPending > 0.01;
-    if (this.ghost.visible) {
-      const g = Math.max(0.001, (mw + mwPending) * 0.22);
-      this.ghost.scale.y += (g - this.ghost.scale.y) * 0.14;
-    }
-    // ground bar
-    const put = (mesh, x, w) => {
-      mesh.visible = w > 0.02;
-      mesh.position.x = x;
-      mesh.scale.x += (Math.max(0.02, w) - mesh.scale.x) * 0.2;
-    };
-    this.bar.position.x = -(served + training + Math.max(0, unserved)) * KH / 2;
-    put(this.segServed, 0, served * KH);
-    put(this.segTrain, served * KH, training * KH);
-    put(this.segUnserved, (served + training) * KH, unserved * KH);
-    this.tick.position.x = demand * KH;
-    this.tick.material.emissiveIntensity = (unserved > 0.01 ? 1.6 : 0.8) * T.emissive;
-    // rings
-    for (const r of this.rings) {
-      if (!r.visible) continue;
-      r.userData.t += 0.022;
-      const t = r.userData.t;
-      r.scale.setScalar(1 + t * 16);
-      r.material.opacity = Math.max(0, 0.85 - t);
-      if (t >= 0.85) { r.visible = false; r.material.opacity = 0; }
-    }
   }
 }
 

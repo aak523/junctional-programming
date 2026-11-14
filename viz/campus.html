@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU World — the campus object</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+  body{overflow-y:auto}
+  .wrap{max-width:1560px;margin:0 auto;padding:22px 22px 70px}
+
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;
+       padding-bottom:16px;border-bottom:1px solid var(--ring);margin-bottom:20px}
+  .brand{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:0}
+  .brand span{color:var(--muted)}
+  .tagline{font-family:var(--mono);font-size:10px;color:var(--muted);margin:7px 0 0;
+           line-height:1.6;max-width:66ch}
+  a{text-decoration:none}
+
+  .bench{display:grid;grid-template-columns:272px 1fr 290px;gap:14px;align-items:start}
+  @media (max-width:1240px){ .bench{grid-template-columns:1fr} }
+
+  .col{display:flex;flex-direction:column;gap:10px}
+  .card{border:1px solid var(--ring);border-radius:3px;background:var(--surface-1)}
+  .card > h3{font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;
+             color:var(--muted);margin:0;padding:10px 12px 9px;border-bottom:1px solid var(--ring)}
+  .card .body{padding:11px 12px 13px}
+
+  /* stage */
+  #stage{position:relative;height:min(74vh,760px);min-height:460px;border:1px solid var(--ring);
+         border-radius:3px;overflow:hidden;background:var(--plane)}
+  #stage canvas{width:100%;height:100%;display:block;cursor:grab}
+  #stage canvas:active{cursor:grabbing}
+  .stage-hud{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;
+             align-items:flex-end;gap:12px;padding:12px;pointer-events:none}
+  .stage-hud > *{pointer-events:auto}
+  .stage-tag{position:absolute;top:12px;left:13px;font-family:var(--mono);font-size:9px;
+             letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .stage-tag b{color:var(--ink);font-weight:400}
+
+  /* sliders */
+  .ctl + .ctl{margin-top:11px}
+  .ctl .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+          color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .ctl .k u{text-decoration:none;color:var(--ink);font-size:11px;letter-spacing:-.01em}
+  .ctl .k u.off{color:var(--muted)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;margin:5px 0 0;
+                    background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--grid)}
+  input[type=range]::-moz-range-track{height:2px;background:var(--grid)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:3px;height:13px;background:var(--ink);
+                                          margin-top:-5.5px;border-radius:0}
+  input[type=range]::-moz-range-thumb{width:3px;height:13px;background:var(--ink);border:none;border-radius:0}
+  .seg{display:flex;border:1px solid var(--ring);border-radius:2px;overflow:hidden}
+  .seg button{flex:1;border:none;border-radius:0;padding:5px 4px;font-size:9px;letter-spacing:.1em}
+  .seg button + button{border-left:1px solid var(--ring)}
+
+  /* anatomy list */
+  .part{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--grid);
+        cursor:pointer}
+  .part:last-child{border-bottom:none}
+  .part .sw{width:10px;height:10px;flex:none;margin-top:2px;border:1px solid var(--ring)}
+  .part .t{flex:1;min-width:0}
+  .part .t b{display:block;font-size:11.5px;font-weight:500;color:var(--ink);margin-bottom:2px}
+  .part .t span{display:block;font-size:10.5px;line-height:1.5;color:var(--muted)}
+  .part .eye{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:var(--muted);
+             border:1px solid var(--ring);border-radius:2px;padding:2px 5px;flex:none}
+  .part[data-on="0"]{opacity:.45}
+  .part[data-on="0"] .eye{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+
+  /* readouts */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:1px;
+         background:var(--ring);border:1px solid var(--ring);border-radius:3px;margin-top:14px}
+  .tile{background:var(--surface-1);padding:9px 11px 11px}
+  .tile .k{font-family:var(--mono);font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+  .tile .v{font-family:var(--mono);font-size:17px;font-weight:500;letter-spacing:-.02em;margin-top:4px;
+           font-variant-numeric:tabular-nums;line-height:1.1}
+  .tile .s{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px}
+  .tile .v.warn{color:var(--warning)} .tile .v.bad{color:var(--critical)}
+
+  /* spec table */
+  section{margin-top:40px}
+  .sec{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+  .sec h2{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin:0}
+  .sec em{font-family:var(--mono);font-style:normal;font-size:10px;color:var(--muted);letter-spacing:.14em}
+  .sec .rule{flex:1;height:1px;background:var(--ring)}
+  table{width:100%;border-collapse:collapse}
+  th{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+     text-align:left;font-weight:400;padding:0 12px 8px 0;border-bottom:1px solid var(--ring)}
+  td{padding:8px 12px 8px 0;border-bottom:1px solid var(--grid);font-size:11.5px;color:var(--ink-2);vertical-align:top}
+  td.k{color:var(--ink);font-weight:500;white-space:nowrap}
+  td.n{font-family:var(--mono);font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .note{font-size:11.5px;line-height:1.7;color:var(--muted);max-width:80ch;margin-top:14px}
+  .note b{color:var(--ink-2);font-weight:500}
+  code{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <p class="brand">GPU&nbsp;World <span>/ The campus object</span></p>
+      <p class="tagline">One site's data centre, off the globe and on the bench. Every part of it is a
+        gauge; drive the state and watch which part moves.</p>
+    </div>
+    <div class="row">
+      <a href="./index.html"><button type="button">◀ Globe</button></a>
+      <a href="./growth.html"><button type="button">Model</button></a>
+      <button id="theme" type="button">Theme</button>
+    </div>
+  </div>
+
+  <div class="bench">
+    <!-- state -->
+    <div class="col">
+      <div class="card">
+        <h3>Site</h3>
+        <div class="body">
+          <div class="seg" id="site"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>State</h3>
+        <div class="body" id="controls"></div>
+      </div>
+      <div class="card">
+        <h3>Events</h3>
+        <div class="body row">
+          <button id="ev-good" type="button">Delivered</button>
+          <button id="ev-bad" type="button">Cancelled</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- stage -->
+    <div>
+      <div id="stage">
+        <div class="stage-tag">campus · <b id="tag">us</b></div>
+        <div class="stage-hud">
+          <div class="row">
+            <button id="spin" type="button" aria-pressed="true">Auto-orbit</button>
+            <button id="ground" type="button" aria-pressed="true">Ground</button>
+            <button id="ruler" type="button" aria-pressed="false">Ruler</button>
+            <button id="bloom" type="button" aria-pressed="true">Bloom</button>
+            <button id="front" type="button">Front</button>
+            <button id="top" type="button">Top</button>
+          </div>
+          <div class="row"><button id="reset" type="button">Reset view</button></div>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="row" id="presets" style="margin-top:12px"></div>
+    </div>
+
+    <!-- anatomy -->
+    <div class="col">
+      <div class="card">
+        <h3>Anatomy · click to hide</h3>
+        <div class="body" id="parts"></div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec"><em>Spec</em><h2>What each part is made of</h2><div class="rule"></div></div>
+    <table>
+      <thead><tr><th style="width:13%">Part</th><th style="width:22%">Geometry</th>
+        <th style="width:24%">Encodes</th><th>Scale &amp; behaviour</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Pad</td><td class="n">Cylinder r8 → r6.8, h2.6, 64 seg</td>
+          <td>The site itself</td><td>Receives shadow; the only part that never moves. Carries the hit test on the globe.</td></tr>
+        <tr><td class="k">Rim</td><td class="n">Torus r8.2, tube 0.11</td>
+          <td>Site identity</td><td>Emissive in the site's own colour — the one constant light when everything else is dark.</td></tr>
+        <tr><td class="k">Towers</td><td class="n">Box grid, ⌈√slots⌉², step 11.36/cols</td>
+          <td>Owned GPUs · lit = powered</td>
+          <td>Height = <code>kH × 3.0</code> world units, eased 16%/frame. Unlit towers sit in <code>towerOff</code>; lit ones take the site colour and pulse at 1.7 rad/s.</td></tr>
+        <tr><td class="k">Crowns</td><td class="n">Box, 1.12 × 0.05 × 1.12</td>
+          <td>Gen N</td><td>A cap on the tower. Gen N is twice the compute per thousand, so its tower is twice as tall for the same count.</td></tr>
+        <tr><td class="k">Slabs</td><td class="n">Box 0.55 × 6, scaled in x</td>
+          <td>Rented capacity</td>
+          <td>Left of the pad: reservations, site colour at 34% opacity. Right: an exercised option, amber at 40%. Width = <code>kH × 0.8</code>; both bob on a 0.8 rad/s sine.</td></tr>
+        <tr><td class="k">Pillars</td><td class="n">6 × open cylinder r0.16, h7</td>
+          <td>Spot fills</td><td>One per 0.9 kH, on the pad's edge, flickering at 3 rad/s — there this month, gone the next.</td></tr>
+        <tr><td class="k">Substation</td><td class="n">Box 2.8², behind the pad</td>
+          <td>Energised MW</td><td>Height = <code>MW × 0.22</code>. The wireframe ghost around it is power contracted but not yet energised — the gap you are waiting on.</td></tr>
+        <tr><td class="k">Ground bar</td><td class="n">3 boxes, 0.4 × 3.0, scaled in x</td>
+          <td>Served | training | unserved</td>
+          <td><code>kH × 0.34</code> per segment, centred on the pad's front edge, with a tick at demand. The tick brightens when anything goes unserved.</td></tr>
+        <tr><td class="k">Rings</td><td class="n">3 × torus r1, tube 0.22</td>
+          <td>Broker events</td><td>A one-shot pulse: scales ×16 and fades over ~40 frames. Green delivered, red cancelled.</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><b>One source.</b> The object is built in <code>viz/campus3d.js</code> and imported by both this
+      bench and the globe, so a change here is a change there. Its contract is a single
+      <code>update(state, time)</code> call per frame, taking owned and powered counts, rented kH, megawatts and
+      the month's demand split — nothing about where it sits in the world.</p>
+  </section>
+
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./campus.js"></script>
+</body>
+</html>
