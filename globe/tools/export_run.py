@@ -13,6 +13,12 @@ and, for the month-end settlement that leads into the next month:
                                  moves between datacentres (move true; src is the source datacentre).
                                  orders: [[month, command index]] of the commands each one fulfils
   remaining[supplier]            what is still waiting at each supplier after the settlement
+  settle[site]                   the month's result at each site: inference demand and how much was served, reserved
+                                 and spot compute (spot_req is the standing request, spot what was filled) and the
+                                 capacity left over for training (kH)
+  window_training                training done so far in each training window, including this month (kH-months)
+  met                            {last month of window: true/false} for windows already decided
+The top level also carries the rules a player knows about demand and training (rules).
 """
 import json
 import sys
@@ -88,8 +94,15 @@ while w.t < W.T:
                                "move": True, "orders": [[len(months), i]]})
     months.append({"month": len(months), "commands": commands,
                    "sites": {s: {"owned": owned[s], "powered": rep["sites"][s]["powered"]} for s in W.SITES},
-                   "waiting": before, "pending": pending, "deliveries": deliveries, "remaining": waiting(w.queue)})
-json.dump({"policy": name, "seed": seed, "months": months}, open(out, "w"), separators=(",", ":"))
+                   "waiting": before, "pending": pending, "deliveries": deliveries, "remaining": waiting(w.queue),
+                   "settle": {s: {"demand": x["demand"], "served": x["served"], "reserved": x["reserved"],
+                                  "spot_req": x["spot_requested"], "spot": x["spot_filled"], "training": x["training"]}
+                              for s, x in rep["sites"].items()},
+                   "window_training": [round(w.window_training(a, d), 2) for a, d, _ in W.MILESTONES],
+                   "met": {str(d): v for d, v in w.met.items()}})
+rules = {"demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
+         "milestones": [list(m) for m in W.MILESTONES]}
+json.dump({"policy": name, "seed": seed, "rules": rules, "months": months}, open(out, "w"), separators=(",", ":"))
 print(f"{len(months)} months; deliveries {sum(len(m['deliveries']) for m in months)}, "
       f"cancelled {sum(1 for m in months for d in m['deliveries'] if not d['ok'])}, "
       f"peak vendor queue {max(sum(m['waiting']['vendor'].values()) for m in months):.1f}k")
