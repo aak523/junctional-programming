@@ -1,7 +1,7 @@
 {
  "0": {
   "do_nothing": {
-   "spend": 750.3,
+   "spend": 847.12,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -10,41 +10,45 @@
     15,
     23
    ],
-   "penalties": 3006.5,
-   "net_cost": 3659.81,
+   "penalties": 2920.25,
+   "net_cost": 3670.38,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 682.3,
+    "unserved": 773.12,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 532.73,
-   "mark_to_market": 132.18,
-   "obligations": 8.41,
+   "spend": 702.17,
+   "mark_to_market": 117.28,
+   "obligations": 4.32,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 2477.6,
-   "net_cost": 2886.56,
+   "penalties": 2387.4,
+   "net_cost": 2976.61,
    "costs": {
-    "capex": 131.38,
-    "power": 106.91,
+    "capex": 77.62,
+    "power": 81.94,
     "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 274.45,
+    "spot": 42.04,
+    "unserved": 478.64,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 1.93,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 709.13,
+   "spend": 719.63,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -53,100 +57,90 @@
     15,
     23
    ],
-   "penalties": 1583.45,
-   "net_cost": 2195.59,
+   "penalties": 1633.25,
+   "net_cost": 2255.9,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 377.7,
-    "spot": 145.63,
-    "unserved": 137.8,
+    "power": 54.0,
+    "contracts": 370.79,
+    "spot": 152.2,
+    "unserved": 142.64,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1055.39,
-   "mark_to_market": 16.97,
-   "obligations": 81.03,
+   "spend": 1051.02,
+   "mark_to_market": 0.0,
+   "obligations": 71.3,
    "milestones_met": 2,
    "missed": [
     7
    ],
-   "penalties": 201.8,
-   "net_cost": 1321.25,
+   "penalties": 200.45,
+   "net_cost": 1322.77,
    "costs": {
-    "capex": 615.62,
-    "power": 120.78,
-    "contracts": 801.85,
-    "spot": 93.75,
-    "unserved": 16.76,
-    "resale": -593.37,
-    "interest": 0.01
-   }
-  },
-  "heuristic": {
-   "spend": 1053.11,
-   "mark_to_market": 240.59,
-   "obligations": 120.7,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 933.22,
-   "costs": {
-    "capex": 532.85,
-    "power": 215.28,
-    "contracts": 240.87,
-    "spot": 64.11,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 518.62,
+    "power": 90.37,
+    "contracts": 838.38,
+    "spot": 130.24,
+    "unserved": 14.41,
+    "resale": -566.29,
+    "interest": 0.0,
+    "moves": 2.0,
+    "options": 23.28
    }
   },
   "reference": {
-   "spend": 821.15,
-   "mark_to_market": 135.5,
-   "obligations": 42.32,
+   "spend": 793.03,
+   "mark_to_market": 108.83,
+   "obligations": 45.09,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 727.96,
+   "net_cost": 729.29,
    "costs": {
-    "capex": 143.38,
-    "power": 114.73,
-    "contracts": 518.7,
-    "spot": 44.34,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 122.12,
+    "power": 97.58,
+    "contracts": 497.78,
+    "spot": 97.19,
+    "unserved": 5.22,
+    "resale": -39.9,
+    "interest": 0.0,
+    "moves": 4.29,
+    "options": 8.74
    }
   },
   "oracle": {
-   "spend": 644.91,
-   "mark_to_market": 22.24,
-   "obligations": 17.46,
+   "spend": 658.35,
+   "mark_to_market": 31.87,
+   "obligations": 20.95,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 640.13,
+   "net_cost": 647.43,
    "costs": {
-    "capex": 16.88,
-    "power": 62.18,
-    "contracts": 599.8,
-    "spot": 105.41,
-    "unserved": 0.0,
-    "resale": -139.36,
-    "interest": 0.0
+    "capex": 54.62,
+    "power": 69.88,
+    "contracts": 578.38,
+    "spot": 91.96,
+    "unserved": 0.02,
+    "resale": -138.44,
+    "interest": 0.0,
+    "moves": 1.93,
+    "options": 0.0
    }
   },
   "lp_bound": {
-   "net_cost": 626.5,
+   "net_cost": 631.0,
    "milestones_met": null
   }
  },
  "1": {
   "do_nothing": {
-   "spend": 253.64,
+   "spend": 540.44,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -155,142 +149,136 @@
     15,
     23
    ],
-   "penalties": 2821.45,
-   "net_cost": 2978.1,
+   "penalties": 2771.95,
+   "net_cost": 3215.41,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 185.64,
+    "unserved": 466.44,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 404.94,
-   "mark_to_market": 168.82,
-   "obligations": 14.52,
+   "spend": 673.34,
+   "mark_to_market": 165.57,
+   "obligations": 12.41,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 1666.2,
-   "net_cost": 1916.84,
+   "penalties": 1886.15,
+   "net_cost": 2406.33,
    "costs": {
-    "capex": 263.62,
-    "power": 121.32,
-    "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 0.0,
+    "capex": 253.38,
+    "power": 100.13,
+    "contracts": 43.28,
+    "spot": 27.34,
+    "unserved": 249.21,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 773.13,
+   "spend": 916.57,
    "mark_to_market": 96.99,
    "obligations": 0,
-   "milestones_met": 2,
+   "milestones_met": 1,
    "missed": [
+    15,
     23
    ],
-   "penalties": 1099.25,
-   "net_cost": 1775.39,
+   "penalties": 1383.3,
+   "net_cost": 2202.89,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 419.45,
-    "spot": 305.68,
-    "unserved": 0.0,
+    "power": 54.0,
+    "contracts": 438.25,
+    "spot": 324.94,
+    "unserved": 99.38,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1733.73,
-   "mark_to_market": 75.11,
-   "obligations": 148.79,
-   "milestones_met": 1,
+   "spend": 1524.05,
+   "mark_to_market": 61.99,
+   "obligations": 147.74,
+   "milestones_met": 2,
    "missed": [
-    7,
-    15
+    7
    ],
-   "penalties": 664.85,
-   "net_cost": 2472.26,
+   "penalties": 222.85,
+   "net_cost": 1832.65,
    "costs": {
-    "capex": 1372.7,
-    "power": 131.21,
-    "contracts": 743.31,
-    "spot": 286.77,
-    "unserved": 2.6,
-    "resale": -843.53,
-    "interest": 40.68
-   }
-  },
-  "heuristic": {
-   "spend": 1340.45,
-   "mark_to_market": 410.87,
-   "obligations": 72.39,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1001.97,
-   "costs": {
-    "capex": 911.64,
-    "power": 264.69,
-    "contracts": 100.96,
-    "spot": 42.16,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 21.0
+    "capex": 907.02,
+    "power": 115.36,
+    "contracts": 923.86,
+    "spot": 144.73,
+    "unserved": 42.12,
+    "resale": -703.65,
+    "interest": 5.46,
+    "moves": 2.19,
+    "options": 86.95
    }
   },
   "reference": {
-   "spend": 1033.93,
-   "mark_to_market": 321.07,
-   "obligations": 66.6,
+   "spend": 1051.73,
+   "mark_to_market": 291.93,
+   "obligations": 55.3,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 779.47,
+   "net_cost": 815.09,
    "costs": {
-    "capex": 556.02,
-    "power": 150.24,
-    "contracts": 261.96,
-    "spot": 65.71,
-    "unserved": 0.0,
+    "capex": 500.52,
+    "power": 136.17,
+    "contracts": 282.49,
+    "spot": 98.7,
+    "unserved": 6.74,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 4.67,
+    "options": 22.44
    }
   },
   "oracle": {
-   "spend": 1015.22,
-   "mark_to_market": 395.44,
-   "obligations": 73.44,
+   "spend": 1150.82,
+   "mark_to_market": 404.38,
+   "obligations": 37.96,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 693.22,
+   "net_cost": 784.41,
    "costs": {
-    "capex": 654.53,
-    "power": 156.0,
-    "contracts": 122.61,
-    "spot": 82.09,
-    "unserved": 0.0,
+    "capex": 682.92,
+    "power": 172.21,
+    "contracts": 200.95,
+    "spot": 76.34,
+    "unserved": 3.45,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 4.46,
+    "options": 10.48
    }
   },
   "lp_bound": {
-   "net_cost": 671.94,
+   "net_cost": 755.16,
    "milestones_met": null
   }
  },
  "2": {
   "do_nothing": {
-   "spend": 308.94,
+   "spend": 384.02,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -299,139 +287,133 @@
     15,
     23
    ],
-   "penalties": 2854.8,
-   "net_cost": 3066.75,
+   "penalties": 2706.25,
+   "net_cost": 2993.29,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 240.94,
+    "unserved": 310.02,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 279.52,
-   "mark_to_market": 135.64,
-   "obligations": 16.83,
+   "spend": 452.63,
+   "mark_to_market": 135.99,
+   "obligations": 11.93,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 2105.25,
-   "net_cost": 2265.96,
+   "penalties": 2105.1,
+   "net_cost": 2433.67,
    "costs": {
-    "capex": 143.88,
-    "power": 98.49,
+    "capex": 146.62,
+    "power": 93.05,
     "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 17.15,
+    "spot": 47.82,
+    "unserved": 144.99,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.14,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 602.43,
+   "spend": 631.09,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 2,
    "missed": [
     23
    ],
-   "penalties": 951.9,
-   "net_cost": 1457.35,
+   "penalties": 861.05,
+   "net_cost": 1395.15,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 353.36,
-    "spot": 201.07,
-    "unserved": 0.0,
+    "power": 54.0,
+    "contracts": 358.75,
+    "spot": 215.01,
+    "unserved": 3.33,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1028.82,
-   "mark_to_market": 47.09,
-   "obligations": 156.26,
+   "spend": 1088.88,
+   "mark_to_market": 12.12,
+   "obligations": 99.31,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 1137.99,
+   "net_cost": 1176.06,
    "costs": {
-    "capex": 787.62,
-    "power": 108.69,
-    "contracts": 640.8,
-    "spot": 169.78,
-    "unserved": 0.0,
-    "resale": -678.08,
-    "interest": 0.01
-   }
-  },
-  "heuristic": {
-   "spend": 898.14,
-   "mark_to_market": 196.53,
-   "obligations": 148.63,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 850.23,
-   "costs": {
-    "capex": 363.62,
-    "power": 185.11,
-    "contracts": 239.52,
-    "spot": 109.87,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 792.25,
+    "power": 110.96,
+    "contracts": 720.03,
+    "spot": 122.76,
+    "unserved": 11.22,
+    "resale": -690.9,
+    "interest": 0.0,
+    "moves": 0.93,
+    "options": 21.62
    }
   },
   "reference": {
-   "spend": 768.26,
-   "mark_to_market": 176.17,
-   "obligations": 112.94,
+   "spend": 794.28,
+   "mark_to_market": 174.92,
+   "obligations": 49.82,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 705.03,
+   "net_cost": 669.18,
    "costs": {
-    "capex": 290.12,
-    "power": 116.25,
-    "contracts": 292.97,
-    "spot": 68.91,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 297.12,
+    "power": 120.74,
+    "contracts": 325.79,
+    "spot": 35.44,
+    "unserved": 3.33,
+    "resale": -2.83,
+    "interest": 0.0,
+    "moves": 5.53,
+    "options": 9.15
    }
   },
   "oracle": {
-   "spend": 665.93,
-   "mark_to_market": 100.45,
-   "obligations": 45.92,
+   "spend": 618.79,
+   "mark_to_market": 69.62,
+   "obligations": 29.44,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 611.4,
+   "net_cost": 578.61,
    "costs": {
-    "capex": 100.38,
-    "power": 88.65,
-    "contracts": 460.9,
-    "spot": 62.14,
-    "unserved": 0.0,
-    "resale": -46.14,
-    "interest": 0.0
+    "capex": 56.88,
+    "power": 84.41,
+    "contracts": 469.07,
+    "spot": 64.82,
+    "unserved": 3.35,
+    "resale": -63.17,
+    "interest": 0.0,
+    "moves": 3.44,
+    "options": 0.0
    }
   },
   "lp_bound": {
-   "net_cost": 577.15,
+   "net_cost": 552.62,
    "milestones_met": null
   }
  },
  "3": {
   "do_nothing": {
-   "spend": 509.3,
+   "spend": 521.31,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -440,144 +422,137 @@
     15,
     23
    ],
-   "penalties": 3004.85,
-   "net_cost": 3417.17,
+   "penalties": 2904.65,
+   "net_cost": 3328.97,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 441.3,
+    "unserved": 447.31,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 356.66,
-   "mark_to_market": 150.47,
-   "obligations": 16.74,
+   "spend": 655.2,
+   "mark_to_market": 180.67,
+   "obligations": 16.37,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 2267.1,
-   "net_cost": 2490.04,
+   "penalties": 1746.25,
+   "net_cost": 2237.15,
    "costs": {
-    "capex": 197.38,
-    "power": 115.5,
+    "capex": 306.38,
+    "power": 122.66,
     "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 23.79,
+    "spot": 7.73,
+    "unserved": 197.74,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.69,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 1258.13,
+   "spend": 1258.37,
    "mark_to_market": 96.99,
    "obligations": 0,
-   "milestones_met": 1,
-   "missed": [
-    15,
-    23
-   ],
-   "penalties": 1826.0,
-   "net_cost": 2987.14,
-   "costs": {
-    "capex": 0.0,
-    "power": 48.0,
-    "contracts": 773.16,
-    "spot": 408.24,
-    "unserved": 28.72,
-    "resale": 0.0,
-    "interest": 0.0
-   }
-  },
-  "exploiter": {
-   "spend": 1998.45,
-   "mark_to_market": 84.53,
-   "obligations": 442.18,
    "milestones_met": 0,
    "missed": [
     7,
     15,
     23
    ],
-   "penalties": 1684.9,
-   "net_cost": 4041.01,
+   "penalties": 1975.25,
+   "net_cost": 3136.63,
    "costs": {
-    "capex": 1787.86,
-    "power": 154.57,
-    "contracts": 664.68,
-    "spot": 255.87,
-    "unserved": 5.29,
-    "resale": -972.67,
-    "interest": 102.84
+    "capex": 0.0,
+    "power": 54.0,
+    "contracts": 766.4,
+    "spot": 410.65,
+    "unserved": 27.32,
+    "resale": 0.0,
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
-  "heuristic": {
-   "spend": 1819.71,
-   "mark_to_market": 420.04,
-   "obligations": 98.26,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1497.94,
+  "exploiter": {
+   "spend": 1558.69,
+   "mark_to_market": 25.41,
+   "obligations": 288.02,
+   "milestones_met": 2,
+   "missed": [
+    7
+   ],
+   "penalties": 227.0,
+   "net_cost": 2048.3,
    "costs": {
-    "capex": 1110.88,
-    "power": 263.66,
-    "contracts": 266.1,
-    "spot": 72.97,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 106.1
+    "capex": 1082.02,
+    "power": 133.0,
+    "contracts": 960.49,
+    "spot": 55.74,
+    "unserved": 56.72,
+    "resale": -840.37,
+    "interest": 7.08,
+    "moves": 1.59,
+    "options": 102.42
    }
   },
   "reference": {
-   "spend": 1525.22,
-   "mark_to_market": 593.79,
-   "obligations": 140.44,
+   "spend": 1022.43,
+   "mark_to_market": 222.11,
+   "obligations": 50.12,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 1071.88,
+   "net_cost": 850.44,
    "costs": {
-    "capex": 1202.33,
-    "power": 175.04,
-    "contracts": 81.31,
-    "spot": 20.05,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 46.51
+    "capex": 482.98,
+    "power": 142.05,
+    "contracts": 364.16,
+    "spot": 7.73,
+    "unserved": 7.26,
+    "resale": -26.01,
+    "interest": 0.0,
+    "moves": 3.85,
+    "options": 40.41
    }
   },
   "oracle": {
-   "spend": 1546.87,
-   "mark_to_market": 648.11,
-   "obligations": 148.84,
+   "spend": 1099.99,
+   "mark_to_market": 343.99,
+   "obligations": 65.37,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 1047.6,
+   "net_cost": 821.37,
    "costs": {
-    "capex": 1292.23,
-    "power": 170.95,
-    "contracts": 20.0,
-    "spot": 33.69,
-    "unserved": 0.0,
-    "resale": -6.91,
-    "interest": 36.91
+    "capex": 675.19,
+    "power": 146.24,
+    "contracts": 247.81,
+    "spot": 4.36,
+    "unserved": 7.43,
+    "resale": -9.14,
+    "interest": 0.0,
+    "moves": 3.63,
+    "options": 24.48
    }
   },
   "lp_bound": {
-   "net_cost": 956.15,
+   "net_cost": 798.67,
    "milestones_met": null
   }
  },
  "4": {
   "do_nothing": {
-   "spend": 499.78,
+   "spend": 543.54,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -586,42 +561,45 @@
     15,
     23
    ],
-   "penalties": 3008.9,
-   "net_cost": 3411.69,
+   "penalties": 2910.7,
+   "net_cost": 3357.25,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 431.78,
+    "unserved": 469.54,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 418.16,
-   "mark_to_market": 159.13,
-   "obligations": 46.44,
-   "milestones_met": 0,
+   "spend": 577.79,
+   "mark_to_market": 143.75,
+   "obligations": 22.11,
+   "milestones_met": 1,
    "missed": [
-    7,
     15,
     23
    ],
-   "penalties": 2302.25,
-   "net_cost": 2607.72,
+   "penalties": 2297.7,
+   "net_cost": 2753.86,
    "costs": {
-    "capex": 230.12,
-    "power": 132.96,
-    "contracts": 55.07,
-    "spot": 0.0,
-    "unserved": 0.0,
+    "capex": 174.62,
+    "power": 102.44,
+    "contracts": 48.44,
+    "spot": 2.79,
+    "unserved": 249.5,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 718.27,
+   "spend": 684.88,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 1,
@@ -629,98 +607,88 @@
     15,
     23
    ],
-   "penalties": 1751.25,
-   "net_cost": 2372.54,
+   "penalties": 1920.4,
+   "net_cost": 2508.29,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 395.48,
-    "spot": 165.92,
-    "unserved": 108.88,
+    "power": 54.0,
+    "contracts": 317.82,
+    "spot": 165.95,
+    "unserved": 147.11,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1433.67,
-   "mark_to_market": 11.52,
-   "obligations": 232.66,
+   "spend": 1405.28,
+   "mark_to_market": 0.0,
+   "obligations": 101.99,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 1654.82,
+   "net_cost": 1507.27,
    "costs": {
-    "capex": 1204.62,
-    "power": 141.51,
-    "contracts": 786.78,
-    "spot": 233.95,
-    "unserved": 0.0,
-    "resale": -936.66,
-    "interest": 3.46
-   }
-  },
-  "heuristic": {
-   "spend": 1088.89,
-   "mark_to_market": 225.77,
-   "obligations": 147.73,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1010.85,
-   "costs": {
-    "capex": 470.62,
-    "power": 193.14,
-    "contracts": 308.5,
-    "spot": 116.62,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 801.26,
+    "power": 108.54,
+    "contracts": 984.86,
+    "spot": 122.86,
+    "unserved": 17.75,
+    "resale": -697.35,
+    "interest": 3.13,
+    "moves": 0.5,
+    "options": 63.73
    }
   },
   "reference": {
-   "spend": 1006.26,
-   "mark_to_market": 230.45,
-   "obligations": 83.59,
+   "spend": 909.46,
+   "mark_to_market": 199.58,
+   "obligations": 54.7,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 859.39,
+   "net_cost": 764.58,
    "costs": {
-    "capex": 454.02,
-    "power": 136.92,
-    "contracts": 376.57,
-    "spot": 60.36,
-    "unserved": 0.0,
-    "resale": -21.62,
-    "interest": 0.0
+    "capex": 397.12,
+    "power": 130.46,
+    "contracts": 313.54,
+    "spot": 49.69,
+    "unserved": 10.46,
+    "resale": -5.94,
+    "interest": 0.0,
+    "moves": 4.2,
+    "options": 9.93
    }
   },
   "oracle": {
-   "spend": 936.63,
-   "mark_to_market": 219.67,
-   "obligations": 68.92,
+   "spend": 858.5,
+   "mark_to_market": 186.56,
+   "obligations": 48.24,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 785.88,
+   "net_cost": 720.19,
    "costs": {
-    "capex": 448.62,
-    "power": 150.48,
-    "contracts": 260.74,
-    "spot": 76.78,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 424.62,
+    "power": 129.76,
+    "contracts": 263.04,
+    "spot": 61.17,
+    "unserved": 6.58,
+    "resale": -28.57,
+    "interest": 0.0,
+    "moves": 1.9,
+    "options": 0.0
    }
   },
   "lp_bound": {
-   "net_cost": 710.03,
+   "net_cost": 688.71,
    "milestones_met": null
   }
  },
  "5": {
   "do_nothing": {
-   "spend": 255.32,
+   "spend": 508.82,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -729,41 +697,45 @@
     15,
     23
    ],
-   "penalties": 2832.4,
-   "net_cost": 2990.73,
+   "penalties": 2754.65,
+   "net_cost": 3166.49,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 187.32,
+    "unserved": 434.82,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 288.57,
-   "mark_to_market": 139.94,
-   "obligations": 12.24,
+   "spend": 489.6,
+   "mark_to_market": 136.4,
+   "obligations": 2.47,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 1977.1,
-   "net_cost": 2137.98,
+   "penalties": 2135.5,
+   "net_cost": 2491.17,
    "costs": {
-    "capex": 159.38,
-    "power": 109.2,
+    "capex": 148.12,
+    "power": 81.19,
     "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 0.0,
+    "spot": 5.12,
+    "unserved": 233.73,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 1.43,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 650.48,
+   "spend": 751.5,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 1,
@@ -771,101 +743,90 @@
     15,
     23
    ],
-   "penalties": 1536.35,
-   "net_cost": 2089.84,
+   "penalties": 1701.7,
+   "net_cost": 2356.21,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 299.39,
-    "spot": 277.45,
-    "unserved": 25.64,
+    "power": 54.0,
+    "contracts": 297.28,
+    "spot": 285.84,
+    "unserved": 114.38,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1475.68,
-   "mark_to_market": 6.39,
-   "obligations": 185.67,
-   "milestones_met": 1,
+   "spend": 1264.98,
+   "mark_to_market": 5.06,
+   "obligations": 144.1,
+   "milestones_met": 2,
    "missed": [
-    7,
-    15
+    7
    ],
-   "penalties": 585.9,
-   "net_cost": 2240.86,
+   "penalties": 241.2,
+   "net_cost": 1645.22,
    "costs": {
-    "capex": 1260.54,
-    "power": 119.91,
-    "contracts": 772.98,
-    "spot": 247.31,
-    "unserved": 0.0,
-    "resale": -932.34,
-    "interest": 7.29
-   }
-  },
-  "heuristic": {
-   "spend": 1182.59,
-   "mark_to_market": 285.21,
-   "obligations": 125.63,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1023.01,
-   "costs": {
-    "capex": 707.25,
-    "power": 213.24,
-    "contracts": 135.17,
-    "spot": 126.85,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.08
+    "capex": 507.88,
+    "power": 109.99,
+    "contracts": 935.62,
+    "spot": 157.25,
+    "unserved": 28.69,
+    "resale": -549.77,
+    "interest": 0.0,
+    "moves": 3.96,
+    "options": 71.36
    }
   },
   "reference": {
-   "spend": 973.39,
-   "mark_to_market": 180.74,
-   "obligations": 74.44,
+   "spend": 939.87,
+   "mark_to_market": 136.4,
+   "obligations": 42.03,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 867.09,
+   "net_cost": 845.5,
    "costs": {
-    "capex": 294.82,
-    "power": 122.95,
-    "contracts": 420.94,
-    "spot": 145.25,
-    "unserved": 0.0,
-    "resale": -10.58,
-    "interest": 0.0
+    "capex": 148.12,
+    "power": 103.45,
+    "contracts": 517.81,
+    "spot": 120.8,
+    "unserved": 8.0,
+    "resale": 0.0,
+    "interest": 0.0,
+    "moves": 4.78,
+    "options": 36.9
    }
   },
   "oracle": {
-   "spend": 898.03,
-   "mark_to_market": 158.71,
-   "obligations": 73.75,
+   "spend": 923.01,
+   "mark_to_market": 161.9,
+   "obligations": 23.81,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 813.08,
+   "net_cost": 784.92,
    "costs": {
-    "capex": 227.12,
-    "power": 114.6,
-    "contracts": 468.01,
-    "spot": 88.3,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 315.12,
+    "power": 129.26,
+    "contracts": 426.49,
+    "spot": 49.5,
+    "unserved": 0.02,
+    "resale": -39.9,
+    "interest": 0.0,
+    "moves": 3.3,
+    "options": 39.22
    }
   },
   "lp_bound": {
-   "net_cost": 784.77,
+   "net_cost": 763.65,
    "milestones_met": null
   }
  },
  "6": {
   "do_nothing": {
-   "spend": 734.94,
+   "spend": 829.67,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -874,42 +835,45 @@
     15,
     23
    ],
-   "penalties": 3006.55,
-   "net_cost": 3644.5,
+   "penalties": 2922.9,
+   "net_cost": 3655.58,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 666.94,
+    "unserved": 755.67,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 563.32,
-   "mark_to_market": 154.48,
-   "obligations": 18.49,
-   "milestones_met": 0,
+   "spend": 652.96,
+   "mark_to_market": 118.67,
+   "obligations": 1.87,
+   "milestones_met": 1,
    "missed": [
-    7,
     15,
     23
    ],
-   "penalties": 2502.2,
-   "net_cost": 2929.53,
+   "penalties": 2510.45,
+   "net_cost": 3046.62,
    "costs": {
-    "capex": 211.88,
-    "power": 102.94,
+    "capex": 82.62,
+    "power": 74.59,
     "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 228.5,
+    "spot": 5.01,
+    "unserved": 468.81,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 1.93,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 1027.79,
+   "spend": 1019.57,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 1,
@@ -917,104 +881,95 @@
     15,
     23
    ],
-   "penalties": 1925.4,
-   "net_cost": 2856.21,
+   "penalties": 2032.1,
+   "net_cost": 2954.69,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 494.12,
-    "spot": 192.39,
-    "unserved": 293.28,
+    "power": 54.0,
+    "contracts": 472.89,
+    "spot": 189.87,
+    "unserved": 302.81,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1759.11,
-   "mark_to_market": 68.31,
-   "obligations": 200.57,
-   "milestones_met": 0,
+   "spend": 1483.1,
+   "mark_to_market": 36.36,
+   "obligations": 244.37,
+   "milestones_met": 1,
    "missed": [
     7,
-    15,
     23
    ],
-   "penalties": 1920.15,
-   "net_cost": 3811.52,
+   "penalties": 585.95,
+   "net_cost": 2277.06,
    "costs": {
-    "capex": 1804.02,
-    "power": 115.84,
-    "contracts": 797.55,
-    "spot": 141.09,
-    "unserved": 0.0,
-    "resale": -1157.34,
-    "interest": 57.95
-   }
-  },
-  "heuristic": {
-   "spend": 1842.02,
-   "mark_to_market": 472.28,
-   "obligations": 174.22,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1543.97,
-   "costs": {
-    "capex": 1055.87,
-    "power": 236.28,
-    "contracts": 331.54,
-    "spot": 120.85,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 97.48
+    "capex": 682.68,
+    "power": 97.16,
+    "contracts": 1080.54,
+    "spot": 69.97,
+    "unserved": 17.43,
+    "resale": -599.36,
+    "interest": 3.74,
+    "moves": 3.61,
+    "options": 127.32
    }
   },
   "reference": {
-   "spend": 1390.21,
-   "mark_to_market": 485.53,
-   "obligations": 129.77,
+   "spend": 1299.73,
+   "mark_to_market": 327.46,
+   "obligations": 123.27,
    "milestones_met": 2,
    "missed": [
-    23
+    15
    ],
-   "penalties": 214.55,
-   "net_cost": 1249.0,
+   "penalties": 228.65,
+   "net_cost": 1324.2,
    "costs": {
-    "capex": 861.88,
-    "power": 140.85,
-    "contracts": 343.93,
-    "spot": 38.51,
-    "unserved": 0.0,
-    "resale": -3.53,
-    "interest": 8.57
+    "capex": 488.73,
+    "power": 113.85,
+    "contracts": 587.47,
+    "spot": 20.83,
+    "unserved": 26.06,
+    "resale": 0.0,
+    "interest": 0.0,
+    "moves": 3.93,
+    "options": 58.87
    }
   },
   "oracle": {
-   "spend": 1428.29,
-   "mark_to_market": 485.82,
-   "obligations": 153.44,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1095.91,
+   "spend": 1263.29,
+   "mark_to_market": 423.29,
+   "obligations": 86.28,
+   "milestones_met": 2,
+   "missed": [
+    15
+   ],
+   "penalties": 224.05,
+   "net_cost": 1150.33,
    "costs": {
-    "capex": 923.74,
-    "power": 149.92,
-    "contracts": 333.01,
-    "spot": 8.85,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 12.76
+    "capex": 815.96,
+    "power": 135.26,
+    "contracts": 279.01,
+    "spot": 5.99,
+    "unserved": 1.2,
+    "resale": -4.36,
+    "interest": 0.0,
+    "moves": 3.25,
+    "options": 26.98
    }
   },
   "lp_bound": {
-   "net_cost": 1071.94,
+   "net_cost": 867.23,
    "milestones_met": null
   }
  },
  "7": {
   "do_nothing": {
-   "spend": 499.97,
+   "spend": 818.42,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -1023,142 +978,137 @@
     15,
     23
    ],
-   "penalties": 2997.0,
-   "net_cost": 3399.99,
+   "penalties": 2907.0,
+   "net_cost": 3628.44,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 431.97,
+    "unserved": 744.42,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 371.74,
-   "mark_to_market": 158.29,
-   "obligations": 20.46,
+   "spend": 720.0,
+   "mark_to_market": 149.98,
+   "obligations": 8.64,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 2162.55,
-   "net_cost": 2396.46,
+   "penalties": 2363.8,
+   "net_cost": 2942.46,
    "costs": {
-    "capex": 225.62,
-    "power": 122.22,
+    "capex": 195.62,
+    "power": 83.3,
     "contracts": 20.0,
-    "spot": 0.0,
-    "unserved": 3.9,
+    "spot": 3.09,
+    "unserved": 417.18,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.8
    }
   },
   "spot_only": {
-   "spend": 860.35,
+   "spend": 973.42,
    "mark_to_market": 96.99,
    "obligations": 0,
-   "milestones_met": 1,
+   "milestones_met": 0,
    "missed": [
+    7,
     15,
     23
    ],
-   "penalties": 1580.3,
-   "net_cost": 2343.67,
+   "penalties": 2018.15,
+   "net_cost": 2894.59,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 464.48,
-    "spot": 161.59,
-    "unserved": 186.28,
+    "power": 54.0,
+    "contracts": 391.75,
+    "spot": 205.91,
+    "unserved": 321.76,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1521.84,
-   "mark_to_market": 66.54,
-   "obligations": 162.6,
+   "spend": 1528.45,
+   "mark_to_market": 83.7,
+   "obligations": 97.82,
    "milestones_met": 2,
    "missed": [
     7
    ],
-   "penalties": 279.85,
-   "net_cost": 1897.75,
+   "penalties": 222.7,
+   "net_cost": 1765.28,
    "costs": {
-    "capex": 1360.67,
-    "power": 136.78,
-    "contracts": 674.48,
-    "spot": 219.49,
-    "unserved": 0.0,
-    "resale": -882.49,
-    "interest": 12.9
-   }
-  },
-  "heuristic": {
-   "spend": 1451.3,
-   "mark_to_market": 456.18,
-   "obligations": 90.31,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 1085.43,
-   "costs": {
-    "capex": 927.12,
-    "power": 262.61,
-    "contracts": 147.62,
-    "spot": 65.43,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 48.52
+    "capex": 1004.5,
+    "power": 107.6,
+    "contracts": 945.44,
+    "spot": 130.52,
+    "unserved": 40.54,
+    "resale": -773.2,
+    "interest": 10.57,
+    "moves": 1.96,
+    "options": 60.52
    }
   },
   "reference": {
-   "spend": 1018.77,
-   "mark_to_market": 296.7,
-   "obligations": 102.35,
+   "spend": 1125.95,
+   "mark_to_market": 285.07,
+   "obligations": 63.38,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 824.42,
+   "net_cost": 904.25,
    "costs": {
-    "capex": 732.58,
-    "power": 159.3,
-    "contracts": 189.86,
-    "spot": 37.74,
-    "unserved": 0.0,
-    "resale": -100.71,
-    "interest": 0.0
+    "capex": 603.95,
+    "power": 130.61,
+    "contracts": 315.33,
+    "spot": 89.63,
+    "unserved": 30.96,
+    "resale": -52.54,
+    "interest": 0.0,
+    "moves": 2.31,
+    "options": 5.68
    }
   },
   "oracle": {
-   "spend": 1046.92,
-   "mark_to_market": 329.66,
-   "obligations": 29.88,
+   "spend": 1167.44,
+   "mark_to_market": 369.42,
+   "obligations": 60.16,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 747.14,
+   "net_cost": 858.18,
    "costs": {
-    "capex": 602.67,
-    "power": 197.4,
-    "contracts": 177.65,
-    "spot": 69.2,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 703.78,
+    "power": 166.64,
+    "contracts": 222.13,
+    "spot": 76.75,
+    "unserved": 3.19,
+    "resale": -6.62,
+    "interest": 0.0,
+    "moves": 0.14,
+    "options": 1.41
    }
   },
   "lp_bound": {
-   "net_cost": 730.46,
+   "net_cost": 814.3,
    "milestones_met": null
   }
  },
  "8": {
   "do_nothing": {
-   "spend": 245.48,
+   "spend": 379.95,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -1167,41 +1117,45 @@
     15,
     23
    ],
-   "penalties": 2817.1,
-   "net_cost": 2965.59,
+   "penalties": 2683.85,
+   "net_cost": 2966.82,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 177.48,
+    "unserved": 305.95,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 434.75,
-   "mark_to_market": 164.25,
-   "obligations": 36.84,
+   "spend": 462.94,
+   "mark_to_market": 145.69,
+   "obligations": 6.36,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 1571.4,
-   "net_cost": 1878.74,
+   "penalties": 2062.5,
+   "net_cost": 2386.12,
    "costs": {
-    "capex": 247.12,
-    "power": 160.2,
-    "contracts": 27.42,
-    "spot": 0.0,
-    "unserved": 0.0,
+    "capex": 180.12,
+    "power": 75.11,
+    "contracts": 35.73,
+    "spot": 25.26,
+    "unserved": 146.42,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.29
    }
   },
   "spot_only": {
-   "spend": 654.61,
+   "spend": 670.77,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 1,
@@ -1209,100 +1163,90 @@
     15,
     23
    ],
-   "penalties": 1141.85,
-   "net_cost": 1699.48,
+   "penalties": 1209.5,
+   "net_cost": 1783.29,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 418.75,
-    "spot": 187.87,
-    "unserved": 0.0,
+    "power": 54.0,
+    "contracts": 419.22,
+    "spot": 194.86,
+    "unserved": 2.69,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1446.07,
-   "mark_to_market": 29.11,
-   "obligations": 172.08,
+   "spend": 1260.91,
+   "mark_to_market": 36.62,
+   "obligations": 140.26,
    "milestones_met": 2,
    "missed": [
     15
    ],
-   "penalties": 474.35,
-   "net_cost": 2063.39,
+   "penalties": 221.95,
+   "net_cost": 1586.5,
    "costs": {
-    "capex": 1483.8,
-    "power": 159.3,
-    "contracts": 602.57,
-    "spot": 221.58,
-    "unserved": 0.0,
-    "resale": -1035.77,
-    "interest": 14.6
-   }
-  },
-  "heuristic": {
-   "spend": 1126.56,
-   "mark_to_market": 425.63,
-   "obligations": 92.86,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 793.79,
-   "costs": {
-    "capex": 762.32,
-    "power": 219.74,
-    "contracts": 92.41,
-    "spot": 52.09,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 992.18,
+    "power": 99.63,
+    "contracts": 790.91,
+    "spot": 155.85,
+    "unserved": 12.93,
+    "resale": -840.13,
+    "interest": 0.0,
+    "moves": 0.5,
+    "options": 49.05
    }
   },
   "reference": {
-   "spend": 935.17,
-   "mark_to_market": 336.64,
-   "obligations": 66.16,
+   "spend": 938.55,
+   "mark_to_market": 339.58,
+   "obligations": 62.11,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 664.69,
+   "net_cost": 661.07,
    "costs": {
-    "capex": 572.92,
-    "power": 165.24,
-    "contracts": 168.08,
-    "spot": 35.64,
-    "unserved": 0.0,
-    "resale": -6.73,
-    "interest": 0.0
+    "capex": 577.73,
+    "power": 116.81,
+    "contracts": 225.27,
+    "spot": 38.65,
+    "unserved": 4.44,
+    "resale": -33.06,
+    "interest": 0.0,
+    "moves": 2.29,
+    "options": 6.42
    }
   },
   "oracle": {
-   "spend": 791.88,
-   "mark_to_market": 243.84,
-   "obligations": 52.85,
+   "spend": 849.4,
+   "mark_to_market": 281.12,
+   "obligations": 40.3,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 600.9,
+   "net_cost": 608.58,
    "costs": {
-    "capex": 368.18,
-    "power": 119.68,
-    "contracts": 285.99,
-    "spot": 40.56,
-    "unserved": 0.0,
+    "capex": 455.08,
+    "power": 128.34,
+    "contracts": 231.84,
+    "spot": 50.01,
+    "unserved": 2.82,
     "resale": -22.53,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 3.84,
+    "options": 0.0
    }
   },
   "lp_bound": {
-   "net_cost": 588.17,
+   "net_cost": 588.71,
    "milestones_met": null
   }
  },
  "9": {
   "do_nothing": {
-   "spend": 245.36,
+   "spend": 382.08,
    "mark_to_market": 96.99,
    "obligations": 0,
    "milestones_met": 0,
@@ -1311,136 +1255,130 @@
     15,
     23
    ],
-   "penalties": 2831.15,
-   "net_cost": 2979.52,
+   "penalties": 2695.2,
+   "net_cost": 2980.29,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
+    "power": 54.0,
     "contracts": 20.0,
     "spot": 0.0,
-    "unserved": 177.36,
+    "unserved": 308.08,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "stop_early": {
-   "spend": 399.3,
-   "mark_to_market": 168.55,
-   "obligations": 25.3,
+   "spend": 475.94,
+   "mark_to_market": 156.29,
+   "obligations": 3.8,
    "milestones_met": 1,
    "missed": [
     15,
     23
    ],
-   "penalties": 1677.1,
-   "net_cost": 1933.16,
+   "penalties": 2128.95,
+   "net_cost": 2452.4,
    "costs": {
-    "capex": 264.12,
-    "power": 106.93,
-    "contracts": 28.24,
+    "capex": 218.38,
+    "power": 74.54,
+    "contracts": 43.28,
     "spot": 0.0,
-    "unserved": 0.0,
+    "unserved": 139.02,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.72,
+    "options": 0.0
    }
   },
   "spot_only": {
-   "spend": 582.42,
+   "spend": 601.58,
    "mark_to_market": 96.99,
    "obligations": 0,
-   "milestones_met": 1,
+   "milestones_met": 2,
    "missed": [
-    7,
     23
    ],
-   "penalties": 1461.45,
-   "net_cost": 1946.89,
+   "penalties": 1319.6,
+   "net_cost": 1824.19,
    "costs": {
     "capex": 0.0,
-    "power": 48.0,
-    "contracts": 328.15,
-    "spot": 183.59,
-    "unserved": 22.68,
+    "power": 54.0,
+    "contracts": 313.32,
+    "spot": 202.42,
+    "unserved": 31.83,
     "resale": 0.0,
-    "interest": 0.0
+    "interest": 0.0,
+    "moves": 0.0,
+    "options": 0.0
    }
   },
   "exploiter": {
-   "spend": 1183.87,
-   "mark_to_market": 23.01,
-   "obligations": 105.01,
-   "milestones_met": 2,
+   "spend": 1220.84,
+   "mark_to_market": 80.86,
+   "obligations": 118.89,
+   "milestones_met": 1,
    "missed": [
-    7
+    7,
+    15
    ],
-   "penalties": 203.8,
-   "net_cost": 1469.68,
+   "penalties": 431.65,
+   "net_cost": 1690.52,
    "costs": {
-    "capex": 970.63,
-    "power": 115.09,
-    "contracts": 755.92,
-    "spot": 128.19,
-    "unserved": 0.0,
-    "resale": -786.63,
-    "interest": 0.69
-   }
-  },
-  "heuristic": {
-   "spend": 1057.05,
-   "mark_to_market": 386.25,
-   "obligations": 81.61,
-   "milestones_met": 3,
-   "missed": [],
-   "penalties": 0.0,
-   "net_cost": 752.41,
-   "costs": {
-    "capex": 693.12,
-    "power": 215.87,
-    "contracts": 48.71,
-    "spot": 99.35,
-    "unserved": 0.0,
-    "resale": 0.0,
-    "interest": 0.0
+    "capex": 1274.7,
+    "power": 117.7,
+    "contracts": 602.18,
+    "spot": 113.22,
+    "unserved": 29.35,
+    "resale": -939.37,
+    "interest": 0.22,
+    "moves": 2.83,
+    "options": 20.0
    }
   },
   "reference": {
-   "spend": 859.19,
-   "mark_to_market": 320.1,
-   "obligations": 83.27,
+   "spend": 863.32,
+   "mark_to_market": 298.43,
+   "obligations": 49.97,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 622.35,
+   "net_cost": 614.86,
    "costs": {
-    "capex": 558.42,
-    "power": 131.77,
-    "contracts": 133.17,
-    "spot": 47.08,
-    "unserved": 0.0,
-    "resale": -11.26,
-    "interest": 0.0
+    "capex": 553.12,
+    "power": 125.16,
+    "contracts": 170.13,
+    "spot": 30.32,
+    "unserved": 14.24,
+    "resale": -35.18,
+    "interest": 0.0,
+    "moves": 5.52,
+    "options": 0.0
    }
   },
   "oracle": {
-   "spend": 616.69,
-   "mark_to_market": 59.37,
-   "obligations": 12.6,
+   "spend": 697.44,
+   "mark_to_market": 150.21,
+   "obligations": 12.1,
    "milestones_met": 3,
    "missed": [],
    "penalties": 0.0,
-   "net_cost": 569.92,
+   "net_cost": 559.33,
    "costs": {
-    "capex": 159.38,
-    "power": 78.6,
-    "contracts": 362.41,
-    "spot": 100.72,
-    "unserved": 0.0,
-    "resale": -84.42,
-    "interest": 0.0
+    "capex": 256.68,
+    "power": 102.11,
+    "contracts": 291.2,
+    "spot": 96.59,
+    "unserved": 9.32,
+    "resale": -60.48,
+    "interest": 0.0,
+    "moves": 2.02,
+    "options": 0.0
    }
   },
   "lp_bound": {
-   "net_cost": 535.36,
+   "net_cost": 545.36,
    "milestones_met": null
   }
  }

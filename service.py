@@ -12,14 +12,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 import world as W  # noqa: E402
 
 HELP = """Commands (separate several with ';' in one call; each action uses one of the month's operations):
-  buy_gpus <thousands> [H|N] [vendor|A|B]  order GPUs (paid now) from the vendor queue or broker A/B
-  reserve <kH> <6|12|24>       reserve cloud capacity starting next month for that many months
-  set_spot <kH>                standing spot request, filled each month end as supply allows
-  contract_power <MW>          sign colocation power (energisation date given at signing)
-  resell_gpus <thousands> [H|N] sell delivered GPUs on the used market
-  end_month                    run the month and show the next one
+  buy_gpus <thousands> [H|N] <vendor|A|B> <site>   order GPUs (paid now) to a site (us, eu, ap)
+  reserve <kH> <6|12|24> <site>                    reserve cloud capacity at a site, starting next month
+  set_spot <kH> <site>                             standing spot request at a site, filled each month end
+  contract_power <MW> <site>                       sign colocation power at a site
+  move_gpus <thousands> <H|N> <from> <to>          ship delivered GPUs between sites (arrive next month)
+  buy_option <kH>                                  buy capacity options
+  exercise_option <kH> <site>                      turn options into a 6-month reservation at a site
+  resell_gpus <thousands> <H|N> <site>             sell delivered GPUs on the used market
+  end_month                                        run the month and show the next one
 Free (no operation used): status, history, help, calc <arithmetic>,
-  note <text>                  record your current estimates (belief log; one per month please)"""
+  note <text>                                      record your current estimates (belief log; one per month please)"""
 
 
 def load(state):
