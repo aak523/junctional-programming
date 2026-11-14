@@ -1,0 +1,960 @@
+<title>GPU World Globe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Mono&family=Fira+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  /* Layout: one full-screen globe; a compact playback pill centred above it. */
+  :root {
+    --bg: #eef1f4;
+    --fg: #1b2530;
+    --muted: #5d6b79;
+    --grid: #9aa8b6;
+    --coast: #22313f;
+    --gen-h: #1f5fd6;
+    --gen-n: #c46f00;
+    --site-us: #c2185b;
+    --site-eu: #1b8a4b;
+    --site-ap: #6a3fd1;
+    --cmd-buy: #c8412f;
+    --hl: #d8e6f3;
+    --cmd-rent: #9a7d00;
+    --cmd-power: #5f8a00;
+    --cmd-option: #c25e00;
+    --cmd-stock: #0f8a82;
+    --font: "Fira Sans", "Helvetica Neue", Arial, sans-serif;
+    --font-cmd: "Fira Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #070b10; --fg: #d8e2ec; --muted: #7d8c9b; --grid: #1f3a4d; --coast: #6fd3ff;
+      --gen-h: #4f9dff; --gen-n: #ffb547;
+      --site-us: #ff5fa2; --site-eu: #5fe08a; --site-ap: #b28cff;
+      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #070b10; --fg: #d8e2ec; --muted: #7d8c9b; --grid: #1f3a4d; --coast: #6fd3ff;
+    --gen-h: #4f9dff; --gen-n: #ffb547;
+    --site-us: #ff5fa2; --site-eu: #5fe08a; --site-ap: #b28cff;
+      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); overflow: hidden; }
+  /* Command log on the left; the globe fills the rest. On narrow screens the log moves below the globe. */
+  #stage { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+  /* Floating panes: one column in the top-left corner, the command log with the summary directly below it. */
+  .panes {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    left: max(16px, env(safe-area-inset-left, 0px));
+    width: 300px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pane { box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--grid); background: var(--bg); }
+  .flow svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .flow .name { font-size: 12px; font-weight: 600; }
+  .flow .qty { font-size: 12px; fill: var(--fg); font-variant-numeric: tabular-nums; }
+  .flow .box { fill: transparent; stroke: var(--grid); }
+  .flow .track { fill: none; stroke: var(--grid); }
+  .log {
+    max-height: 240px; overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .log { position: relative; padding-left: 26px; }
+  .log .arrows { position: absolute; left: 0; top: 0; width: 26px; pointer-events: none; overflow: visible; }
+  .log .arrows path { fill: none; stroke-width: 1; stroke-opacity: 0.6; }
+  .panes-right { left: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
+  .pending { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
+  .pending[hidden] { display: none; }
+  .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
+  .pending .left { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pending .v { font-weight: 600; }
+  .pending .v-buy { color: var(--cmd-buy); }
+  .pending .t-us { color: var(--site-us); } .pending .t-eu { color: var(--site-eu); } .pending .t-ap { color: var(--site-ap); }
+  .pending .t-sup { color: var(--coast); } .pending .t-h { color: var(--gen-h); } .pending .t-n { color: var(--gen-n); }
+  .log section { display: flex; flex-direction: column; gap: 4px; }
+  .log section[hidden] { display: none; }
+  .log h2 { margin: 0; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .log section.now h2 { color: var(--fg); }
+  .log ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  .log li { font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+  /* Command colours: the verb by command type, site and supplier names in their globe colours, the rest muted. */
+  .log .v { font-weight: 600; }
+  .log .v-buy { color: var(--cmd-buy); }
+  .log .v-rent { color: var(--cmd-rent); }
+  .log .v-power { color: var(--cmd-power); }
+  .log .v-option { color: var(--cmd-option); }
+  .log .v-stock { color: var(--cmd-stock); }
+  .log .t-us { color: var(--site-us); }
+  .log .t-eu { color: var(--site-eu); }
+  .log .t-ap { color: var(--site-ap); }
+  .log .t-sup { color: var(--coast); }
+  .log .t-h { color: var(--gen-h); }
+  .log .t-n { color: var(--gen-n); }
+  .log li { transition: background-color 0.25s; }
+  .log li.lit { background: var(--hl); }
+  /* Events, not commands: italic sans, indented behind a rule, faded. Same colours. */
+  .log li.evt { font-family: var(--font); font-style: italic; font-size: 11.5px; margin-left: 2px; padding-left: 8px; border-left: 2px solid var(--grid); opacity: 0.7; }
+  .log li.evt .v { font-weight: 400; }
+  .log li.refused, .log li.refused span { color: var(--muted); text-decoration: line-through; }
+  @media (max-width: 720px) {
+    .panes { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
+    .log { max-height: 30vh; }
+    .flow { display: none; }
+    .panes-right { display: none; }
+  }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .bar {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    width: min(320px, calc(100% - 32px));
+    box-sizing: border-box;
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 14px 8px 8px;
+    background: var(--bg);
+    border: 1px solid var(--grid);
+  }
+  .play {
+    flex: none; width: 32px; height: 32px; display: grid; place-items: center;
+    border: 1px solid var(--grid); border-radius: 50%; background: transparent; color: var(--fg); cursor: pointer; padding: 0;
+  }
+  .play:hover { border-color: var(--coast); }
+  .play:focus-visible { outline: 2px solid var(--coast); outline-offset: 2px; }
+  .bar { user-select: none; -webkit-user-select: none; }
+  .month:focus, .month:focus-visible { outline: none; }
+  .play svg { width: 12px; height: 12px; fill: currentColor; }
+  .play [data-icon] { display: none; }
+  .play[data-state="paused"] [data-icon="play"], .play[data-state="playing"] [data-icon="pause"] { display: block; }
+  .month { width: 100%; margin: 0; display: block; accent-color: var(--coast); }
+  /* One tick per month under the slider, inset by half the thumb so each sits under a stop. */
+  .timeline { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ticks { display: flex; justify-content: space-between; padding: 0 8px; pointer-events: none; }
+  .ticks i { width: 1px; height: 5px; background: var(--grid); }
+  .ticks i.past { background: var(--coast); }
+  .num { flex: none; min-width: 2ch; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .site-label {
+    position: fixed; left: 0; top: 0; pointer-events: none;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em; white-space: nowrap;
+  }
+  .site-label[hidden], .error[hidden] { display: none; }
+  .error { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; padding: 16px; text-align: center; }
+</style>
+
+<div id="stage"></div>
+<div class="panes">
+  <aside class="pane log" id="log" aria-label="Commands by month"></aside>
+  <aside class="pane flow" aria-label="Suppliers and datacentres"><svg id="flow" viewBox="0 0 300 140" role="img"></svg></aside>
+</div>
+<div class="panes panes-right">
+  <aside class="pane pending" id="pending" aria-label="Pending buy orders" hidden><ol></ol></aside>
+</div>
+<div class="bar">
+  <button class="play" id="play" type="button" data-state="paused" aria-label="Play">
+    <svg data-icon="play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>
+    <svg data-icon="pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
+  </button>
+  <div class="timeline">
+    <input class="month" id="month" type="range" min="0" max="23" step="1" value="0" aria-label="Month">
+    <div class="ticks" id="ticks" aria-hidden="true"></div>
+  </div>
+  <output class="num" id="num" for="month">0</output>
+</div>
+<div class="error" id="err" hidden>The 3D view could not start. This browser may not support WebGL.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/Line2.js"></script>
+<script>
+// Coastlines: Natural Earth 1:110m land outlines (public domain), as [lon, lat] polylines.
+const COAST = __COAST__;
+// One GPU World run: per month, per site, GPUs owned and powered (thousands, by generation).
+const RUN = __RUN__;
+
+(function () {
+  if (!window.THREE || !THREE.OrbitControls) { document.getElementById("err").hidden = false; return; }
+  const stage = document.getElementById("stage");
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { document.getElementById("err").hidden = false; return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
+  camera.position.set(0, 0.6, 3.6);
+
+  const R = 1;
+  const toVec = (lon, lat, r = R) => {
+    const phi = (90 - lat) * Math.PI / 180, th = (lon + 180) * Math.PI / 180;
+    return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(th), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(th));
+  };
+  const segments = (lines, r) => {
+    const pts = [];
+    for (const line of lines) for (let i = 0; i + 1 < line.length; i++) {
+      pts.push(toVec(line[i][0], line[i][1], r), toVec(line[i + 1][0], line[i + 1][1], r));
+    }
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  };
+
+  // ---------------------------------------------------------------- materials (coloured from CSS tokens)
+  // Semi-transparent: the far side of the globe shows through dimmed, so no activity is hidden.
+  const occluderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.72, depthWrite: false });
+  const gridMat = new THREE.LineBasicMaterial();
+  const coastMat = new THREE.LineBasicMaterial();
+  const edgeMat = new THREE.LineBasicMaterial();
+  const maskMat = new THREE.MeshBasicMaterial();   // background colour: hides coastline and grid under each footprint
+  // Coastline and grid are hairlines; everything else (footprints, order outlines, flight arcs) is drawn wider.
+  const FAT_PX = 2;
+  const fatRes = new THREE.Vector2(1, 1);   // shared by every wide-line material; set on resize
+  const fatMat = (opts = {}) => {
+    const m = new THREE.LineMaterial(Object.assign({ linewidth: FAT_PX }, opts));
+    m.uniforms.resolution.value = fatRes;
+    return m;
+  };
+  const fatSegments = (geo, mat) => {
+    const g = new THREE.LineSegmentsGeometry().setPositions(geo.attributes.position.array);
+    const l = new THREE.LineSegments2(g, mat);
+    l.raycast = () => {};   // not pickable; hover goes by footprint
+    return l;
+  };
+  const hollowMat = { H: fatMat(), N: fatMat() };   // ordered, not yet delivered
+  const blockMat = { H: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() },
+                     N: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() } };
+
+  // ---------------------------------------------------------------- globe
+  const grat = [];
+  for (let lon = -180; lon < 180; lon += 15) { const l = []; for (let lat = -90; lat <= 90; lat += 2) l.push([lon, lat]); grat.push(l); }
+  for (let lat = -75; lat <= 75; lat += 15) { const l = []; for (let lon = -180; lon <= 180; lon += 2) l.push([lon, lat]); grat.push(l); }
+
+  const globe = new THREE.Group();
+  const occluder = new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 64, 48), occluderMat);
+  globe.add(occluder);
+  globe.add(new THREE.LineSegments(segments(grat, R), gridMat));
+  // Coastline lifted off the surface, with a dim copy on the surface beneath it for depth.
+  const LIFT = 1.035;
+  globe.add(new THREE.LineSegments(segments(COAST, R * 1.001), gridMat));
+  globe.add(new THREE.LineSegments(segments(COAST, R * LIFT), coastMat));
+  globe.rotation.y = -0.6;
+  scene.add(globe);
+
+  // ---------------------------------------------------------------- datacentres
+  // Remote spots within each region, chosen about 120 degrees of longitude apart so the sites spread
+  // evenly around the globe: Sandhills near Mullen (Nebraska), Biebrza marshes (Poland), Birdsville (Queensland).
+  const SITES = { us: [-101.04, 42.04], eu: [22.6, 53.5], ap: [139.35, -25.9] };
+  const W = 0.04, H = 0.026, GAP = 0.008, COLS = 3;  // one block = 1k GPUs; 3x3 footprint, rising level by level
+  const boxGeo = new THREE.BoxGeometry(W, H, W);
+  boxGeo.translate(0, H / 2, 0);                       // base of the box at y = 0, so height scales upward
+  const boxEdges = new THREE.EdgesGeometry(boxGeo);
+  const pitch = W + GAP;
+  const slot = (i) => {
+    const level = Math.floor(i / (COLS * COLS)), j = i % (COLS * COLS);
+    return [((j % COLS) - (COLS - 1) / 2) * pitch, level * (H + GAP * 0.5), (Math.floor(j / COLS) - (COLS - 1) / 2) * pitch];
+  };
+  const padGeo = (() => {
+    const h = (COLS * pitch) / 2, y = 0.0005;
+    const p = [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]];
+    const pts = [];
+    for (let i = 0; i < 4; i++) pts.push(new THREE.Vector3(p[i][0], y, p[i][1]), new THREE.Vector3(p[i + 1][0], y, p[i + 1][1]));
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  })();
+
+  // Datacentres sit at the lifted coastline's height so they don't drift against it as the globe turns.
+  // Glow: a translucent fill over a footprint, lit while GPUs are leaving or arriving there.
+  const glowGeo = new THREE.PlaneGeometry(COLS * pitch * 1.8, COLS * pitch * 1.8);   // wider than the stack, so it shows around it
+  glowGeo.rotateX(-Math.PI / 2);
+  glowGeo.translate(0, 0.001, 0);
+  const maskGeo = new THREE.PlaneGeometry(COLS * pitch, COLS * pitch);
+  maskGeo.rotateX(-Math.PI / 2);
+  maskGeo.translate(0, 0.0002, 0);
+  const addMask = (anchor) => anchor.add(new THREE.Mesh(maskGeo, maskMat));
+  const glows = new Map();   // anchor -> { mat, colorFrom }
+  const addGlow = (anchor, colorFrom) => {
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    anchor.add(new THREE.Mesh(glowGeo, mat));
+    glows.set(anchor, { mat, colorFrom });
+  };
+
+  const sites = {}, anchors = {}, padMat = {};
+  const labelPoint = new THREE.Vector3((COLS * pitch) / 2 + 0.02, 0, 0);   // just past the footprint's edge
+  for (const [id, [lon, lat]] of Object.entries(SITES)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    padMat[id] = fatMat();
+    addMask(anchor);
+    anchor.add(fatSegments(padGeo, padMat[id]));   // footprint outline, visible even with no GPUs
+    addGlow(anchor, padMat[id]);
+    const blocks = new THREE.Group();
+    anchor.add(blocks);
+    globe.add(anchor);
+    sites[id] = blocks;
+    anchors[id] = anchor;
+  }
+
+  // Labels: HTML text pinned to each datacentre, hidden when it is on the far side of the globe.
+  const labelled = [];   // [anchor, element]; suppliers are added below
+  const addLabel = (anchor, text, color) => {
+    const el = document.createElement("div");
+    el.className = "site-label";
+    el.style.color = color;
+    el.textContent = text;
+    document.body.appendChild(el);
+    labelled.push([anchor, el]);
+  };
+  for (const id of Object.keys(SITES)) addLabel(anchors[id], id, `var(--site-${id})`);
+  const tmp = new THREE.Vector3(), centre = new THREE.Vector3(), toCam = new THREE.Vector3();
+  const placeLabels = () => {
+    const w = stage.clientWidth, h = stage.clientHeight, box = stage.getBoundingClientRect();
+    scene.updateMatrixWorld();
+    camera.updateMatrixWorld();
+    for (const [anchor, el] of labelled) {
+      anchor.getWorldPosition(centre);
+      toCam.copy(camera.position).sub(centre);
+      const facing = centre.dot(toCam) > 0;
+      el.style.opacity = facing ? "1" : "0.35";   // far-side labels stay, dimmed like what they mark
+      anchor.localToWorld(tmp.copy(labelPoint)).project(camera);
+      el.style.transform = `translate(${box.left + ((tmp.x + 1) / 2) * w}px, ${box.top + ((1 - tmp.y) / 2) * h}px) translateY(-50%)`;
+    }
+  };
+
+  // ---------------------------------------------------------------- suppliers
+  // The game gives suppliers no location; these are remote spots between the datacentres:
+  // vendor on the Greenland ice sheet, broker A on the Changtang plateau (Tibet), broker B in the Beni savanna (Bolivia).
+  const SUPPLIERS = { vendor: [-38.5, 72.6], A: [81.0, 34.5], B: [-65.0, -14.0] };
+  const suppliers = {}, supplierAnchors = {};
+  const supPadMat = fatMat();
+  for (const [id, [lon, lat]] of Object.entries(SUPPLIERS)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    addMask(anchor);
+    anchor.add(fatSegments(padGeo, supPadMat));
+    addGlow(anchor, supPadMat);
+    const blocks = new THREE.Group();
+    anchor.add(blocks);
+    globe.add(anchor);
+    suppliers[id] = blocks;
+    supplierAnchors[id] = anchor;
+    addLabel(anchor, id === "vendor" ? "vendor" : `broker ${id}`, "var(--coast)");
+  }
+
+  // Fill a footprint with 1k-GPU blocks, bottom to top in the order given. A fractional thousand is a shorter last block.
+  const fillStack = (blocks, groups) => {
+    while (blocks.children.length) {
+      const c = blocks.children[0];
+      if (c.userData.own) c.geometry.dispose();
+      blocks.remove(c);
+    }
+    let i = 0;
+    for (const [mat, qty, hollow] of groups) {
+      let left = Math.round(qty * 1000) / 1000;
+      const box = new THREE.Box3();
+      while (left > 0.01) {
+        const f = Math.min(1, left);
+        const [x, y, z] = slot(i++);
+        left -= f;
+        if (hollow) {   // an order, not a GPU yet: no block of its own, only the outline around the whole group
+          box.expandByPoint(new THREE.Vector3(x - W / 2, y, z - W / 2)).expandByPoint(new THREE.Vector3(x + W / 2, y + H * f, z + W / 2));
+          continue;
+        }
+        const mesh = new THREE.Mesh(boxGeo, mat);
+        mesh.add(new THREE.LineSegments(boxEdges, edgeMat));
+        mesh.position.set(x, y, z);
+        mesh.scale.y = f;
+        blocks.add(mesh);
+      }
+      if (hollow && !box.isEmpty()) {
+        const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+        const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z));
+        const outline = fatSegments(edges, mat);
+        edges.dispose();
+        outline.position.copy(mid);
+        outline.userData.own = true;   // its geometry is made here, so it is disposed when the stack is refilled
+        blocks.add(outline);
+      }
+    }
+  };
+  // Datacentres: powered N, powered H, idle N, idle H. Suppliers: GPUs ordered and not yet delivered, N then H.
+  const showSites = (m) => {
+    for (const [id, blocks] of Object.entries(sites)) {
+      const s = m.sites[id];
+      fillStack(blocks, [
+        [blockMat.N.on, s.powered.N], [blockMat.H.on, s.powered.H],
+        [blockMat.N.off, Math.max(0, s.owned.N - s.powered.N)], [blockMat.H.off, Math.max(0, s.owned.H - s.powered.H)],
+      ]);
+    }
+  };
+  const showSuppliers = (waiting) => {
+    for (const [id, blocks] of Object.entries(suppliers)) {
+      fillStack(blocks, [[hollowMat.N, waiting[id].N, true], [hollowMat.H, waiting[id].H, true]]);
+    }
+  };
+  const showMonth = (k) => { showSites(RUN.months[k]); showSuppliers(RUN.months[k].waiting); showFlow(RUN.months[k]); };
+
+  // ---------------------------------------------------------------- flow pane
+  // Suppliers in the top row, datacentres in the bottom row. Each node: name, total in thousands of GPUs,
+  // and a bar split like the globe's stacks. Flights in progress draw a curve with moving dots, and
+  // both ends light up, in step with the globe.
+  const NS = "http://www.w3.org/2000/svg";
+  const svgEl = (tag, attrs, parent) => {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (parent) parent.appendChild(el);
+    return el;
+  };
+  const flowSvg = document.getElementById("flow");
+  const NODE_W = 88, NODE_H = 46, XS = [6, 106, 206], SUP_Y = 10, DC_Y = 84, BAR_W = NODE_W - 50;   // bar on the second row, number to its right
+  const flowColor = (id) => (id in SITES ? `var(--site-${id})` : "var(--coast)");
+  const flowParkedG = svgEl("g", {}, flowSvg);   // moves under way this month
+  const flowLinks = svgEl("g", {}, flowSvg);   // curves under the nodes
+  const flowNodes = {};
+  let hoverFlow = null;   // node under the pointer in the summary pane
+  const sum = (o) => o.H + o.N;
+  const maxStock = Math.max(1, ...RUN.months.flatMap((m) => [
+    ...Object.values(m.sites).map((s) => sum(s.owned)), ...Object.values(m.waiting).map(sum)]));
+  const makeNode = (id, x, y, text) => {
+    const g = svgEl("g", { transform: `translate(${x},${y})` }, flowSvg);
+    const glow = svgEl("rect", { width: NODE_W, height: NODE_H, fill: flowColor(id), "fill-opacity": 0 }, g);
+    svgEl("rect", { class: "box", width: NODE_W, height: NODE_H, "stroke-opacity": 1 }, g);
+    const name = svgEl("text", { class: "name", x: 8, y: 17, fill: flowColor(id) }, g);
+    name.textContent = text;
+    const qty = svgEl("text", { class: "qty", x: NODE_W - 8, y: 36, "text-anchor": "end" }, g);
+    svgEl("rect", { class: "track", x: 8, y: 28, width: BAR_W, height: 8, rx: 2 }, g);
+    const bar = svgEl("g", { transform: "translate(8,28)" }, g);
+    flowNodes[id] = { g, glow, qty, bar, cx: x + NODE_W / 2, top: y, bottom: y + NODE_H };
+    g.addEventListener("pointerenter", () => { hoverFlow = id; });
+    g.addEventListener("pointerleave", () => { if (hoverFlow === id) hoverFlow = null; });
+    g.addEventListener("click", () => focusOn(id));
+    g.style.cursor = "pointer";
+  };
+  ["vendor", "A", "B"].forEach((id, i) => makeNode(id, XS[i], SUP_Y, id === "vendor" ? "vendor" : `broker ${id}`));
+  ["us", "eu", "ap"].forEach((id, i) => makeNode(id, XS[i], DC_Y, id));
+  const fmtK = (v) => (v < 0.05 ? "0" : `${v.toFixed(1)}k`);
+  const setBar = (id, parts) => {   // parts: [colour var, opacity, qty, hollow]
+    const n = flowNodes[id];
+    while (n.bar.firstChild) n.bar.removeChild(n.bar.firstChild);
+    let x = 0, total = 0;
+    for (const [color, op, q, hollow] of parts) {
+      total += q;
+      const w = (q / maxStock) * BAR_W;
+      if (w > 0.2) svgEl("rect", hollow
+        ? { x: x + 0.5, y: 0.5, width: Math.max(0, w - 1), height: 7, fill: "none", stroke: color }
+        : { x, y: 0, width: w, height: 8, fill: color, "fill-opacity": op }, n.bar);
+      x += w;
+    }
+    n.qty.textContent = fmtK(total);
+  };
+  const showFlow = (m) => {
+    for (const id of ["us", "eu", "ap"]) {
+      const s = m.sites[id];
+      setBar(id, [["var(--gen-n)", 1, s.powered.N], ["var(--gen-h)", 1, s.powered.H],
+        ["var(--gen-n)", 0.3, Math.max(0, s.owned.N - s.powered.N)], ["var(--gen-h)", 0.3, Math.max(0, s.owned.H - s.powered.H)]]);
+    }
+    for (const id of ["vendor", "A", "B"]) setBar(id, [["var(--gen-n)", 1, m.waiting[id].N, true], ["var(--gen-h)", 1, m.waiting[id].H, true]]);
+  };
+  // Every curve stays in the gap between the rows, so the pane's top and bottom padding match.
+  // Supplier to datacentre: down from one row to the other. Datacentre to datacentre (a move): a low arch rising into the gap.
+  const flowPath = (from, to) => {
+    const a = flowNodes[from], b = flowNodes[to];
+    if (from in SITES) {
+      const y = a.top, dip = y - 22;
+      return `M${a.cx},${y} C${a.cx},${dip} ${b.cx},${dip} ${b.cx},${y}`;
+    }
+    const mid = (a.bottom + b.top) / 2;
+    return `M${a.cx},${a.bottom} C${a.cx},${mid} ${b.cx},${mid} ${b.cx},${b.top}`;
+  };
+  const flowSpawn = (anim) => {
+    for (const it of anim.items) {
+      const path = svgEl("path", { d: flowPath(it.fromId, it.toId), fill: "none", stroke: flowColor(it.toId),
+        "stroke-width": 1.5, "stroke-opacity": 0 }, flowLinks);
+      const dots = it.blocks.map(() => svgEl("rect", { width: 7, height: 7, rx: 1.5, fill: `var(--gen-${it.gen.toLowerCase()})`, opacity: 0 }, flowLinks));
+      it.flow = { path, dots, len: path.getTotalLength() };
+    }
+  };
+  const flowRemove = (anim) => {
+    for (const it of anim.items) if (it.flow) { it.flow.path.remove(); it.flow.dots.forEach((d) => d.remove()); }
+  };
+  const flowStep = (now, idLevel) => {
+    for (const anim of anims) {
+      const p = Math.min(1, (now - anim.start) / anim.dur);
+      for (const it of anim.items) {
+        if (!it.flow) continue;
+        it.flow.path.setAttribute("stroke-opacity", (Math.min(1, p / 0.15, (1 - p) / 0.2) * 0.8).toFixed(3));
+        const n = it.blocks.length, span = 1 - (n - 1) * it.stagger;
+        it.flow.dots.forEach((dot, i) => {
+          const tf = Math.min(1, Math.max(0, (p - i * it.stagger) / span));
+          const t = it.t0 + (it.t1 - it.t0) * (anim.dir > 0 ? tf : 1 - tf);
+          let op = tf > 0 && tf < 1 ? 1 : 0;
+          if (!it.ok) op = anim.dir < 0 ? 0 : t < 0.5 ? op : Math.max(0, 1 - (t - 0.5) * 4);   // cancelled: fades out halfway
+          const pt = it.flow.path.getPointAtLength(it.flow.len * (it.ok ? t : Math.min(t, 0.5) + Math.max(0, t - 0.5) * 0.2));
+          dot.setAttribute("x", (pt.x - 3.5).toFixed(1));
+          dot.setAttribute("y", (pt.y - 3.5).toFixed(1));
+          dot.setAttribute("opacity", op.toFixed(2));
+        });
+      }
+    }
+    for (const [id, n] of Object.entries(flowNodes)) n.glow.setAttribute("fill-opacity", (0.28 * (idLevel.get(id) || 0)).toFixed(3));
+  };
+
+  // ---------------------------------------------------------------- deliveries
+  // At each month end, blocks fly along an arc from supplier to datacentre. A cancelled broker order
+  // breaks apart halfway along its arc.
+  const FLIGHT_MS = 1000;
+  const up = new THREE.Vector3(0, 1, 0);
+  const arcPoint = (a, b, omega, t, out) => {
+    const s = Math.sin(omega);
+    const wa = s < 1e-6 ? 1 - t : Math.sin((1 - t) * omega) / s, wb = s < 1e-6 ? t : Math.sin(t * omega) / s;
+    out.copy(a).multiplyScalar(wa).addScaledVector(b, wb).normalize();
+    return out.multiplyScalar(R * LIFT + (0.08 + 0.3 * omega / Math.PI) * Math.sin(Math.PI * t));
+  };
+  // Flights are decoration only: the globe's state changes instantly, and the flights for the months
+  // just crossed play on top. Several sets can be in the air at once (e.g. while dragging the slider).
+  const MAX_ITEMS = 60;
+  let anims = [];
+  const litCount = new Map();
+  const lightOn = (li) => { litCount.set(li, (litCount.get(li) || 0) + 1); li.classList.add("lit"); };
+  const lightOff = (li) => {
+    const n = (litCount.get(li) || 1) - 1;
+    if (n > 0) litCount.set(li, n); else { litCount.delete(li); li.classList.remove("lit"); }
+  };
+  const removeAnim = (anim) => {
+    flowRemove(anim);
+    for (const li of anim.lit || []) lightOff(li);
+    for (const it of anim.items) { globe.remove(it.group); it.line.geometry.dispose(); it.line.material.dispose(); }
+  };
+  const clearAnims = () => { anims.forEach(removeAnim); anims = []; };
+  // buy_gpus <qty> [H|N] [vendor|A|B] <site>: the supplier and destination light up in the month the order is placed.
+  let pulses = [];
+  const parseBuy = (cmd) => {
+    const t = cmd.split(/\s+/);
+    if (t[0] !== "buy_gpus") return null;
+    const src = t.find((x) => x === "vendor" || x === "A" || x === "B") || "vendor", site = t[t.length - 1];
+    return site in SITES ? { src, site } : null;
+  };
+  // move_gpus <qty> <gen> <from> <to>: both datacentres light up in the month the move is made.
+  const parseMove = (cmd) => {
+    const t = cmd.split(/\s+/);
+    return t[0] === "move_gpus" && t[3] in SITES && t[4] in SITES ? { src: t[3], site: t[4], move: true } : null;
+  };
+  const spawnPulses = (k) => {
+    if (reduce) return;
+    (RUN.months[k].commands || []).forEach((c, i) => {
+      const b = c.ok && (parseBuy(c.c) || parseMove(c.c));
+      if (!b) return;
+      const li = logItems[k] && logItems[k][i];
+      if (li) lightOn(li);
+      pulses.push({ start: performance.now(), dur: FLIGHT_MS, ids: [b.src, b.site], li,
+        anchors: [b.move ? anchors[b.src] : supplierAnchors[b.src], anchors[b.site]] });
+    });
+  };
+  // Deliveries of every month between `from` and `to`; played backward (site to supplier) when going back in time.
+  const spawnFlights = (from, to, dur) => {
+    if (reduce || from === to) return;
+    const dir = to > from ? 1 : -1;
+    const anim = { dir, dur, start: performance.now(), items: [] };
+    // Month-end deliveries of each month crossed (moves finish from the midpoint, where they were parked),
+    // plus moves made in each month entered, which fly out to the midpoint.
+    const legs = [];
+    for (let k = Math.min(from, to); k < Math.max(from, to); k++) {
+      for (const d of RUN.months[k].deliveries) legs.push([d, d.move ? 0.5 : 0, 1]);
+      for (const d of RUN.months[k + 1] ? RUN.months[k + 1].deliveries : []) if (d.move) legs.push([d, 0, 0.5]);
+    }
+    for (const [d, t0, t1] of legs) {
+    {
+      if (d.qty < 0.01) continue;
+      const fromA = d.move ? anchors[d.src] : supplierAnchors[d.src];   // moves go datacentre to datacentre
+      const a = fromA.position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
+      const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
+      const pts = [];
+      for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, i / 64, new THREE.Vector3()));
+      const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])),
+        fatMat({ color: padMat[d.site].color.clone(), transparent: true, opacity: 0 }));
+      line.raycast = () => {};
+      const group = new THREE.Group();
+      group.add(line);
+      const n = Math.min(9, Math.ceil(d.qty - 1e-9));
+      const blocks = [];
+      for (let i = 0; i < n; i++) {
+        const mesh = new THREE.Mesh(boxGeo, blockMat[d.gen].on);
+        mesh.add(new THREE.LineSegments(boxEdges, edgeMat));
+        mesh.visible = false;
+        group.add(mesh);
+        blocks.push({ mesh, shards: null });
+      }
+      globe.add(group);
+      anim.items.push({ fromId: d.src, toId: d.site, fromA, toA: anchors[d.site], a, b, omega, ok: d.ok, gen: d.gen, line, group, blocks,
+        t0, t1, move: !!d.move, stagger: n > 1 ? Math.min(0.08, 0.4 / (n - 1)) : 0 });
+    }
+    }
+    if (!anim.items.length) return;
+    anim.lit = [];
+    for (let k = Math.min(from, to); k < Math.max(from, to); k++) {
+      for (const d of RUN.months[k].deliveries) for (const [om, oi] of d.orders || []) {
+        const li = logItems[om] && logItems[om][oi];
+        if (li) { lightOn(li); anim.lit.push(li); }
+      }
+    }
+    anims.push(anim);
+    flowSpawn(anim);
+    let total = anims.reduce((s, x) => s + x.items.length, 0);
+    while (total > MAX_ITEMS && anims.length > 1) { const old = anims.shift(); total -= old.items.length; removeAnim(old); }
+  };
+  const parked = new THREE.Group();
+  globe.add(parked);
+  const parkedLineMat = fatMat({ transparent: true, opacity: 0.35 });
+  const showParked = (k) => {
+    while (parked.children.length) {
+      const c = parked.children[0];
+      c.traverse((o) => { if (o.userData.own) o.geometry.dispose(); });
+      parked.remove(c);
+    }
+    flowParkedG.replaceChildren();
+    for (const d of RUN.months[k].deliveries) {
+      if (!d.move || d.qty < 0.01) continue;
+      const a = anchors[d.src].position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
+      const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
+      const pts = [];
+      for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, i / 64, new THREE.Vector3()));
+      const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])), parkedLineMat);
+      line.userData.own = true;
+      line.raycast = () => {};
+      const stack = new THREE.Group();
+      arcPoint(a, b, omega, 0.5, stack.position);
+      stack.quaternion.setFromUnitVectors(up, stack.position.clone().normalize());
+      fillStack(stack, [[blockMat[d.gen].on, d.qty]]);
+      parked.add(line, stack);
+      // Summary pane: the move's curve stays drawn, with the quantity on it.
+      const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: flowColor(d.site), "stroke-width": 1.5, "stroke-opacity": 0.45 }, flowParkedG);
+      const mid = path.getPointAtLength(path.getTotalLength() / 2);
+      const q = svgEl("text", { class: "qty", x: mid.x.toFixed(1), y: (mid.y - 4).toFixed(1), "text-anchor": "middle" }, flowParkedG);
+      q.textContent = fmtQ(d.qty);
+    }
+  };
+  const pos = new THREE.Vector3(), radial = new THREE.Vector3();
+  const stepTransition = (anim, now) => {
+    const p = Math.min(1, (now - anim.start) / anim.dur);
+    for (const it of anim.items) {
+      it.line.material.opacity = Math.min(1, p / 0.15, (1 - p) / 0.2) * 0.8;
+      const n = it.blocks.length, span = 1 - (n - 1) * it.stagger;
+      it.blocks.forEach((blk, i) => {
+        const tf = Math.min(1, Math.max(0, (p - i * it.stagger) / span));
+        const t = it.t0 + (it.t1 - it.t0) * (anim.dir > 0 ? tf : 1 - tf);
+        if (!it.ok && anim.dir < 0) { blk.mesh.visible = false; return; }   // a cancelled order has nothing to send back
+        if (!it.ok && t >= 0.5) {
+          if (!blk.shards) {                         // break into four shards that scatter and shrink
+            blk.mesh.visible = false;
+            arcPoint(it.a, it.b, it.omega, 0.5, pos);
+            blk.shards = [];
+            for (let j = 0; j < 4; j++) {
+              const s = new THREE.Mesh(boxGeo, blockMat[it.gen].on);
+              s.position.copy(pos);
+              s.quaternion.setFromUnitVectors(up, radial.copy(pos).normalize());
+              const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.25);
+              it.group.add(s);
+              blk.shards.push({ s, v, from: pos.clone() });
+            }
+            blk.breakAt = p;
+          }
+          const q = Math.min(1, (p - blk.breakAt) / Math.max(0.05, 1 - blk.breakAt));
+          for (const sh of blk.shards) {
+            sh.s.position.copy(sh.from).addScaledVector(sh.v, q);
+            sh.s.scale.setScalar(Math.max(0.001, 0.5 * (1 - q)));
+          }
+          return;
+        }
+        blk.mesh.visible = tf > 0 && tf < 1;
+        if (!blk.mesh.visible) return;
+        arcPoint(it.a, it.b, it.omega, t, pos);
+        blk.mesh.position.copy(pos);
+        blk.mesh.quaternion.setFromUnitVectors(up, radial.copy(pos).normalize());
+      });
+    }
+    return p >= 1;
+  };
+
+  // ---------------------------------------------------------------- theme
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const applyTheme = () => {
+    const bg = new THREE.Color(css("--bg"));
+    renderer.setClearColor(bg, 1);
+    occluderMat.color = bg;
+    maskMat.color = bg;
+    edgeMat.color = bg;
+    gridMat.color = new THREE.Color(css("--grid"));
+    coastMat.color = new THREE.Color(css("--coast"));
+    supPadMat.color = coastMat.color.clone();
+    parkedLineMat.color = new THREE.Color(css("--fg"));
+    for (const id of Object.keys(padMat)) padMat[id].color = new THREE.Color(css(`--site-${id}`));
+    for (const [gen, token] of [["H", "--gen-h"], ["N", "--gen-n"]]) {
+      const c = new THREE.Color(css(token));
+      blockMat[gen].on.color = c;
+      blockMat[gen].off.color = c.clone().lerp(bg, 0.72);   // idle: same hue, much dimmer
+      hollowMat[gen].color = c;
+    }
+  };
+  applyTheme();
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme); } catch (e) {}
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  // ---------------------------------------------------------------- camera
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  // Hovering a datacentre or supplier on the globe lights it there and in the summary pane.
+  const anchorOf = (id) => anchors[id] || supplierAnchors[id];
+  const pickIds = new Map([...Object.entries(anchors), ...Object.entries(supplierAnchors)].map(([id, a]) => [a, id]));
+  const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let hoverGlobe = null, pointerIn = false, lastFrame = 0;
+  const hoverLevel = new Map(), HOVER_MS = 90;   // time constant of the hover fade
+  renderer.domElement.addEventListener("pointermove", (e) => {
+    const box = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - box.left) / box.width) * 2 - 1, -((e.clientY - box.top) / box.height) * 2 + 1);
+    pointerIn = true;
+  });
+  renderer.domElement.addEventListener("pointerleave", () => { pointerIn = false; hoverGlobe = null; });
+  // Clicking a box in the summary pane turns the camera to face that entity, keeping its distance.
+  let focus = null;
+  const FOCUS_MS = 900;
+  const focusOn = (id) => {
+    controls.autoRotate = false;
+    const from = camera.position.clone(), dist = from.length();
+    const to = anchorOf(id).getWorldPosition(new THREE.Vector3()).normalize();
+    focus = { start: performance.now(), dist, q: new THREE.Quaternion().setFromUnitVectors(from.clone().normalize(), to), from: from.normalize() };
+  };
+  const stepFocus = (now) => {
+    if (!focus) return;
+    const t = Math.min(1, (now - focus.start) / FOCUS_MS), e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const q = new THREE.Quaternion().slerp(focus.q, e);
+    camera.position.copy(focus.from).applyQuaternion(q).multiplyScalar(focus.dist);
+    if (t >= 1) focus = null;
+  };
+  controls.addEventListener("start", () => { focus = null; });
+  const pickGlobe = () => {
+    if (!pointerIn) return;
+    raycaster.setFromCamera(ndc, camera);
+    const hit = raycaster.intersectObjects([occluder, ...pickIds.keys()], true).find((h) => h.object.type === "Mesh");
+    let o = hit && hit.object, id = null;
+    while (o && !id) { id = pickIds.get(o) || null; o = o.parent; }
+    hoverGlobe = id;
+  };
+  controls.enableDamping = true;
+  controls.enablePan = false;
+  controls.minDistance = 1.25;
+  controls.maxDistance = 8;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  controls.autoRotate = !reduce;
+  controls.autoRotateSpeed = 0.4;
+  controls.addEventListener("start", () => { controls.autoRotate = false; });
+
+  const resize = () => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    fatRes.set(w, h);
+    camera.aspect = w / h;
+    camera.position.setLength(Math.max(3.6, 3.6 / Math.min(1, camera.aspect * 1.25)));
+    camera.updateProjectionMatrix();
+  };
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------------------------------------------------------- playback
+  const LAST = RUN.months.length - 1, STEP_MS = 1300;
+  const slider = document.getElementById("month"), num = document.getElementById("num"), play = document.getElementById("play");
+  slider.max = String(LAST);
+  const ticks = RUN.months.map(() => document.getElementById("ticks").appendChild(document.createElement("i")));
+  const JUMP_MS = 650;   // flight time when several months are crossed at once
+  let month = 0, playing = false, lastStep = 0;
+  // Command log: one section per month, each listing that month's commands as sent; refused ones struck through.
+  const log = document.getElementById("log");
+  const VERB_KIND = { buy_gpus: "buy", reserve: "rent", set_spot: "rent", contract_power: "power",
+    buy_option: "option", exercise_option: "option", move_gpus: "stock", resell_gpus: "stock" };
+  const SUPPLIER_TOKENS = new Set(["vendor", "A", "B"]);
+  // First token is the verb (coloured by kind); sites, suppliers and GPU generations take their globe colours.
+  const colourTokens = (li, toks, kind) => toks.forEach((tok, j) => {
+    if (j) li.append(" ");
+    const span = document.createElement("span");
+    span.textContent = tok;
+    const cls = j === 0 ? `v v-${kind}` : tok in SITES ? `t-${tok}` : SUPPLIER_TOKENS.has(tok) ? "t-sup"
+      : tok === "H" ? "t-h" : tok === "N" ? "t-n" : "";
+    if (cls) span.className = cls;
+    li.appendChild(span);
+  });
+  const logItems = [];   // [month][command index] -> li
+  const evtItems = [];   // [month][delivery index] -> li of the received/cancelled line, in the next month's section
+  const fmtQ = (q) => `${Math.round(q * 100) / 100}k`;   // thousands of GPUs
+  const logSections = RUN.months.map((m) => {
+    const sec = document.createElement("section");
+    const h = document.createElement("h2");
+    h.textContent = String(m.month);
+    const ol = document.createElement("ol");
+    // What arrived at the end of last month, before this month's commands.
+    const evts = [];
+    if (m.month > 0) evtItems[m.month - 1] = evts;
+    for (const d of m.month > 0 ? RUN.months[m.month - 1].deliveries : []) {
+      if (d.qty < 0.01) { evts.push(null); continue; }
+      const li = document.createElement("li");
+      li.className = "evt";
+      // Same colours as the commands; the verb takes the colour of the command that caused it (buy or move).
+      const kind = d.move ? "stock" : "buy";
+      colourTokens(li, [d.ok ? "received" : "cancelled", `${fmtQ(d.qty)}`, d.gen, "GPUs", "from", d.src, d.ok ? "at" : "for", d.site], kind);
+      ol.appendChild(li);
+      evts.push(li);
+    }
+    const items = [];
+    logItems.push(items);
+    for (const c of m.commands || []) {
+      const li = document.createElement("li");
+      const toks = c.c.split(/\s+/);
+      colourTokens(li, toks, VERB_KIND[toks[0]] || "stock");
+      if (!c.ok) li.className = "refused";
+      ol.appendChild(li);
+      items.push(li);
+    }
+    sec.append(h, ol);
+    log.appendChild(sec);
+    return sec;
+  });
+  // Arrows in the log's left gutter, from each order to the line where it was received or cancelled.
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const arrowSvg = document.createElementNS(SVGNS, "svg");
+  arrowSvg.setAttribute("class", "arrows");
+  arrowSvg.setAttribute("aria-hidden", "true");
+  arrowSvg.innerHTML = '<defs>' + ["buy", "stock"].map((kind) =>
+    `<marker id="ah-${kind}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto">` +
+    `<path d="M0 0L6 3L0 6z" style="fill:var(--cmd-${kind});stroke:none"/></marker>`).join("") + '</defs><g></g>';
+  log.prepend(arrowSvg);
+  const arrowG = arrowSvg.querySelector("g");
+  const drawArrows = (k) => {
+    arrowG.replaceChildren();
+    arrowSvg.style.height = "0";   // measure the log without the old arrows' height
+    arrowSvg.style.height = `${log.scrollHeight}px`;
+    const gx = 24, cy = (li) => li.offsetTop + li.offsetHeight / 2;
+    for (let m = 0; m < k; m++) RUN.months[m].deliveries.forEach((d, di) => {
+      const to = evtItems[m] && evtItems[m][di];
+      if (!to) return;
+      for (const [om, oi] of d.orders || []) {
+        const from = logItems[om] && logItems[om][oi];
+        if (!from) continue;
+        const y1 = cy(from), y2 = cy(to), bend = Math.min(20, 6 + (y2 - y1) / 12);
+        const path = document.createElementNS(SVGNS, "path");
+        const kind = d.move ? "stock" : "buy";
+        path.setAttribute("d", `M${gx},${y1} C${gx - bend},${y1} ${gx - bend},${y2} ${gx - 1},${y2}`);
+        path.style.stroke = `var(--cmd-${kind})`;
+        path.setAttribute("marker-end", `url(#ah-${kind})`);
+        arrowG.appendChild(path);
+      }
+    });
+  };
+  // Pending buy orders at month k: the original command and how much of it is still to come.
+  const pendingPane = document.getElementById("pending"), pendingList = pendingPane.querySelector("ol");
+  const showPending = (k) => {
+    pendingList.replaceChildren();
+    for (const [om, oi, left] of RUN.months[k].pending || []) {
+      const c = RUN.months[om].commands[oi];
+      if (!c) continue;
+      const li = document.createElement("li"), cmd = document.createElement("span"), q = document.createElement("span");
+      colourTokens(cmd, c.c.split(/\s+/), "buy");
+      q.className = "left";
+      q.textContent = fmtQ(left);
+      li.append(cmd, q);
+      pendingList.appendChild(li);
+    }
+    pendingPane.hidden = !pendingList.children.length;
+  };
+  const showLog = (k) => {
+    logSections.forEach((sec, i) => { sec.hidden = i > k; sec.classList.toggle("now", i === k); });
+    drawArrows(k);
+    log.scrollTop = log.scrollHeight;
+    showPending(k);
+  };
+
+  const setMonth = (k) => {
+    month = k;
+    slider.value = String(k);
+    num.value = String(k); num.textContent = String(k);
+    ticks.forEach((t, i) => t.classList.toggle("past", i <= k));
+    showMonth(k);
+    showLog(k);
+    showParked(k);
+  };
+  // Show month k now; the deliveries between the old and new month fly on top.
+  const goTo = (k, dur) => { const from = month; setMonth(k); spawnFlights(from, k, dur); if (from !== k) spawnPulses(k); };
+  const setPlaying = (on) => {
+    playing = on;
+    play.dataset.state = on ? "playing" : "paused";
+    play.setAttribute("aria-label", on ? "Pause" : "Play");
+    lastStep = performance.now();
+  };
+  play.addEventListener("click", () => {
+    if (!playing && month >= LAST) { clearAnims(); pulses.forEach((pl) => pl.li && lightOff(pl.li)); pulses = []; setMonth(0); }
+    setPlaying(!playing);
+  });
+  slider.addEventListener("input", () => {
+    setPlaying(false);
+    const k = Number(slider.value);
+    goTo(k, Math.abs(k - month) > 1 ? JUMP_MS : FLIGHT_MS);
+  });
+  setMonth(0);
+  setPlaying(!reduce);
+
+  // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.
+  const BASE_DIST = 3.6;
+  (function loop(now) {
+    anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
+    // Light up both ends of every delivery in flight, rising and falling with the flight.
+    const level = new Map(), idLevel = new Map();
+    pulses = pulses.filter((pl) => { const live = now - pl.start < pl.dur; if (!live && pl.li) lightOff(pl.li); return live; });
+    for (const pl of pulses) {
+      const env = Math.sin(Math.PI * ((now - pl.start) / pl.dur));
+      pl.anchors.forEach((anc) => level.set(anc, Math.max(level.get(anc) || 0, env)));
+      pl.ids.forEach((id) => idLevel.set(id, Math.max(idLevel.get(id) || 0, env)));
+    }
+    for (const a of anims) {
+      const env = Math.sin(Math.PI * Math.min(1, (now - a.start) / a.dur));
+      for (const it of a.items) {
+        for (const anc of [it.fromA, it.toA]) level.set(anc, Math.max(level.get(anc) || 0, env));
+        for (const id of [it.fromId, it.toId]) idLevel.set(id, Math.max(idLevel.get(id) || 0, env));
+      }
+    }
+    stepFocus(now);
+    // Parked moves stay hidden while move flights are in the air, so the blocks are never drawn twice.
+    const moving = anims.some((a) => a.items.some((it) => it.move));
+    parked.visible = !moving;
+    flowParkedG.style.display = moving ? "none" : "";
+    pickGlobe();
+    // Hover fades in and out rather than switching.
+    const dt = Math.min(100, now - (lastFrame || now)); lastFrame = now;
+    for (const id of pickIds.values()) {
+      const target = id === hoverGlobe || id === hoverFlow ? 1 : 0, h = hoverLevel.get(id) || 0;
+      const v = h + (target - h) * Math.min(1, dt / HOVER_MS);
+      hoverLevel.set(id, v);
+      if (v > 0.001) { level.set(anchorOf(id), Math.max(level.get(anchorOf(id)) || 0, v)); idLevel.set(id, Math.max(idLevel.get(id) || 0, v)); }
+    }
+    for (const [anc, g] of glows) { g.mat.color.copy(g.colorFrom.color); g.mat.opacity = 0.55 * (level.get(anc) || 0); }
+    flowStep(now, idLevel);
+    if (playing && now - lastStep >= STEP_MS) {
+      lastStep = now;
+      if (month < LAST) goTo(month + 1, FLIGHT_MS);
+      if (month >= LAST) setPlaying(false);
+    }
+    const d = camera.position.length();
+    controls.rotateSpeed = Math.max(0.12, (d - R) / (BASE_DIST - R));
+    // Zoom steps scale with height above the surface (each wheel tick moves a fixed share of the
+    // distance to the centre, which is far too much near the ground), and are gentler overall.
+    controls.zoomSpeed = 0.5 * ((d - R) / d) / ((BASE_DIST - R) / BASE_DIST);
+    controls.update();
+    placeLabels();
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })(performance.now());
+})();
+</script>
