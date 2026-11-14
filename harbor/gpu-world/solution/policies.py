@@ -288,8 +288,7 @@ class LPPolicy:
     policy. Broker reliability can only be learned by ordering, which the LP does not value, so both probe each
     broker once at the start. The spot request at each site is a high quantile of the per-path optimum (cheap
     insurance), and in a training window's last month at least the gap the LP's convex shortfall cost would leave
-    (`guard`: the fixed penalty of a missed run is a cliff the LP cannot see); a month earlier, the same guard exercises
-    capacity options when tight spot caps could not close the gap in time. Charging unserved inference above its
+    (`guard`: the fixed penalty of a missed run is a cliff the LP cannot see). Charging unserved inference above its
     true cost was tried against the LP's inference-for-training leak and over-insured instead; `unserved` stays true."""
     P = {"paths": 24, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.03, "shared": 2,
          "unserved": W.UNSERVED_INFERENCE, "guard": True}
@@ -348,24 +347,6 @@ class LPPolicy:
             level = max(floor[s], sorted(x[s] for x in spot)[min(len(spot) - 1, int(p["spot_q"] * len(spot)))])
             if abs(level - obs["spot_level"][s]) > 0.05:
                 do(f"set_spot {max(0.0, level):.2f} {s}")
-            floor[s] = max(0.0, level)
-        # one month earlier, spot may not be able to close the gap (tight caps are small): if this month's certain
-        # capacity plus spot filled at tight caps and next month's certain capacity leave the run short, exercise options
-        # now (they start next month, outside the reservation caps), buying any that are missing. Insurance against an
-        # uncertain future, so the perfect-information oracle (which times its deliveries exactly) skips it.
-        for (a, d, target), done in zip(MILESTONES, obs["window_training"]):
-            if d == t + 1 and a <= t and p["guard"] and isinstance(self.bel, Bayes):
-                spot_now = sum(min(floor[s], W.SPOT_CAP["tight"][s]) for s in SITES)
-                need = target - done - max(0.0, sure(t) + spot_now) - sure(t + 1) + 0.5
-                if need > 0:
-                    held = obs["options"]
-                    if held < need:
-                        buy = min(W.OPTION_CAP, need - held)
-                        if do(f"buy_option {buy:.2f}"):
-                            held += round(buy, 2)
-                    if held > 0.05:
-                        do(f"exercise_option {min(need, held):.2f} us")
-                        obs = obs | {"options": held - min(need, held)}
         for s in SITES:
             if dec["buy", s] > 0.25:
                 do(f"buy_gpus {min(30.0, dec['buy', s]):.2f} {dec['gen']} {s}")
@@ -373,14 +354,15 @@ class LPPolicy:
             if dec["pw", s] > 0.5:
                 do(f"contract_power {min(100.0, dec['pw', s]):.1f} {s}")
         asked = {s: 0.0 for s in SITES}
+        held = obs["options"]
+        if dec["opt"] > 0.25 and do(f"buy_option {dec['opt']:.2f}"):   # before exercising: the plan may exercise them now
+            held += round(dec["opt"], 2)
         for s in SITES:
             for x in lp.TERMS:
                 if dec["res", x, s] > 0.25 and do(f"reserve {dec['res', x, s]:.2f} {x} {s}"):
                     asked[s] += round(dec["res", x, s], 2)
-            if dec["ex", s] > 0.25:
-                do(f"exercise_option {min(dec['ex', s], obs['options']):.2f} {s}")
-        if dec["opt"] > 0.25:
-            do(f"buy_option {dec['opt']:.2f}")
+            if dec["ex", s] > 0.25 and held > 0.05 and do(f"exercise_option {min(dec['ex', s], held):.2f} {s}"):
+                held -= min(dec["ex", s], held)
         for s in SITES:
             for b in W.BROKERS:
                 if dec["b", b, s] > 0.25:
@@ -431,8 +413,39 @@ class Exploiter(LPPolicy):
             pass
 
 
+class Committer(LPPolicy):
+    """Stand-in for a frontier agent's early commitment (Gemini 4 Hydrogen's v5 games bought ~9k gen H GPUs in the
+    first months and ~9k gen N at launch, at one cheap site): the reference planner, made to buy that fleet and its
+    power regardless of the world, and planning everything else around it. Used offline (gap.py) to measure what the
+    commitment costs against the reference without spending model credits."""
+    P = {**LPPolicy.P, "fleet_h": 9.0, "fleet_n": 9.0, "buy_by": 2, "site": "ap"}
+
+    def __init__(self, beliefs=None, seed=0, **params):
+        super().__init__(beliefs, seed, **params)
+        self.n_done = False
+
+    def __call__(self, obs, act):
+        super().__call__(obs, act)   # the planner sees this month's forced orders next month
+        t, p, site = obs["month"], self.p, self.p["site"]
+
+        def do(cmd):
+            try:
+                act(cmd)
+                return True
+            except ValueError:
+                return False
+        buy = {}
+        if t <= p["buy_by"]:
+            buy["H"] = p["fleet_h"] / (p["buy_by"] + 1)
+        if obs["launched"] and not self.n_done:
+            buy["N"], self.n_done = p["fleet_n"], True
+        for g, q in buy.items():
+            if q > 0 and do(f"buy_gpus {q:.2f} {g} {site}"):
+                do(f"contract_power {q * W.POWER_MW[g]:.1f} {site}")
+
+
 LADDER = {"do_nothing": (do_nothing, None), "stop_early": (StopEarly, 3), "spot_only": (SpotOnly, None),
-          "exploiter": (Exploiter, None), "reference": (LPPolicy, None), "oracle": (OracleMPC, None)}
+          "exploiter": (Exploiter, None), "committer": (Committer, None), "reference": (LPPolicy, None), "oracle": (OracleMPC, None)}
 
 
 def ladder(seed):
