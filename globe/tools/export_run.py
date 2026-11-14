@@ -13,7 +13,8 @@ and, for the month-end settlement that leads into the next month:
                                  moves between datacentres (move true; src is the source datacentre).
                                  orders: [[month, command index]] of the commands each one fulfils
   remaining[supplier]            what is still waiting at each supplier after the settlement
-  settle[site]                   the month's result at each site: inference demand and how much was served, reserved
+  settle[site]                   the month's result at each site: inference demand and how much was served, compute
+                                 from owned powered GPUs (own), reserved
                                  and spot compute (spot_req is the standing request, spot what was filled) and the
                                  capacity left over for training (kH)
   window_training                training done so far in each training window, including this month (kH-months)
@@ -95,7 +96,7 @@ while w.t < W.T:
     months.append({"month": len(months), "commands": commands,
                    "sites": {s: {"owned": owned[s], "powered": rep["sites"][s]["powered"]} for s in W.SITES},
                    "waiting": before, "pending": pending, "deliveries": deliveries, "remaining": waiting(w.queue),
-                   "settle": {s: {"demand": x["demand"], "served": x["served"], "reserved": x["reserved"],
+                   "settle": {s: {"demand": x["demand"], "served": x["served"], "own": x["own_compute"], "reserved": x["reserved"],
                                   "spot_req": x["spot_requested"], "spot": x["spot_filled"], "training": x["training"]}
                               for s, x in rep["sites"].items()},
                    "window_training": [round(w.window_training(a, d), 2) for a, d, _ in W.MILESTONES],
