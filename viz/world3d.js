@@ -30,7 +30,7 @@ const THEMES = {
     sub: 0xd6d4cc, tick: 0x0b0b0b, packet: 0x0b0b0b, lane: 0.22, laneHot: 0.8,
     emissive: 0.12, bloom: false, amb: 0.92, keyLight: 0.22, fillLight: 0.08, fillHue: 0xc9d6e6,
     ink: '#0b0b0b', ink2: '#52514e', muted: '#6f6e69', genN: '#4a3aa7',
-    site: { us: 0x2a78d6, eu: 0xeb6834, ap: 0x1baf7a },
+    site: { us: 0x0b0b0b, eu: 0x52514e, ap: 0x898781 },
   },
 };
 const T = THEMES[THEME];

@@ -21,10 +21,14 @@
     --surface-1:#fcfcfb; --plane:#ffffff;
     --ink:#0b0b0b; --ink-2:#52514e; --muted:#6f6e69;
     --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.14);
-    --us:#2a78d6; --eu:#eb6834; --ap:#1baf7a;
-    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
-    --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7;
+    --us:#0b0b0b; --eu:#52514e; --ap:#898781;
+    --s1:#0b0b0b; --s2:#3d3c3a; --s3:#6f6e69; --s4:#9b9a93;
+    --s5:#bdbcb4; --s6:#d8d7d0; --s7:#eceae3;
   }
+  html[data-theme="light"] .pill{background:transparent !important;color:var(--ink);
+    border:1px solid var(--axis);padding:0 4px}
+  html[data-theme="light"] .stack i{outline:1px solid var(--axis);outline-offset:-1px}
+  html[data-theme="light"] .legend b{outline:1px solid var(--axis);outline-offset:-1px}
   html[data-theme="light"] select,html[data-theme="light"] button{background:#f2f1ec}
   html[data-theme="light"] select:hover,html[data-theme="light"] button:hover{background:#e7e6e0}
   html[data-theme="light"] button[aria-pressed="true"]{background:#dce8f7;border-color:#2a78d6aa}
