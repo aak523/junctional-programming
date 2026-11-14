@@ -9,7 +9,7 @@ services:
       context: ./world
     environment:
       WORLD_SEED: "20261114"
-      VERIFY_TOKEN: "4387dfd1a71f74a4a08e6cb35bfbf173b3ba8d87b4f0f246"
+      VERIFY_TOKEN: "c1a67c437a5fae6bef90d9f013f9d2c6935ee247c7625f04"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
       interval: 2s

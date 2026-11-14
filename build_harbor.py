@@ -34,7 +34,7 @@ environment_mode = "shared"
 [agent]
 timeout_sec = 5400.0
 network_mode = "allowlist"
-allowed_hosts = []
+allowed_hosts = ["generativelanguage.googleapis.com"]   # Gemini via its OpenAI-compatible endpoint; standard provider hosts are allowed by Harbor
 
 [environment]
 build_timeout_sec = 1200
