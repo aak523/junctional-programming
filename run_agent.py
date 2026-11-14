@@ -44,12 +44,13 @@ def main(seed, attempt, model="claude-opus-5-5", max_turns=120):
         info = json.loads(proc.stdout)
         used = ",".join(info.get("modelUsage", {}).keys()) or model
         turns, usd = info.get("num_turns"), info.get("total_cost_usd")
+        harness_error = "Not logged in" in str(info.get("result", "")) or info.get("terminal_reason") == "api_error"
     except Exception:
-        used, turns, usd = model, None, None
+        used, turns, usd, harness_error = model, None, None, True
     result = {"run": name, "seed": seed, "model": used, "months_played": months_played, "turns": turns, "usd": usd,
-              "actions": meta["actions"], **s}
+              "harness_error": harness_error, "actions": meta["actions"], "notes": meta.get("notes", []), **s}
     (run / "result.json").write_text(json.dumps(result, indent=1))
-    print(json.dumps({k: v for k, v in result.items() if k != "actions"}))
+    print(json.dumps({k: v for k, v in result.items() if k not in ("actions", "notes")}))
 
 
 if __name__ == "__main__":

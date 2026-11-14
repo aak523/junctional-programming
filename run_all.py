@@ -1,18 +1,23 @@
-"""Run agent attempts on the evaluation seeds in parallel, then tabulate them against the ladder.
+"""Run agent attempts on evaluation seeds in parallel, then score them against the ladder.
 
 usage: python run_all.py <seeds, e.g. 0,1,2> <attempts> [model]
-       python run_all.py summary      (only re-tabulate existing runs/*/result.json)
+       python run_all.py summary      (only re-score existing runs/*/result.json)
+
+Score per run: (C_do_nothing - C) / (C_do_nothing - C_oracle), so do-nothing = 0 and the perfect-information
+oracle = 1. Per seed (StoreBench-style reliability): 0.7 * mean + 0.3 * worst attempt.
 """
 import json
 import statistics
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import policies  # noqa: E402
+
+COLS = ["do_nothing", "stop_early", "spot_only", "exploiter", "heuristic", "reference", "oracle", "lp_bound"]
 
 
 def run(job):
@@ -21,20 +26,44 @@ def run(job):
     print((p.stdout.strip().splitlines() or [p.stderr[-300:]])[-1][:300], flush=True)
 
 
+def ladder_for(seeds):
+    path = HERE / "results" / "ladder.json"
+    cache = {int(k): v for k, v in json.loads(path.read_text()).items()} if path.exists() else {}
+    missing = [s for s in seeds if s not in cache or "oracle" not in cache[s]]
+    with ProcessPoolExecutor(6) as ex:
+        cache.update(zip(missing, ex.map(policies.ladder, missing)))
+    path.write_text(json.dumps({str(k): v for k, v in sorted(cache.items())}, indent=1))
+    return cache
+
+
 def summary():
     runs = [json.loads(f.read_text()) for f in sorted(HERE.glob("runs/*/result.json"))]
+    bad = [r["run"] for r in runs if r.get("harness_error")]
+    runs = [r for r in runs if not r.get("harness_error")]
     seeds = sorted({r["seed"] for r in runs})
-    lad = {s: policies.ladder(s) for s in seeds}
-    names = ["do_nothing", "stop_early", "spot_only", "exploiter", "reference", "clairvoyant"]
-    lines = ["| seed | " + " | ".join(names) + " | agent runs |", "|" + "---|" * (len(names) + 2)]
+    lad = ladder_for(seeds)
+
+    def score(s, c):
+        return (lad[s]["do_nothing"]["net_cost"] - c) / (lad[s]["do_nothing"]["net_cost"] - lad[s]["oracle"]["net_cost"])
+
+    lines = ["| seed | " + " | ".join(COLS) + " | agent runs | agent score (0.7 mean + 0.3 worst) | reference score |",
+             "|" + "---|" * (len(COLS) + 4)]
+    comp, refs = [], []
     for s in seeds:
         ag = [r for r in runs if r["seed"] == s]
-        lines.append(f"| {s} | " + " | ".join(f"{lad[s][n]['net_cost']:.0f} ({lad[s][n]['milestones_met']}/3)" for n in names) + " | " +
-                     ", ".join(f"{r['net_cost']:.0f} ({r['milestones_met']}/3, {r['months_played']} mo)" for r in ag) + " |")
-    ref = {s: lad[s]["reference"]["net_cost"] for s in seeds}
-    beat = sum(r["net_cost"] > ref[r["seed"]] for r in runs)
-    lines.append(f"\nReference beats the agent in {beat}/{len(runs)} runs. Mean agent excess over reference: "
-                 f"{statistics.mean(r['net_cost'] - ref[r['seed']] for r in runs):.0f} $M." if runs else "")
+        sc = [score(s, r["net_cost"]) for r in ag]
+        c = 0.7 * statistics.mean(sc) + 0.3 * min(sc)
+        comp.append(c)
+        refs.append(score(s, lad[s]["reference"]["net_cost"]))
+        cells = [f"{lad[s][n]['net_cost']:.0f}" + ("" if lad[s][n]["milestones_met"] is None else f" ({lad[s][n]['milestones_met']})") for n in COLS]
+        lines.append(f"| {s} | " + " | ".join(cells) + " | " +
+                     ", ".join(f"{r['net_cost']:.0f} ({r['milestones_met']})" for r in ag) + f" | {c:.2f} | {refs[-1]:.2f} |")
+    if runs:
+        beat = sum(r["net_cost"] > lad[r["seed"]]["reference"]["net_cost"] for r in runs)
+        lines.append(f"\nRuns: {len(runs)} valid" + (f" ({len(bad)} excluded for harness errors: {', '.join(bad)})" if bad else "") +
+                     f". Reference beats the agent in {beat}/{len(runs)} runs. Mean agent score {statistics.mean(comp):.2f} "
+                     f"vs reference {statistics.mean(refs):.2f} (do-nothing 0, oracle 1). "
+                     f"Belief notes per run: {[len(r.get('notes', [])) for r in runs]}.")
     out = "\n".join(lines)
     (HERE / "results" / "table.md").write_text(out + "\n")
     print(out)

@@ -39,6 +39,14 @@ EXPORT_ALLOC, EXPORT_SPOT, EXPORT_MONTHS = 0.4, 0.6, 6
 LAUNCH_RANGE = (11, 18)
 LAUNCH_MV, LAUNCH_PRICE = 0.6, 0.75
 SPIKE_P = 0.12
+BROKERS = {"A": 1.10, "B": 1.25}          # price markup over list; usable 2 months after ordering, outside the vendor allocation
+BROKER_CAP = 4.0                          # thousand GPUs per broker per month
+BROKER_Q = {"reliable": 0.9, "unreliable": 0.35}  # chance an order is delivered; otherwise cancelled with a partial refund
+BROKER_REFUND = 0.8
+BROKER_DECAY_P, BROKER_DECAY_RANGE = 0.4, (8, 15)  # a reliable broker silently turns unreliable (once, at a hidden month)
+GROWTH = (0.03, 0.07)                     # inference growth per month
+GROWTH_SWITCH_P, GROWTH_SWITCH_RANGE = 0.5, (8, 15)  # growth silently switches to the other value (once)
+CASH0, FUNDING, CREDIT, RATE = 400.0, 40.0, 500.0, 0.02  # $M cash, monthly funding, credit line, monthly interest on debt
 
 BEARISH = ["CoWoS packaging lines reported fully booked through next year.",
            "HBM yields disappoint; memory makers cut shipment guidance.",
@@ -60,8 +68,8 @@ class World:
         self.regime = r
         self.launch = rng.randint(*LAUNCH_RANGE)
         self.export = rng.randint(5, 15) if rng.random() < 0.5 else None
-        g = rng.choice([0.03, 0.07])
-        self.demand = [round(6.0 * math.exp(g * k + rng.gauss(0, 0.05)), 2) for k in range(T)]
+        g = rng.choice(GROWTH)
+        noise = [rng.gauss(0, 0.05) for _ in range(T)]
         c = [1.6]
         for k in range(1, T + 1):
             x = c[-1] * DRIFT[r[k - 1]] * math.exp(rng.gauss(0, DRIFT_NOISE))
@@ -74,16 +82,29 @@ class World:
         self.alloc_noise = [{g_: rng.uniform(0.7, 1.3) for g_ in ("H", "N")} for _ in range(T)]
         self.power_leads = [rng.randint(*POWER_LEAD) for _ in range(200)]
         self.news = [self._headlines(rng, k) for k in range(T)]
+        # v3 hidden state (drawn after the v2 draws): silent growth switch, broker reliability
+        self.growth_switch = rng.randint(*GROWTH_SWITCH_RANGE) if rng.random() < GROWTH_SWITCH_P else None
+        g2 = GROWTH[1] if g == GROWTH[0] else GROWTH[0]
+        self.growth = [g if self.growth_switch is None or k < self.growth_switch else g2 for k in range(T)]
+        self.demand = [round(6.0 * math.exp(sum(self.growth[:k]) + noise[k]), 2) for k in range(T)]
+        self.broker_reliable, self.broker_decay, self.broker_u = {}, {}, {}
+        for b in BROKERS:
+            self.broker_reliable[b] = rng.random() < 0.5
+            self.broker_decay[b] = rng.randint(*BROKER_DECAY_RANGE) if self.broker_reliable[b] and rng.random() < BROKER_DECAY_P else None
+            self.broker_u[b] = [rng.random() for _ in range(200)]
 
         self.t, self.ops = 0, 0
         self.owned = {"H": 10.0, "N": 0.0}
-        self.queue = [{"id": 1, "gen": "H", "qty": 4.0, "left": 4.0, "placed": -2}]
+        self.queue = [{"id": 1, "gen": "H", "qty": 4.0, "left": 4.0, "placed": -2, "src": "vendor", "paid": 100.0}]
         self.power = [{"mw": 16.0, "start": -4, "end": -4 + POWER_TERM}]
         self.contracts = [{"qty": 2.0, "price": 2.0, "start": -7, "end": 5}]
         self.spot_level = 0.0
         self.resold = {"H": 0.0, "N": 0.0}
         self.reserved_now = 0.0
-        self.cost = {"capex": 0.0, "power": 0.0, "contracts": 0.0, "spot": 0.0, "unserved": 0.0, "resale": 0.0}
+        self.cost = {"capex": 0.0, "power": 0.0, "contracts": 0.0, "spot": 0.0, "unserved": 0.0, "resale": 0.0, "interest": 0.0}
+        self.cash = CASH0
+        self.broker_bought = {b: 0.0 for b in BROKERS}
+        self.broker_orders = {b: 0 for b in BROKERS}
         self.met = {}
         self.history = []      # one report per finished month
         self.next_id = 2
@@ -130,6 +151,11 @@ class World:
         k = self.t if k is None else k
         return self.cindex[k] * SPOT_MULT[self.regime[k]] * self.spot_noise[k] * (1.5 if self.spike[k] else 1.0)
 
+    def broker_q(self, b, k):
+        if not self.broker_reliable[b] or (self.broker_decay[b] is not None and k >= self.broker_decay[b]):
+            return BROKER_Q["unreliable"]
+        return BROKER_Q["reliable"]
+
     def term_price(self, months, k=None):
         return self.cindex[self.t if k is None else k] * TERM_FACTOR[months]
 
@@ -141,19 +167,35 @@ class World:
             raise ValueError(f"no operations left this month ({OPS_PER_MONTH} used); call end_month")
         self.ops += 1
 
-    def buy_gpus(self, qty, gen=None):
+    def buy_gpus(self, qty, gen=None, src="vendor"):
         gen = gen or ("N" if self.launched() else "H")
         if gen == "N" and not self.launched():
             raise ValueError("gen N is not on sale yet")
         if gen == "H" and self.launched():
             raise ValueError("gen H is discontinued since the gen N launch")
+        if src != "vendor" and src not in BROKERS:
+            raise ValueError("source must be vendor, A or B")
         if not 0 < qty <= 30:
             raise ValueError("qty must be in (0, 30] thousand GPUs per order")
+        if src in BROKERS and self.broker_bought[src] + qty > BROKER_CAP + 1e-9:
+            raise ValueError(f"broker {src} sells at most {BROKER_CAP:g}k per month ({self.broker_bought[src]:g}k bought this month)")
+        price = qty * GPU_PRICE[gen] * (BROKERS[src] if src in BROKERS else 1.0)
+        if self.cash - price < -CREDIT - 1e-9:
+            raise ValueError(f"not enough cash or credit: ${price:.1f}M needed, cash ${self.cash:.1f}M, credit line ${CREDIT:g}M")
         self._op()
-        self.cost["capex"] += qty * GPU_PRICE[gen]
-        self.queue.append({"id": self.next_id, "gen": gen, "qty": qty, "left": qty, "placed": self.t})
+        self.cash -= price
+        self.cost["capex"] += price
+        order = {"id": self.next_id, "gen": gen, "qty": qty, "left": qty, "placed": self.t, "src": src, "paid": price}
         self.next_id += 1
-        return f"Ordered {qty:g}k gen {gen} GPUs for ${qty * GPU_PRICE[gen]:.1f}M (paid now). Order #{self.next_id - 1} joins the {gen} queue; usable from month {self.t + MIN_LEAD} at the earliest."
+        self.queue.append(order)
+        if src in BROKERS:
+            self.broker_bought[src] += qty
+            order["n"] = self.broker_orders[src]
+            self.broker_orders[src] += 1
+            return (f"Ordered {qty:g}k gen {gen} GPUs from broker {src} for ${price:.1f}M (paid now). Order #{order['id']}: the broker "
+                    f"confirms delivery or cancellation at the end of month {self.t + 1}; if delivered, usable from month {self.t + 2}.")
+        return (f"Ordered {qty:g}k gen {gen} GPUs for ${price:.1f}M (paid now). Order #{order['id']} joins the vendor {gen} queue; "
+                f"usable from month {self.t + MIN_LEAD} at the earliest.")
 
     def reserve(self, qty, months):
         if months not in TERM_FACTOR:
@@ -197,6 +239,7 @@ class World:
             raise ValueError(f"the used market absorbs at most {RESELL_CAP:g}k per generation per month ({self.resold[gen]:g}k sold so far)")
         self._op()
         income = qty * RESALE * self.market_value(gen)
+        self.cash += income
         self.owned[gen] -= qty
         self.resold[gen] += qty
         self.cost["resale"] -= income
@@ -223,9 +266,11 @@ class World:
         capacity = own_c + reserved + spot
         served = min(self.demand[k], capacity)
         training = capacity - served
-        self.cost["power"] += mw * POWER_COST
-        self.cost["contracts"] += sum(c["qty"] * c["price"] for c in self.contracts if c["start"] <= k < c["end"])
-        self.cost["spot"] += spot * sp
+        charges = {"power": mw * POWER_COST, "spot": spot * sp,
+                   "contracts": sum(c["qty"] * c["price"] for c in self.contracts if c["start"] <= k < c["end"])}
+        for key, v in charges.items():
+            self.cost[key] += v
+            self.cash -= v
         self.cost["unserved"] += (self.demand[k] - served) * UNSERVED_INFERENCE
         for a, d, target in MILESTONES:
             if d == k:
@@ -235,18 +280,36 @@ class World:
             a = ALLOC[gen][self.regime[k]] * self.alloc_noise[k][gen] * (EXPORT_ALLOC if gen == "H" and self.export_active(k) else 1.0)
             shipped[gen] = 0.0
             for o in self.queue:
-                if o["gen"] == gen and o["left"] > 0 and k >= o["placed"] + MIN_LEAD - 1 and a > 0:
+                if o["src"] == "vendor" and o["gen"] == gen and o["left"] > 0 and k >= o["placed"] + MIN_LEAD - 1 and a > 0:
                     s = min(o["left"], a)
                     o["left"] -= s
                     a -= s
                     shipped[gen] += s
                     self.owned[gen] += s
+        broker = []
+        for o in self.queue:
+            if o["src"] in BROKERS and o["placed"] + 1 == k:
+                ok = self.broker_u[o["src"]][o["n"]] < self.broker_q(o["src"], k)
+                if ok:
+                    self.owned[o["gen"]] += o["qty"]
+                else:
+                    refund = BROKER_REFUND * o["paid"]
+                    self.cash += refund
+                    self.cost["capex"] -= refund
+                o["left"] = 0.0
+                broker.append({"id": o["id"], "src": o["src"], "gen": o["gen"], "qty": o["qty"], "placed": o["placed"], "delivered": ok})
         self.queue = [o for o in self.queue if o["left"] > 1e-9]
+        interest = RATE * -self.cash if self.cash < 0 else 0.0
+        self.cost["interest"] += interest
+        self.cash -= interest
         self.history.append({"month": k, "inference_demand": self.demand[k], "served": round(served, 2),
                              "own_compute": round(own_c, 2), "powered": {g: round(v, 2) for g, v in pw.items()},
                              "reserved": reserved, "spot_requested": self.spot_level, "spot_filled": round(spot, 2),
                              "spot_price": round(sp, 3), "capacity": round(capacity, 2), "training": round(training, 2),
-                             "shipped": {g: round(v, 2) for g, v in shipped.items()}})
+                             "shipped": {g: round(v, 2) for g, v in shipped.items()}, "broker": broker,
+                             "interest": round(interest, 2), "cash_end": round(self.cash, 2)})
+        self.cash += FUNDING
+        self.broker_bought = {b: 0.0 for b in BROKERS}
         self.t += 1
         self.ops = 0
         self.resold = {"H": 0.0, "N": 0.0}
@@ -255,7 +318,11 @@ class World:
             self.settle()
 
     def settle(self):
-        mark = sum(RESALE * self.market_value(g, T) * (self.owned[g] + sum(o["left"] for o in self.queue if o["gen"] == g)) for g in ("H", "N"))
+        for o in self.queue:   # broker orders still unconfirmed at the end are cancelled with the usual refund
+            if o["src"] in BROKERS:
+                self.cost["capex"] -= BROKER_REFUND * o["paid"]
+        mark = sum(RESALE * self.market_value(g, T) * (self.owned[g] + sum(o["left"] for o in self.queue if o["gen"] == g and o["src"] == "vendor"))
+                   for g in ("H", "N"))
         obligations = sum(c["qty"] * c["price"] * (c["end"] - max(c["start"], T)) for c in self.contracts if c["end"] > T)
         obligations += sum(p["mw"] * POWER_COST * (p["end"] - max(p["start"], T)) for p in self.power if p["end"] > T)
         missed = [d for _, d, _ in MILESTONES if not self.met.get(d)]
@@ -284,13 +351,16 @@ class World:
             "owned": dict(self.owned),
             "power_active_mw": sum(p["mw"] for p in self.power if p["start"] <= k < p["end"]),
             "power": [dict(p) for p in self.power],
-            "queue": [{"id": o["id"], "gen": o["gen"], "ordered": o["qty"], "left": round(o["left"], 2), "placed": o["placed"]} for o in self.queue],
+            "queue": [{"id": o["id"], "gen": o["gen"], "ordered": o["qty"], "left": round(o["left"], 2), "placed": o["placed"], "src": o["src"]}
+                      for o in self.queue],
+            "cash": round(self.cash, 2),
             "contracts": [dict(c) for c in self.contracts if c["end"] > k],
             "spot_level": self.spot_level,
             "prices": None if k >= T else {
                 "gpu": {g: GPU_PRICE[g] for g in (("N",) if self.launched() else ("H",))},
                 "spot": round(self.spot_price(), 3), "reserve": {m: round(self.term_price(m), 3) for m in TERM_FACTOR},
-                "market_value": {g: round(self.market_value(g), 2) for g in ("H", "N") if g == "H" or self.launched()}},
+                "market_value": {g: round(self.market_value(g), 2) for g in ("H", "N") if g == "H" or self.launched()},
+                "broker": {b: round(GPU_PRICE["N" if self.launched() else "H"] * m, 2) for b, m in BROKERS.items()}},
             "window_training": [round(self.window_training(a, d), 2) for a, d, _ in MILESTONES], "milestones": MILESTONES, "met": dict(self.met),
             "history": list(self.history), "news": self.news[k] if k < T else [],
             "spent": {k_: round(v, 2) for k_, v in self.cost.items()},
@@ -307,7 +377,10 @@ class World:
             L.append(f"Last month (month {h['month']}): inference demand {h['inference_demand']} kH, served {h['served']}; "
                      f"capacity {h['capacity']} kH = owned&powered {h['own_compute']} + reserved {h['reserved']:g} + spot {h['spot_filled']:g} "
                      f"(requested {h['spot_requested']:g}, price ${h['spot_price']}M/kH-month); training {h['training']} kH-months. "
-                     f"Shipments received: H {h['shipped']['H']:g}k, N {h['shipped']['N']:g}k.")
+                     f"Vendor shipments received: H {h['shipped']['H']:g}k, N {h['shipped']['N']:g}k." +
+                     "".join(f" Broker {e['src']} order #{e['id']} ({e['qty']:g}k gen {e['gen']}): " +
+                             ("DELIVERED." if e["delivered"] else f"CANCELLED, {BROKER_REFUND:.0%} refunded.") for e in h["broker"]) +
+                     (f" Interest charged: ${h['interest']:g}M." if h["interest"] else ""))
         L.append("Training runs (kH-months done / needed within months a..b): " + "; ".join(
             f"months {a}..{d}: {done:g} / {t:g}" + (" MET" if o["met"].get(d) else " MISSED" if d in o["met"] else "")
             for (a, d, t), done in zip(MILESTONES, o["window_training"])))
@@ -315,12 +388,17 @@ class World:
         L.append(f"Owned delivered GPUs: H {o['owned']['H']:.2f}k, N {o['owned']['N']:.2f}k; powered this month: H {pw['H']:.2f}k, N {pw['N']:.2f}k.")
         L.append(f"Power: {o['power_active_mw']:g} MW active this month. Contracts: " +
                  "; ".join(f"{p['mw']:g} MW months {p['start']}..{p['end'] - 1}" for p in o["power"] if p["end"] > self.t))
-        L.append("GPU order queue (FIFO per generation): " + ("; ".join(
-            f"#{q['id']} gen {q['gen']} {q['left']:g}k of {q['ordered']:g}k still to ship (placed month {q['placed']})" for q in o["queue"]) or "empty"))
+        L.append(f"Cash: ${o['cash']:.1f}M (credit line ${CREDIT:g}M; {RATE:.0%}/month interest on debt; +${FUNDING:g}M funding each month).")
+        L.append("Vendor queue (FIFO per generation): " + ("; ".join(
+            f"#{q['id']} gen {q['gen']} {q['left']:g}k of {q['ordered']:g}k still to ship (placed month {q['placed']})"
+            for q in o["queue"] if q["src"] == "vendor") or "empty") + ". Broker orders awaiting confirmation: " + ("; ".join(
+            f"#{q['id']} broker {q['src']} {q['ordered']:g}k gen {q['gen']} (placed month {q['placed']})"
+            for q in o["queue"] if q["src"] != "vendor") or "none"))
         L.append("Reserved cloud contracts: " + ("; ".join(
             f"{c['qty']:g} kH at ${c['price']:.3f}M months {c['start']}..{c['end'] - 1}" for c in o["contracts"]) or "none"))
         p = o["prices"]
-        L.append(f"Prices now: buy {', '.join(f'gen {g} ${v:g}M per 1k GPUs' for g, v in p['gpu'].items())}; "
+        L.append(f"Prices now: buy {', '.join(f'gen {g} ${v:g}M per 1k GPUs' for g, v in p['gpu'].items())} from the vendor, "
+                 f"{', '.join(f'${v:g}M from broker {b}' for b, v in p['broker'].items())}; "
                  f"reserve per kH-month: 6m ${p['reserve'][6]}, 12m ${p['reserve'][12]}, 24m ${p['reserve'][24]}; "
                  f"spot this month ${p['spot']}M per kH-month (standing request {o['spot_level']:g} kH); "
                  f"used-market value per 1k GPUs: " + ", ".join(f"{g} ${v:g}M" for g, v in p["market_value"].items()) + ".")
@@ -343,7 +421,7 @@ class World:
                 raise ValueError("quantities must be finite numbers")
             return x
         table = {
-            "buy_gpus": lambda: self.buy_gpus(num(0), args[1].upper() if len(args) > 1 else None),
+            "buy_gpus": lambda: self.buy_gpus(num(0), *buy_args(args[1:])),
             "reserve": lambda: self.reserve(num(0), int(args[1])),
             "set_spot": lambda: self.set_spot(num(0)),
             "contract_power": lambda: self.contract_power(num(0)),
@@ -357,6 +435,18 @@ class World:
             if isinstance(e, IndexError):
                 raise ValueError(f"missing argument for {name}")
             raise
+
+
+def buy_args(rest):
+    gen, src = None, "vendor"
+    for a in rest:
+        if a.upper() in ("H", "N"):
+            gen = a.upper()
+        elif a.upper() in BROKERS or a.lower() == "vendor":
+            src = a.upper() if a.upper() in BROKERS else "vendor"
+        else:
+            raise ValueError(f"unknown buy_gpus argument {a!r}: use H|N and vendor|A|B")
+    return gen, src
 
 
 ACTIONS = ("buy_gpus", "reserve", "set_spot", "contract_power", "resell_gpus", "end_month")

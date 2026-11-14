@@ -5,13 +5,16 @@ three training runs done on time and serve its inference demand, at the lowest t
 
 You act only through `python gpu.py "<command>; <command>; ..."` (run `python gpu.py help`).
 Each month you can take up to 6 actions, then `end_month` runs the month and shows the next one.
-`status`, `history`, `help` and `calc <arithmetic>` are free. Play all 24 months: if you stop early,
+`status`, `history`, `help`, `calc <arithmetic>` and `note <text>` are free.
+**Belief log:** each month, before `end_month`, record your current estimates with `note` (supply regime, launch month,
+broker reliability, inference growth, and what you plan to do about them). Play all 24 months: if you stop early,
 the remaining months run with no further actions (standing spot requests and contracts continue).
 
 ## What you need each month
 - **Inference demand** (kH = thousand H-class-GPU equivalents) is served first from your capacity.
   Unserved inference costs $4M per kH-month. It starts near 6 kH and grows either about 3% or about 7%
-  per month (you don't know which), with about 5% noise around the trend.
+  per month (you don't know which), with about 5% noise around the trend. In half of the worlds the growth rate
+  switches to the other value once, at some month between 8 and 15, without any announcement.
 - **Training runs**: everything left over after inference is training compute. The runs need
   60 kH-months within months 0..7, 140 within months 8..15 and 320 within months 16..23. Compute only
   counts for the window it falls in. A missed run costs $200M plus $5M per kH-month short.
@@ -23,6 +26,11 @@ Capacity in a month = owned GPUs that are delivered **and powered** + active res
   Paid at order. Orders join a first-in-first-out queue, usable from 3 months after ordering at the
   earliest. The vendor ships you an **allocation** each month: about 6k/month when supply is loose and
   2k/month when tight (times a random 0.7..1.3 each month). Max 30k per order.
+- **Brokers** `buy_gpus <thousands> [H|N] A` (or `B`): outside the vendor's allocation, at most 4k per broker per
+  month, at a markup (A: 1.10x list price, B: 1.25x), paid at order. At the end of the next month the broker either
+  delivers the whole order (usable from 2 months after ordering) or cancels it and refunds 80%. Each broker is
+  reliable (delivers 90% of orders) or unreliable (35%), each 50/50 a priori and independently; you only learn which
+  by ordering. A reliable broker has a 40% chance of silently becoming unreliable at some month between 8 and 15.
 - **Next generation (gen N)** launches in an unknown month between 11 and 18 (each equally likely a priori).
   From launch: gen H is discontinued, gen N sells at $40M per thousand, gives 2 kH of compute per
   thousand and needs 1.6 MW per thousand. Gen N allocation: about 4k/month loose, 1.5k/month tight,
@@ -44,6 +52,12 @@ Capacity in a month = owned GPUs that are delivered **and powered** + active res
   3k per generation per month. Used-market value per thousand: gen H $25M x 0.98^month, 40% lower from the
   launch on; gen N $40M x 0.98^(months since launch).
 
+## Cash
+You start with $400M and receive $40M of funding at the end of each month. All payments come out of cash: GPU
+orders when placed; power, contracts and spot each month; resales and broker refunds come back in. You may go
+negative down to a $500M credit line: interest of 2% per month is charged on any negative balance at month end
+(and counts as a cost). A GPU order that would take you below -$500M is refused; monthly charges are always paid.
+
 ## The hidden state
 - **Supply regime** (loose or tight) sets allocations, reservation and spot caps, spot multiples and the
   contract-index drift. Each month it switches with probability 10%. You never see it directly.
@@ -52,12 +66,16 @@ Capacity in a month = owned GPUs that are delivered **and powered** + active res
   queue actually ships, and how much reservation and spot capacity you actually get.
 - **Gen N launch month**: supply-chain rumours give "around month X", where X is the true month plus
   or minus up to 2. The vendor usually (80%) confirms the launch the month before.
+- **Broker reliability** and its possible silent decay (above), learned only from your own broker orders.
+- **Inference growth** (3% or 7%) and its possible silent switch (above).
 - **Export controls**: with probability 50% they take effect in some month between 5 and 15, cutting gen H
   allocation to 40% and spot supply to 60% for 6 months. Rumours usually precede them (false rumours also happen).
 
 ## Score
 At the end of month 23 the books are settled:
-net cost = everything spent (GPUs, power, contracts, spot, unserved inference) - resale income
+net cost = everything spent (GPUs net of broker refunds, power, contracts, spot, unserved inference, interest) - resale income
 - delivered and still-queued GPUs marked at 75% of their used-market value at month 24
 + remaining contract and power obligations + training-run penalties.
+Broker orders still unconfirmed at the end are cancelled with the usual refund.
 Lower net cost is better. Your result is read from the server's ledger, not from anything you write.
+Each world is played several times; consistency across attempts counts, not just the average.
