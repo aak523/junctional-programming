@@ -1109,6 +1109,7 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
       colourTokens(cmd, c.c.split(/\s+/), "buy");
       q.className = "left";
       q.textContent = fmtQ(left);
+      q.title = `${fmtQ(left)} GPUs still to arrive`;
       li.append(cmd, q);
       // Clicking an order scrolls the log to the command that placed it and lights that line for a moment.
       li.addEventListener("click", () => {
