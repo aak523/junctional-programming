@@ -1,0 +1,27 @@
+[
+ {
+  "key": "fable5",
+  "title": "Claude Fable 5",
+  "subtitle": "Harbor v4 trial \u2014 reward 0.6362",
+  "net_cost": 1141.31,
+  "milestones": 3,
+  "reward": 0.6362,
+  "kind": "agent"
+ },
+ {
+  "key": "fable5-reference",
+  "title": "Reference policy",
+  "subtitle": "same world as the Fable 5 trial",
+  "net_cost": 745.95,
+  "milestones": 3,
+  "kind": "reference"
+ },
+ {
+  "key": "reference-3",
+  "title": "Reference policy",
+  "subtitle": "evaluation seed 3",
+  "net_cost": 850.44,
+  "milestones": 3,
+  "kind": "reference"
+ }
+]

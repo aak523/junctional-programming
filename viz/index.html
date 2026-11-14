@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU World — supply chain, 24 months</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --surface-1:#1a1a19; --plane:#0d0d0d;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --us:#3987e5; --eu:#d95926; --ap:#199e70;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --s5:#d55181; --s6:#008300; --s7:#9085e9;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --font: system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--plane);color:var(--ink);font-family:var(--font)}
+  canvas{display:block}
+  #stage{position:fixed;inset:0}
+
+  .hud{position:fixed;inset:0;pointer-events:none;display:grid;
+       grid-template-columns:minmax(260px,300px) 1fr minmax(260px,320px);
+       grid-template-rows:auto 1fr auto;gap:14px;padding:14px;font-size:12px}
+  .hud > *{pointer-events:auto}
+  .panel{background:color-mix(in srgb,var(--surface-1) 86%,transparent);
+         border:1px solid var(--ring);border-radius:10px;padding:10px 11px;
+         backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .panel + .panel{margin-top:10px}
+  .lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 7px}
+  .num{font-variant-numeric:tabular-nums}
+
+  .topleft{grid-column:1;grid-row:1;align-self:start}
+  .brand{font-size:15px;font-weight:650;letter-spacing:-.01em;margin:0 0 2px}
+  .brand small{display:block;font-size:11px;font-weight:400;color:var(--ink-2);letter-spacing:0}
+  select,button{font-family:var(--font);font-size:12px;color:var(--ink);background:#232322;
+    border:1px solid var(--ring);border-radius:7px;padding:5px 8px;cursor:pointer}
+  button:hover,select:hover{background:#2e2e2c}
+  button[aria-pressed="true"]{background:#2f3b4d;border-color:#3987e5aa}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+  .topright{grid-column:3;grid-row:1;align-self:start}
+  .monthline{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+  .month{font-size:26px;font-weight:650;line-height:1;font-variant-numeric:tabular-nums}
+  .badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--ring);
+         border-radius:999px;padding:2px 8px;font-size:10.5px;color:var(--ink-2)}
+  .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+  .news{margin:0;padding:0;list-style:none;color:var(--ink-2);line-height:1.45}
+  .news li{position:relative;padding-left:12px;margin-bottom:4px}
+  .news li::before{content:"";position:absolute;left:2px;top:6px;width:4px;height:4px;border-radius:50%;background:var(--muted)}
+  .news li.hot::before{background:var(--warning)}
+
+  .left{grid-column:1;grid-row:2;align-self:start;overflow-y:auto;max-height:100%;
+        scrollbar-width:thin;scrollbar-color:#3a3a38 transparent}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ring);
+         border:1px solid var(--ring);border-radius:9px;overflow:hidden}
+  .tile{background:var(--surface-1);padding:8px 9px}
+  .tile .k{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .tile .v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px;line-height:1.1}
+  .tile .s{font-size:10px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+  .meter{height:9px;border-radius:5px;background:#232322;position:relative;overflow:hidden;margin:5px 0 3px}
+  .meter i{position:absolute;top:0;bottom:0;border-radius:4px;display:block}
+  .zero{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--axis);z-index:2}
+
+  .stack{display:flex;height:13px;border-radius:5px;overflow:hidden;gap:2px;background:var(--surface-1)}
+  .stack i{display:block;min-width:0}
+  .stack i:first-child{border-radius:5px 0 0 5px}
+  .stack i:last-child{border-radius:0 5px 5px 0}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;margin-top:8px;color:var(--ink-2)}
+  .legend span{display:flex;align-items:center;gap:5px;font-size:10.5px;white-space:nowrap}
+  .legend b{width:8px;height:8px;border-radius:2px;flex:none}
+  .legend u{margin-left:auto;text-decoration:none;font-variant-numeric:tabular-nums;color:var(--muted)}
+
+  .win{margin-bottom:9px}
+  .win:last-child{margin-bottom:0}
+  .win .hdr{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-2);margin-bottom:3px}
+  .win .hdr b{font-weight:600;color:var(--ink)}
+  .wbar{height:9px;border-radius:5px;background:#232322;position:relative;overflow:hidden}
+  .wbar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--s1)}
+  .wbar.done i{background:var(--good)}
+  .wbar.late i{background:var(--critical)}
+
+  .right{grid-column:3;grid-row:2;align-self:start;overflow-y:auto;max-height:100%;
+         scrollbar-width:thin;scrollbar-color:#3a3a38 transparent}
+  table.ship{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.ship td{padding:3px 0;border-top:1px solid var(--grid);font-size:11px;color:var(--ink-2)}
+  table.ship tr:first-child td{border-top:none}
+  table.ship td.q{color:var(--ink);font-weight:600;width:54px}
+  table.ship td.e{text-align:right;white-space:nowrap}
+  .pill{display:inline-block;border-radius:4px;padding:0 5px;font-size:10px;font-weight:600;color:#0d0d0d}
+  .empty{color:var(--muted);font-style:italic}
+  .note{color:var(--ink-2);line-height:1.5;max-height:150px;overflow-y:auto;font-size:11px;
+        scrollbar-width:thin;scrollbar-color:#3a3a38 transparent}
+  .acts{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--ink-2);
+        line-height:1.6;max-height:108px;overflow-y:auto;scrollbar-width:thin}
+  .acts div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acts div.bad{color:var(--serious)}
+
+  .bottom{grid-column:1 / -1;grid-row:3;align-self:end}
+  .tl{position:relative;height:40px;margin:8px 2px 0;cursor:pointer}
+  .tl .track{position:absolute;left:0;right:0;top:17px;height:6px;border-radius:3px;background:#232322}
+  .tl .wseg{position:absolute;top:17px;height:6px;background:#30302e;border-radius:3px}
+  .tl .play{position:absolute;top:17px;height:6px;left:0;border-radius:3px;background:var(--s1)}
+  .tl .mk{position:absolute;top:4px;width:2px;height:11px;border-radius:1px}
+  .tl .wlab{position:absolute;top:0;font-size:9.5px;color:var(--muted);transform:translateX(-50%)}
+  .tl .head{position:absolute;top:11px;width:3px;height:18px;border-radius:2px;background:var(--ink);
+            box-shadow:0 0 10px rgba(255,255,255,.55);transform:translateX(-1.5px)}
+  .tl .mlab{position:absolute;top:30px;font-size:9px;color:var(--muted);transform:translateX(-50%);font-variant-numeric:tabular-nums}
+
+  .tip{position:fixed;pointer-events:none;z-index:10;background:#232322;border:1px solid var(--ring);
+       border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.5;opacity:0;transition:opacity .12s;
+       box-shadow:0 6px 24px rgba(0,0,0,.5);max-width:250px}
+  .tip b{display:block;margin-bottom:3px;font-size:12px}
+  .tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .tip .r u{text-decoration:none;color:var(--ink)}
+
+  .key{display:grid;gap:4px;color:var(--ink-2);font-size:10.5px}
+  .key div{display:flex;align-items:center;gap:7px}
+  .key em{font-style:normal;width:13px;text-align:center;flex:none}
+
+  #loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--plane);z-index:20;
+           color:var(--muted);font-size:13px;transition:opacity .5s}
+  @media (max-width:1100px){ .hud{grid-template-columns:minmax(220px,250px) 1fr minmax(220px,260px);font-size:11.5px} }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="loading">loading world…</div>
+
+<div class="hud">
+  <div class="topleft">
+    <div class="panel">
+      <p class="brand">GPU&nbsp;World <small id="sub">24 months of compute procurement</small></p>
+      <div class="row" style="margin-top:8px">
+        <select id="run" aria-label="Which game to replay"></select>
+        <button id="truth" aria-pressed="false" title="Reveal the state the player never sees">truth</button>
+      </div>
+    </div>
+    <div class="panel" id="truthpanel" hidden>
+      <p class="lbl">hidden state</p>
+      <div class="key" id="truthbody"></div>
+    </div>
+  </div>
+
+  <div class="topright">
+    <div class="panel">
+      <div class="monthline">
+        <span class="month num" id="mnum">0</span>
+        <span style="color:var(--muted)">/ 23</span>
+        <span class="badge" id="regime"><i class="dot"></i><span>supply</span></span>
+      </div>
+      <ul class="news" id="news"></ul>
+    </div>
+  </div>
+
+  <div class="left">
+    <div class="tiles">
+      <div class="tile"><div class="k">cash</div><div class="v num" id="cash">—</div><div class="s" id="cashsub">&nbsp;</div></div>
+      <div class="tile"><div class="k">spent to date</div><div class="v num" id="spent">—</div><div class="s" id="spentsub">&nbsp;</div></div>
+      <div class="tile"><div class="k">capacity</div><div class="v num" id="cap">—</div><div class="s" id="capsub">&nbsp;</div></div>
+      <div class="tile"><div class="k">inference</div><div class="v num" id="dem">—</div><div class="s" id="demsub">&nbsp;</div></div>
+    </div>
+    <div class="panel">
+      <p class="lbl">cash &amp; credit line</p>
+      <div class="meter" id="cashmeter"><span class="zero" id="cashzero"></span><i id="cashbar"></i></div>
+      <div class="row" style="justify-content:space-between;color:var(--muted);font-size:10px">
+        <span class="num">&minus;$500M</span><span class="num">$0</span><span class="num">+$500M</span>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="lbl">training runs</p>
+      <div id="wins"></div>
+    </div>
+    <div class="panel">
+      <p class="lbl">where the money went</p>
+      <div class="stack" id="stack"></div>
+      <div class="legend" id="stacklegend"></div>
+    </div>
+    <div class="panel">
+      <p class="lbl">reading the world</p>
+      <div class="key">
+        <div><em>&#9646;</em>solid towers &mdash; GPUs you own (lit = powered)</div>
+        <div><em>&#9645;</em>floating slab &mdash; reserved cloud capacity</div>
+        <div><em>&#9647;</em>amber slab &mdash; capacity from an exercised option</div>
+        <div><em>&#10073;</em>thin pillars &mdash; spot capacity filled</div>
+        <div><em>&#9670;</em>moving gems &mdash; orders in transit</div>
+        <div><em>&#9473;</em>ground bar &mdash; served + training vs capacity</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="panel">
+      <p class="lbl">in transit <span id="shipcount" style="color:var(--muted)"></span></p>
+      <table class="ship"><tbody id="ships"></tbody></table>
+    </div>
+    <div class="panel">
+      <p class="lbl">this month's orders</p>
+      <div class="acts" id="acts"></div>
+    </div>
+    <div class="panel" id="notepanel">
+      <p class="lbl">belief log</p>
+      <div class="note" id="note"></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="panel">
+      <div class="row">
+        <button id="play">&#9654; play</button>
+        <button id="step">step</button>
+        <select id="speed" aria-label="Playback speed">
+          <option value="0.35">slow</option>
+          <option value="0.7" selected>normal</option>
+          <option value="1.4">fast</option>
+        </select>
+        <button id="spin" aria-pressed="true">auto-orbit</button>
+        <span style="margin-left:auto;color:var(--muted)">drag to orbit &middot; scroll to zoom &middot; right-drag to pan</span>
+      </div>
+      <div class="tl" id="tl"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./world3d.js"></script>
+</body>
+</html>

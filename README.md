@@ -80,7 +80,15 @@ python ladder.py 0 10 results/ladder.json   # scripted ladder + LP bound on seed
 python compare.py                           # where each Harbor trial's money went, vs the reference on the same world
 python trace.py reference 3                 # month-by-month trajectory of a ladder policy
 python build_harbor.py                      # regenerate harbor/gpu-world from the sources
+
+python viz/export_run.py                    # export games as frames for the 3D viewer
+python3 -m http.server 8731 --directory viz # then open http://localhost:8731/
 ```
+
+[`viz/`](viz/README.md) replays a game as a 3D world you can orbit: the three campuses grow as GPUs arrive and get
+powered, orders travel the arcs from the vendor and the two brokers, and the balance, the training windows and the
+agent's own belief log track alongside. A Harbor trial is replayed exactly from its seed and action log, so you can
+watch Claude Fable 5's game and the reference's game on the same world.
 
 Each Harbor trial writes `verifier/reward.txt` and `verifier/details.json` (the world's seed, the reference and
 do-nothing scores for that world, the agent's belief notes and actions).
@@ -98,4 +106,5 @@ do-nothing scores for that world, the agent's belief notes and actions).
 | `results/ladder.json` | the v4 ladder |
 | `results/fable5_v4.md` | the Claude Fable 5 game: cost breakdown against the reference on its world |
 | `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
+| `viz/` | the 3D replay viewer and its frame exporter |
 | `docs/HANDOFF.md` | the original challenge brief and design notes |
