@@ -11,18 +11,23 @@ rents spot, signs power, moves and resells hardware, and manages cash on a credi
 
 | Model | World | Games | Model reward | Reference reward, same worlds | Model as % of reference |
 |---|---|---|---|---|---|
+| Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v5 | 5 | 0.69–1.00 (mean 0.85) | 0.84–0.92 (mean 0.88) | 82–110% (mean 96%, standard error 4.5%) |
+| Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v4 | 5 | 0.79–0.97 | 0.87–0.99 | 89–98% (mean 92%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
-| Gemini 4 Hydrogen (Harbor + OpenCode) | v3 | 3 | 0.74–0.93 | 0.91–0.98 | 82–95% (mean ~90%) |
 | Gemini 4 Carbon (Harbor + OpenCode) | v3 | 5 | 0.25–0.37 | 0.80–0.94 | too slow to finish 24 months in 30 min |
 
 Reward = oracle net cost / agent net cost (1 = as good as the perfect-information oracle; doing nothing scores about 0.2).
+Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
 
-- **Gemini 4 Hydrogen is close to the reference**: on v4 it beat it once (0.899 vs 0.891) and averaged 94% of it. v4's
-  extra sites and options did not widen that gap. Hydrogen still over-provisions the early windows (91–108 kH-months
-  vs 60 needed; 185–207 vs 140), buys and then dumps hardware ($275M of resales in one game), and skipped the brokers
-  entirely in 2 of 3 games. But those mistakes cost it less than uncertainty costs the reference.
-- The levers left: strengthen the reference (its long commitments past month 23 cost it about $47M in the game
-  Hydrogen won), and run more games and models.
+- **v5 changed the rules to price Hydrogen's hedge.** Inference grows 4% or 8% a month, gen N launches in months 9–15,
+  used gen H loses 50% at launch, GPUs lose 4% of their value a month and positive cash earns 0.75% a month. Replaying
+  Hydrogen's 8 recorded v4 games in the same worlds with only the cost changes dropped it from 91% to 84% of the reference.
+- **The gap did not widen in play.** Hydrogen still buys a hardware pile early ($430–730M of GPUs vs the reference's
+  $50–260M), over-fills the first window (71–124 kH-months vs 60) and never tries broker B, and it is below the
+  reference in 4 of 5 games. But the same rules pushed the reference into leasing almost everything: in seed 1005
+  (tight supply for 21 of 24 months, 8% growth) it bought $93M of GPUs, left $258M of contracts running past month 23,
+  and lost to both Hydrogen and the oracle (which bought $265M). The reference's lease bias in long tight stretches is
+  now the main lever.
 
 The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
 
@@ -98,7 +103,7 @@ do-nothing scores for that world, the agent's belief notes and actions).
 | `service.py`, `server.py` | the command interface and the Harbor sidecar server |
 | `TASK.md` | the rules the agent reads |
 | `build_harbor.py`, `harbor/gpu-world/` | the Harbor task and its generator |
-| `harbor/jobs/` | v4 Harbor runs (reference solution, Gemini 4 Hydrogen) |
+| `harbor/jobs/` | v4 and v5 Harbor runs (reference solution, Gemini 4 Hydrogen) |
 | `results/ladder.json` | the v4 ladder |
 | `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
 | `docs/HANDOFF.md` | the original challenge brief and design notes |

@@ -1,0 +1,259 @@
+{
+    "schema_version": 3,
+    "created_at": "2026-11-14T20:53:54.165760Z",
+    "harbor": {
+        "version": "0.26.0",
+        "is_editable": false
+    },
+    "n_concurrent_trials": 4,
+    "retry": {
+        "max_retries": 0,
+        "exclude_exceptions": [
+            "APIResponseValidationError",
+            "AgentAuthenticationError",
+            "AgentSafetyRefusalError",
+            "AgentTimeoutError",
+            "ApiProviderResourceNotFoundError",
+            "AuthenticationError",
+            "BadRequestError",
+            "BudgetExceededError",
+            "CancelledError",
+            "ContentPolicyViolationError",
+            "ContextLengthExceededError",
+            "ContextWindowExceededError",
+            "DspyImportError",
+            "MissingExtraError",
+            "ModelNotFoundError",
+            "NonZeroAgentExitCodeError",
+            "NotFoundError",
+            "OutputLengthExceededError",
+            "OutputTokenExceededError",
+            "PermissionDeniedError",
+            "RegradeError",
+            "RewardFileEmptyError",
+            "RewardFileNotFoundError",
+            "ServiceOperationsUnsupportedError",
+            "UnprocessableEntityError",
+            "UnsupportedModelParametersError",
+            "UnsupportedParamsError",
+            "VercelScopeError",
+            "VerifierOutputParseError",
+            "VerifierTimeoutError"
+        ],
+        "wait_multiplier": 1.0,
+        "min_wait_sec": 1.0,
+        "max_wait_sec": 60.0
+    },
+    "trials": [
+        {
+            "schema_version": 2,
+            "task": {
+                "name": "v5-s1001",
+                "type": "local",
+                "digest": "sha256:e8cb7e3909dc9aadbc12c271876b6dfbcc770e61aac4254c318c9871f273aa18",
+                "source": "paired",
+                "path": "C:\\Users\\adamk\\AppData\\Local\\Temp\\claude\\C--Users-adamk-junctional-programming\\4049ea54-5423-4bf1-9045-a1480bf3c643\\scratchpad\\paired\\v5-s1001"
+            },
+            "install_only": false,
+            "timeout_multiplier": 1.0,
+            "agent": {
+                "name": "opencode",
+                "model_name": "gemini/gemini-4-hydrogen",
+                "model_api_key_name": "GEMINI_API_KEY",
+                "skip_model_parsing": false,
+                "skills": [],
+                "resume_trajectory": false,
+                "extra_allowed_hosts": [],
+                "kwargs": {},
+                "mcp_servers": []
+            },
+            "bridge_inputs": {},
+            "skills": [],
+            "environment": {
+                "type": "docker",
+                "force_build": false,
+                "delete": true,
+                "stream": false,
+                "cpu_enforcement_policy": "auto",
+                "memory_enforcement_policy": "auto",
+                "extra_docker_compose": [],
+                "kwargs": {},
+                "extra_allowed_hosts": []
+            },
+            "verifier": {
+                "disable": false,
+                "environment_mode": "shared"
+            },
+            "artifacts": [],
+            "override_error_policy": {}
+        },
+        {
+            "schema_version": 2,
+            "task": {
+                "name": "v5-s1002",
+                "type": "local",
+                "digest": "sha256:5c20c1c961bd778ecf72e7b0ae3788feed7cac03bf1bd7c6c17c11b57f40794e",
+                "source": "paired",
+                "path": "C:\\Users\\adamk\\AppData\\Local\\Temp\\claude\\C--Users-adamk-junctional-programming\\4049ea54-5423-4bf1-9045-a1480bf3c643\\scratchpad\\paired\\v5-s1002"
+            },
+            "install_only": false,
+            "timeout_multiplier": 1.0,
+            "agent": {
+                "name": "opencode",
+                "model_name": "gemini/gemini-4-hydrogen",
+                "model_api_key_name": "GEMINI_API_KEY",
+                "skip_model_parsing": false,
+                "skills": [],
+                "resume_trajectory": false,
+                "extra_allowed_hosts": [],
+                "kwargs": {},
+                "mcp_servers": []
+            },
+            "bridge_inputs": {},
+            "skills": [],
+            "environment": {
+                "type": "docker",
+                "force_build": false,
+                "delete": true,
+                "stream": false,
+                "cpu_enforcement_policy": "auto",
+                "memory_enforcement_policy": "auto",
+                "extra_docker_compose": [],
+                "kwargs": {},
+                "extra_allowed_hosts": []
+            },
+            "verifier": {
+                "disable": false,
+                "environment_mode": "shared"
+            },
+            "artifacts": [],
+            "override_error_policy": {}
+        },
+        {
+            "schema_version": 2,
+            "task": {
+                "name": "v5-s1003",
+                "type": "local",
+                "digest": "sha256:e7e9059bb928586b928abbb20bc5aa8f36bed9cf453eea0eb1336e639c676003",
+                "source": "paired",
+                "path": "C:\\Users\\adamk\\AppData\\Local\\Temp\\claude\\C--Users-adamk-junctional-programming\\4049ea54-5423-4bf1-9045-a1480bf3c643\\scratchpad\\paired\\v5-s1003"
+            },
+            "install_only": false,
+            "timeout_multiplier": 1.0,
+            "agent": {
+                "name": "opencode",
+                "model_name": "gemini/gemini-4-hydrogen",
+                "model_api_key_name": "GEMINI_API_KEY",
+                "skip_model_parsing": false,
+                "skills": [],
+                "resume_trajectory": false,
+                "extra_allowed_hosts": [],
+                "kwargs": {},
+                "mcp_servers": []
+            },
+            "bridge_inputs": {},
+            "skills": [],
+            "environment": {
+                "type": "docker",
+                "force_build": false,
+                "delete": true,
+                "stream": false,
+                "cpu_enforcement_policy": "auto",
+                "memory_enforcement_policy": "auto",
+                "extra_docker_compose": [],
+                "kwargs": {},
+                "extra_allowed_hosts": []
+            },
+            "verifier": {
+                "disable": false,
+                "environment_mode": "shared"
+            },
+            "artifacts": [],
+            "override_error_policy": {}
+        },
+        {
+            "schema_version": 2,
+            "task": {
+                "name": "v5-s1004",
+                "type": "local",
+                "digest": "sha256:5cd23ebe642638c591f7c8f940ec867bb9fd349b7a285e0d8d9ba5f86fba5e26",
+                "source": "paired",
+                "path": "C:\\Users\\adamk\\AppData\\Local\\Temp\\claude\\C--Users-adamk-junctional-programming\\4049ea54-5423-4bf1-9045-a1480bf3c643\\scratchpad\\paired\\v5-s1004"
+            },
+            "install_only": false,
+            "timeout_multiplier": 1.0,
+            "agent": {
+                "name": "opencode",
+                "model_name": "gemini/gemini-4-hydrogen",
+                "model_api_key_name": "GEMINI_API_KEY",
+                "skip_model_parsing": false,
+                "skills": [],
+                "resume_trajectory": false,
+                "extra_allowed_hosts": [],
+                "kwargs": {},
+                "mcp_servers": []
+            },
+            "bridge_inputs": {},
+            "skills": [],
+            "environment": {
+                "type": "docker",
+                "force_build": false,
+                "delete": true,
+                "stream": false,
+                "cpu_enforcement_policy": "auto",
+                "memory_enforcement_policy": "auto",
+                "extra_docker_compose": [],
+                "kwargs": {},
+                "extra_allowed_hosts": []
+            },
+            "verifier": {
+                "disable": false,
+                "environment_mode": "shared"
+            },
+            "artifacts": [],
+            "override_error_policy": {}
+        },
+        {
+            "schema_version": 2,
+            "task": {
+                "name": "v5-s1005",
+                "type": "local",
+                "digest": "sha256:b9127ed4993fa47bbe8efb1762b42ad6d3e5495c8298042323ed1147ec5a89ff",
+                "source": "paired",
+                "path": "C:\\Users\\adamk\\AppData\\Local\\Temp\\claude\\C--Users-adamk-junctional-programming\\4049ea54-5423-4bf1-9045-a1480bf3c643\\scratchpad\\paired\\v5-s1005"
+            },
+            "install_only": false,
+            "timeout_multiplier": 1.0,
+            "agent": {
+                "name": "opencode",
+                "model_name": "gemini/gemini-4-hydrogen",
+                "model_api_key_name": "GEMINI_API_KEY",
+                "skip_model_parsing": false,
+                "skills": [],
+                "resume_trajectory": false,
+                "extra_allowed_hosts": [],
+                "kwargs": {},
+                "mcp_servers": []
+            },
+            "bridge_inputs": {},
+            "skills": [],
+            "environment": {
+                "type": "docker",
+                "force_build": false,
+                "delete": true,
+                "stream": false,
+                "cpu_enforcement_policy": "auto",
+                "memory_enforcement_policy": "auto",
+                "extra_docker_compose": [],
+                "kwargs": {},
+                "extra_allowed_hosts": []
+            },
+            "verifier": {
+                "disable": false,
+                "environment_mode": "shared"
+            },
+            "artifacts": [],
+            "override_error_policy": {}
+        }
+    ]
+}
