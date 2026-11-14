@@ -24,7 +24,7 @@ const THEMES = {
     site: { us: 0xffffff, eu: 0xc3c2b7, ap: 0x898781 },
   },
   light: {
-    bg: 0xffffff, ocean: 0xd3e6f6, land: 0xffffff,
+    bg: 0xffffff, ocean: 0xe8f3fb, land: 0xffffff,
     graticule: 0x0b0b0b, gratA: 0.13, coast: 0x0b0b0b, coastA: 0.75,
     stars: false, pad: 0xeceae3, towerOff: 0xc3c2b7, crown: 0x0b0b0b, hub: 0xe4e2db, steel: 0x52514e,
     sub: 0xd6d4cc, tick: 0x0b0b0b, packet: 0x0b0b0b, lane: 0.22, laneHot: 0.8,
