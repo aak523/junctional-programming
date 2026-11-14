@@ -769,6 +769,9 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
       svgEl("rect", { x: X0, y, width: target * scale, height: 9, fill: "none", stroke: "var(--grid)" }, trainSvg);
       const col = decided ? (met ? "var(--cmd-power)" : "var(--cmd-buy)") : "var(--coast)";
       svgEl("rect", { x: X0, y, width: Math.max(0, done * scale), height: 9, fill: col }, trainSvg);
+      // Last month's spare capacity, as one month's worth of training, right after what is done.
+      if (known && !decided && rate > 0) svgEl("rect", { x: X0 + done * scale, y, width: Math.min(rate, Math.max(0, target - done)) * scale,
+        height: 9, fill: col, "fill-opacity": 0.45 }, trainSvg);
       svgEl("line", { x1: X0 + target * scale, x2: X0 + target * scale, y1: y - 2, y2: y + 11, stroke: "var(--fg)" }, trainSvg);
       const num = svgEl("text", { class: "chart-num", x: 294, y: y + 8.5, "text-anchor": "end" }, trainSvg);
       // Spare capacity: last month's compute left over after inference, which all went to training.
