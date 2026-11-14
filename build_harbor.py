@@ -5,6 +5,7 @@ By default the sidecar draws a random world per trial. The verifier token only a
 compose environment and in tests/, neither of which the agent can see while it plays.
 """
 import argparse
+import re
 import secrets
 import shutil
 from pathlib import Path
@@ -35,7 +36,7 @@ environment_mode = "shared"
 # Nothing useful is reachable: the world runs in the sidecar, which draws a random 48-bit seed at startup, so even
 # with world.py from a public repo the hidden future cannot be reconstructed.
 [agent]
-timeout_sec = 5400.0
+timeout_sec = {timeout}
 
 [environment]
 build_timeout_sec = 1200
@@ -44,6 +45,7 @@ memory_mb = 4096
 '''
 
 OPENCODE = "1.19.5"
+AGENT_MINUTES = 10   # the judges rerun reference + 3 agent runs + baselines; the reference itself plays in about 70 s
 
 # OpenCode is baked in: Harbor skips its own install when `opencode --version` works, and installing Node and
 # OpenCode at agent setup can exceed Harbor's 360 s setup timeout.
@@ -174,6 +176,10 @@ def instruction():
                   'You act only through the `gpu` command: `gpu "<command>; <command>; ..."` (run `gpu help`). The world runs on a\n'
                   'separate server; there are no game files on this machine. You may write your own notes or scripts here.')
     assert "`gpu help`" in t, "TASK.md intro changed; update build_harbor.instruction()"
+    t = t.replace("Play all 24 months: if you stop early,",
+                  f"**Time limit: {AGENT_MINUTES} minutes of wall-clock time for the whole game** (a full game takes about 25-30 tool\n"
+                  "calls); budget any analysis accordingly. Play all 24 months: if you stop early or run out of time,")
+    assert f"{AGENT_MINUTES} minutes" in t, "TASK.md 'Play all 24 months' sentence changed; update build_harbor.instruction()"
     return t
 
 
@@ -184,13 +190,14 @@ def main():
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     out = Path(a.out) if a.out else HERE / "harbor" / a.name
-    if out.exists():
-        shutil.rmtree(out)
-    token = secrets.token_hex(24)
-    (out / "environment" / "world").mkdir(parents=True)
-    (out / "tests").mkdir()
-    (out / "solution").mkdir()
-    write(out / "task.toml", TASK_TOML.format(name=a.name))
+    # keep the verifier token stable across rebuilds: trials already running hold the old one
+    old = out / "tests" / "verify.py"
+    m = re.search(r'"token": "([0-9a-f]+)"', old.read_text()) if old.exists() else None
+    token = m.group(1) if m else secrets.token_hex(24)
+    # overwrite in place (never delete): a running Harbor job holds this folder open and uploads tests/ at the end
+    for d in ("environment/world", "tests", "solution"):
+        (out / d).mkdir(parents=True, exist_ok=True)
+    write(out / "task.toml", TASK_TOML.format(name=a.name, timeout=f"{AGENT_MINUTES * 60:.1f}"))
     write(out / "instruction.md", instruction())
     write(out / "environment" / "Dockerfile", MAIN_DOCKERFILE)
     write(out / "environment" / "gpu", GPU_CLIENT)

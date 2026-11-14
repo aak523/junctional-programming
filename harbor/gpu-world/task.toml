@@ -20,7 +20,7 @@ environment_mode = "shared"
 # Nothing useful is reachable: the world runs in the sidecar, which draws a random 48-bit seed at startup, so even
 # with world.py from a public repo the hidden future cannot be reconstructed.
 [agent]
-timeout_sec = 5400.0
+timeout_sec = 600.0
 
 [environment]
 build_timeout_sec = 1200

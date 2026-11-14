@@ -8,7 +8,8 @@ separate server; there are no game files on this machine. You may write your own
 Each month you can take up to 6 actions, then `end_month` runs the month and shows the next one.
 `status`, `history`, `help`, `calc <arithmetic>` and `note <text>` are free.
 **Belief log:** each month, before `end_month`, record your current estimates with `note` (supply regime, launch month,
-broker reliability, inference growth, and what you plan to do about them). Play all 24 months: if you stop early,
+broker reliability, inference growth, and what you plan to do about them). **Time limit: 10 minutes of wall-clock time for the whole game** (a full game takes about 25-30 tool
+calls); budget any analysis accordingly. Play all 24 months: if you stop early or run out of time,
 the remaining months run with no further actions (standing spot requests and contracts continue).
 
 ## What you need each month
