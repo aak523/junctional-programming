@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -10,9 +10,9 @@
     --surface-1:#1a1a19; --plane:#0d0d0d;
     --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
     --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
-    --us:#3987e5; --eu:#d95926; --ap:#199e70;
-    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
-    --s5:#d55181; --s6:#008300; --s7:#9085e9;
+    --us:#ffffff; --eu:#c3c2b7; --ap:#898781;
+    --s1:#ffffff; --s2:#d8d7d0; --s3:#b0afa8; --s4:#898781;
+    --s5:#6f6e69; --s6:#52514e; --s7:#3d3c3a;
     --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
     --font: system-ui,-apple-system,"Segoe UI",sans-serif;
   }
@@ -25,10 +25,7 @@
     --s1:#0b0b0b; --s2:#3d3c3a; --s3:#6f6e69; --s4:#9b9a93;
     --s5:#bdbcb4; --s6:#d8d7d0; --s7:#eceae3;
   }
-  html[data-theme="light"] .pill{background:transparent !important;color:var(--ink);
-    border:1px solid var(--axis);padding:0 4px}
-  html[data-theme="light"] .stack i{outline:1px solid var(--axis);outline-offset:-1px}
-  html[data-theme="light"] .legend b{outline:1px solid var(--axis);outline-offset:-1px}
+
   html[data-theme="light"] select,html[data-theme="light"] button{background:#f2f1ec}
   html[data-theme="light"] select:hover,html[data-theme="light"] button:hover{background:#e7e6e0}
   html[data-theme="light"] button[aria-pressed="true"]{background:#dce8f7;border-color:#2a78d6aa}
@@ -111,7 +108,9 @@
   table.ship tr:first-child td{border-top:none}
   table.ship td.q{color:var(--ink);font-weight:600;width:54px}
   table.ship td.e{text-align:right;white-space:nowrap}
-  .pill{display:inline-block;border-radius:4px;padding:0 5px;font-size:10px;font-weight:600;color:#0d0d0d}
+  .pill{display:inline-block;border-radius:4px;padding:0 4px;font-size:10px;font-weight:600;
+        background:transparent !important;color:var(--ink);border:1px solid var(--axis)}
+  .stack i,.legend b{outline:1px solid var(--axis);outline-offset:-1px}
   .empty{color:var(--muted);font-style:italic}
   .note{color:var(--ink-2);line-height:1.5;max-height:150px;overflow-y:auto;font-size:11px;
         scrollbar-width:thin;scrollbar-color:#3a3a38 transparent}

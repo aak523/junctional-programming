@@ -9,19 +9,19 @@ import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
 // ---------------------------------------------------------------- theme
 // Two keys of the same design: ink-on-white, or light-on-black. Picked from the URL at
 // load time so every material is built once, in the right key.
-const THEME = new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light';
+const THEME = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark';
 document.documentElement.dataset.theme = THEME;
 const LIGHT = THEME === 'light';
 
 const THEMES = {
   dark: {
     bg: 0x0d0d0d, ocean: 0x0d2a4a, halo: 0x3987e5, haloA: 0.32, haloAdd: true,
-    graticule: 0x2c5c8a, gratA: 0.45, coast: 0x9fcbea, coastA: 0.7,
+    graticule: 0x9b9a93, gratA: 0.18, coast: 0xffffff, coastA: 0.62,
     stars: true, pad: 0x1d1d1b, towerOff: 0x2a2a28, crown: 0xe8e6df, hub: 0x232321, steel: 0x6f6f68,
     sub: 0x35352f, tick: 0xffffff, packet: 0xffffff, lane: 0.08, laneHot: 0.40,
     emissive: 1, bloom: true, amb: 0.42, keyLight: 1.0, fillLight: 0.45, fillHue: 0x4a6fa5,
     ink: '#ffffff', ink2: '#c3c2b7', muted: '#898781', genN: '#9085e9',
-    site: { us: 0x3987e5, eu: 0xd95926, ap: 0x199e70 },
+    site: { us: 0xffffff, eu: 0xc3c2b7, ap: 0x898781 },
   },
   light: {
     bg: 0xffffff, ocean: 0xd3e6f6, halo: 0x0b0b0b, haloA: 0.5, haloAdd: false,
