@@ -15,8 +15,8 @@ const LIGHT = THEME === 'light';
 
 const THEMES = {
   dark: {
-    bg: 0x0d0d0d, ocean: 0x0f1822, halo: 0x3987e5, haloA: 0.32, haloAdd: true,
-    graticule: 0x1d3347, gratA: 0.5, dot: 0x5b7f9e, dotA: 0.95, coast: 0x7fa6c4, coastA: 0.35,
+    bg: 0x0d0d0d, ocean: 0x0d2a4a, halo: 0x3987e5, haloA: 0.32, haloAdd: true,
+    graticule: 0x2c5c8a, gratA: 0.45, coast: 0x9fcbea, coastA: 0.7,
     stars: true, pad: 0x1d1d1b, towerOff: 0x2a2a28, crown: 0xe8e6df, hub: 0x232321, steel: 0x6f6f68,
     sub: 0x35352f, tick: 0xffffff, packet: 0xffffff, lane: 0.08, laneHot: 0.40,
     emissive: 1, bloom: true, amb: 0.42, keyLight: 1.0, fillLight: 0.45, fillHue: 0x4a6fa5,
@@ -24,8 +24,8 @@ const THEMES = {
     site: { us: 0x3987e5, eu: 0xd95926, ap: 0x199e70 },
   },
   light: {
-    bg: 0xffffff, ocean: 0xffffff, halo: 0x0b0b0b, haloA: 0.5, haloAdd: false,
-    graticule: 0x0b0b0b, gratA: 0.14, dot: 0x0b0b0b, dotA: 0.8, coast: 0x0b0b0b, coastA: 0.55,
+    bg: 0xffffff, ocean: 0xd3e6f6, halo: 0x0b0b0b, haloA: 0.5, haloAdd: false,
+    graticule: 0x0b0b0b, gratA: 0.13, coast: 0x0b0b0b, coastA: 0.75,
     stars: false, pad: 0xeceae3, towerOff: 0xc3c2b7, crown: 0x0b0b0b, hub: 0xe4e2db, steel: 0x52514e,
     sub: 0xd6d4cc, tick: 0x0b0b0b, packet: 0x0b0b0b, lane: 0.22, laneHot: 0.8,
     emissive: 0.12, bloom: false, amb: 0.92, keyLight: 0.22, fillLight: 0.08, fillHue: 0xc9d6e6,
@@ -166,15 +166,8 @@ globe.add(new THREE.Mesh(
     color: T.graticule, transparent: true, opacity: T.gratA })));
 }
 
-// land: a dot matrix with coastlines over it
+// land: coastlines on the sea
 fetch('./data/land.json').then(r => r.json()).then(land => {
-  const dots = [];
-  land.dots.forEach(([lat, lon]) => { const v = geo(lat, lon, R + 0.45); dots.push(v.x, v.y, v.z); });
-  const dg = new THREE.BufferGeometry();
-  dg.setAttribute('position', new THREE.Float32BufferAttribute(dots, 3));
-  globe.add(new THREE.Points(dg, new THREE.PointsMaterial({
-    color: T.dot, size: 1.5, sizeAttenuation: true, transparent: true, opacity: T.dotA })));
-
   const seg = [];
   land.rings.forEach(flat => {
     for (let i = 0; i + 3 < flat.length; i += 2) {

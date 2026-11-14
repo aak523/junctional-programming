@@ -48,9 +48,9 @@ their identity in both, re-stepped for the surface they sit on. The toggle reloa
 
 Deep links: `?run=fable5&m=12&truth=1&spin=0&go=ap&theme=light`.
 
-The globe's land is a dot matrix plus coastlines, precomputed by `make_land.py` from Natural Earth
+The globe's coastlines are precomputed by `make_land.py` from Natural Earth
 110m land into `data/land.json` (the command is at the top of that file). It only needs rerunning if
-you want a different dot density.
+you want finer coastlines.
 
 ## The data
 
