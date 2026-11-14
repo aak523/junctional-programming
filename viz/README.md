@@ -41,7 +41,12 @@ Controls: drag to spin the globe, scroll to zoom, right-drag to pan, **fly to** 
 campus or the fab, hover a pad for its numbers, space to play/pause, arrow keys to step. **truth** reveals the state the player never sees — the supply regime,
 the launch month, export controls, the growth switch and each broker's true reliability.
 
-Deep links: `?run=fable5&m=12&truth=1&spin=0&go=ap`.
+**theme** switches between the two versions: light-on-black, or ink-on-white — a white globe with
+black land, coastlines and markers, no bloom and no tone mapping. The site and status colours keep
+their identity in both, re-stepped for the surface they sit on. The toggle reloads the page with
+`?theme=light` so every material is built in the right key; it keeps the run, month and truth state.
+
+Deep links: `?run=fable5&m=12&truth=1&spin=0&go=ap&theme=light`.
 
 The globe's land is a dot matrix plus coastlines, precomputed by `make_land.py` from Natural Earth
 110m land into `data/land.json` (the command is at the top of that file). It only needs rerunning if

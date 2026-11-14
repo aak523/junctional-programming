@@ -6,11 +6,38 @@ import { RenderPass } from './vendor/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
 
-// ---------------------------------------------------------------- palette & layout
-const SITE_COLOR = { us: 0x3987e5, eu: 0xd95926, ap: 0x199e70 };
+// ---------------------------------------------------------------- theme
+// Two keys of the same design: ink-on-white, or light-on-black. Picked from the URL at
+// load time so every material is built once, in the right key.
+const THEME = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark';
+document.documentElement.dataset.theme = THEME;
+const LIGHT = THEME === 'light';
+
+const THEMES = {
+  dark: {
+    bg: 0x0d0d0d, ocean: 0x0f1822, halo: 0x3987e5, haloA: 0.32, haloAdd: true,
+    graticule: 0x1d3347, gratA: 0.5, dot: 0x5b7f9e, dotA: 0.95, coast: 0x7fa6c4, coastA: 0.35,
+    stars: true, pad: 0x1d1d1b, towerOff: 0x2a2a28, crown: 0xe8e6df, hub: 0x232321, steel: 0x6f6f68,
+    sub: 0x35352f, tick: 0xffffff, packet: 0xffffff, lane: 0.08, laneHot: 0.40,
+    emissive: 1, bloom: true, amb: 0.42, keyLight: 1.0, fillLight: 0.45, fillHue: 0x4a6fa5,
+    ink: '#ffffff', ink2: '#c3c2b7', muted: '#898781', genN: '#9085e9',
+    site: { us: 0x3987e5, eu: 0xd95926, ap: 0x199e70 },
+  },
+  light: {
+    bg: 0xffffff, ocean: 0xffffff, halo: 0x0b0b0b, haloA: 0.5, haloAdd: false,
+    graticule: 0x0b0b0b, gratA: 0.14, dot: 0x0b0b0b, dotA: 0.8, coast: 0x0b0b0b, coastA: 0.55,
+    stars: false, pad: 0xeceae3, towerOff: 0xc3c2b7, crown: 0x0b0b0b, hub: 0xe4e2db, steel: 0x52514e,
+    sub: 0xd6d4cc, tick: 0x0b0b0b, packet: 0x0b0b0b, lane: 0.22, laneHot: 0.8,
+    emissive: 0.12, bloom: false, amb: 0.92, keyLight: 0.22, fillLight: 0.08, fillHue: 0xc9d6e6,
+    ink: '#0b0b0b', ink2: '#52514e', muted: '#6f6e69', genN: '#4a3aa7',
+    site: { us: 0x2a78d6, eu: 0xeb6834, ap: 0x1baf7a },
+  },
+};
+const T = THEMES[THEME];
+const SITE_COLOR = T.site;
 const SITE_NAME  = { us: 'US', eu: 'EU', ap: 'AP' };
 const STATUS = { good: 0x0ca30c, warning: 0xfab219, serious: 0xec835a, critical: 0xd03b3b };
-const INK = 0xffffff, STEEL = 0x6f6f68;
+const INK = T.tick, STEEL = T.steel;
 
 const R = 74;                // globe radius
 const PAD_R = 8;             // campus platform radius
@@ -66,14 +93,14 @@ const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = LIGHT ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0d0d);
+scene.background = new THREE.Color(T.bg);
 
 
 const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 1, 2400);
@@ -81,6 +108,7 @@ camera.position.copy(geo(30, -35, 270));
 
 let composer = null;
 try {
+  if (LIGHT) throw new Error('no bloom on white');
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.48, 0.6, 0.82);
@@ -89,11 +117,11 @@ try {
 } catch (e) { console.warn('bloom unavailable, falling back to plain render', e); composer = null; }
 
 // ---------------------------------------------------------------- lights & ground
-scene.add(new THREE.AmbientLight(0xffffff, 0.42));
-const key = new THREE.DirectionalLight(0xffffff, 1.0);
+scene.add(new THREE.AmbientLight(0xffffff, T.amb));
+const key = new THREE.DirectionalLight(0xffffff, T.keyLight);
 key.position.copy(geo(35, -60, 400));
 scene.add(key);
-const fill = new THREE.DirectionalLight(0x4a6fa5, 0.45);
+const fill = new THREE.DirectionalLight(T.fillHue, T.fillLight);
 fill.position.copy(geo(-20, 130, 400));
 scene.add(fill);
 
@@ -103,22 +131,24 @@ scene.add(globe);
 
 globe.add(new THREE.Mesh(
   new THREE.SphereGeometry(R, 96, 64),
-  new THREE.MeshStandardMaterial({ color: 0x0f1822, roughness: 0.92, metalness: 0.08 })
+  LIGHT ? new THREE.MeshBasicMaterial({ color: T.ocean })
+        : new THREE.MeshStandardMaterial({ color: T.ocean, roughness: 0.92, metalness: 0.08 })
 ));
 
 // atmosphere: a fresnel rim on a slightly larger back-facing shell
 globe.add(new THREE.Mesh(
-  new THREE.SphereGeometry(R * 1.09, 64, 48),
+  new THREE.SphereGeometry(R * (LIGHT ? 1.035 : 1.09), 64, 48),
   new THREE.ShaderMaterial({
-    uniforms: { c: { value: new THREE.Color(0x3987e5) } },
+    uniforms: { c: { value: new THREE.Color(T.halo) }, a: { value: T.haloA } },
     vertexShader: `varying vec3 vN; varying vec3 vP;
       void main(){ vN = normalize(normalMatrix * normal);
         vec4 mv = modelViewMatrix * vec4(position, 1.0); vP = mv.xyz;
         gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `uniform vec3 c; varying vec3 vN; varying vec3 vP;
-      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(-vP))), 3.2);
-        gl_FragColor = vec4(c, f * 0.32); }`,
-    side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+    fragmentShader: `uniform vec3 c; uniform float a; varying vec3 vN; varying vec3 vP;
+      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(-vP))), LIGHT ? 6.0 : 3.2);
+        gl_FragColor = vec4(c, f * a); }`,
+    side: THREE.BackSide, blending: T.haloAdd ? THREE.AdditiveBlending : THREE.NormalBlending,
+    transparent: true, depthWrite: false,
   })
 ));
 
@@ -133,7 +163,7 @@ globe.add(new THREE.Mesh(
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   globe.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({
-    color: 0x1d3347, transparent: true, opacity: 0.5 })));
+    color: T.graticule, transparent: true, opacity: T.gratA })));
 }
 
 // land: a dot matrix with coastlines over it
@@ -143,7 +173,7 @@ fetch('./data/land.json').then(r => r.json()).then(land => {
   const dg = new THREE.BufferGeometry();
   dg.setAttribute('position', new THREE.Float32BufferAttribute(dots, 3));
   globe.add(new THREE.Points(dg, new THREE.PointsMaterial({
-    color: 0x5b7f9e, size: 1.5, sizeAttenuation: true, transparent: true, opacity: 0.95 })));
+    color: T.dot, size: 1.5, sizeAttenuation: true, transparent: true, opacity: T.dotA })));
 
   const seg = [];
   land.rings.forEach(flat => {
@@ -155,11 +185,11 @@ fetch('./data/land.json').then(r => r.json()).then(land => {
   const cg = new THREE.BufferGeometry();
   cg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
   globe.add(new THREE.LineSegments(cg, new THREE.LineBasicMaterial({
-    color: 0x7fa6c4, transparent: true, opacity: 0.35 })));
+    color: T.coast, transparent: true, opacity: T.coastA })));
 }).catch(e => console.warn('land data unavailable', e));
 
 // stars
-{
+if (T.stars) {
   const pts = [];
   for (let i = 0; i < 1800; i++) {
     const v = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
@@ -173,7 +203,7 @@ fetch('./data/land.json').then(r => r.json()).then(land => {
 }
 
 // ---------------------------------------------------------------- label sprites
-function labelSprite(text, { color = '#ffffff', size = 46, weight = 600, pad = 10, bg = null } = {}) {
+function labelSprite(text, { color = T.ink, size = 46, weight = 600, pad = 10, bg = null } = {}) {
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d');
   const font = `${weight} ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
@@ -248,7 +278,7 @@ class Campus {
 
     const pad = new THREE.Mesh(
       new THREE.CylinderGeometry(PAD_R, PAD_R - 1.2, 2.6, 64),
-      new THREE.MeshStandardMaterial({ color: 0x1d1d1b, roughness: 0.75, metalness: 0.25 })
+      new THREE.MeshStandardMaterial({ color: T.pad, roughness: 0.75, metalness: 0.25 })
     );
     pad.position.y = PAD_TOP - 1.3; pad.receiveShadow = true;
     pad.userData.site = site;
@@ -257,7 +287,7 @@ class Campus {
 
     const rim = new THREE.Mesh(
       new THREE.TorusGeometry(PAD_R + 0.2, 0.11, 8, 96),
-      new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 1.4, roughness: 0.4 })
+      new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 1.4 * T.emissive, roughness: 0.4 })
     );
     rim.rotation.x = Math.PI / 2; rim.position.y = PAD_TOP + 0.05;
     this.group.add(rim);
@@ -272,14 +302,14 @@ class Campus {
     for (let i = 0; i < cols * cols; i++) {
       const cx = (i % cols - (cols - 1) / 2) * step;
       const cz = (Math.floor(i / cols) - (cols - 1) / 2) * step;
-      const mat = new THREE.MeshStandardMaterial({ color: 0x2a2a28, emissive: 0x000000, roughness: 0.45, metalness: 0.35 });
+      const mat = new THREE.MeshStandardMaterial({ color: T.towerOff, emissive: 0x000000, roughness: 0.45, metalness: 0.35 });
       const m = new THREE.Mesh(towerGeo, mat);
       m.position.set(cx, PAD_TOP, cz);
       m.scale.set(step * 0.52, 0.001, step * 0.52);
       m.castShadow = true; m.receiveShadow = true;
       m.visible = false;
       const crown = new THREE.Mesh(crownGeo, new THREE.MeshStandardMaterial({
-        color: 0xe8e6df, emissive: 0xe8e6df, emissiveIntensity: 0.5, roughness: 0.4 }));
+        color: T.crown, emissive: T.crown, emissiveIntensity: 0.5 * T.emissive, roughness: 0.4 }));
       crown.scale.set(1.12, 0.05, 1.12);
       crown.position.y = 1;        // sits on top in local (scaled) space
       crown.visible = false;
@@ -293,7 +323,7 @@ class Campus {
     const slab = (color, y, op) => {
       const mm = new THREE.Mesh(
         new THREE.BoxGeometry(1, 0.55, 6),
-        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5,
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 * T.emissive,
           transparent: true, opacity: op, roughness: 0.3 })
       );
       mm.position.set(0, y, 0); mm.visible = false;
@@ -308,8 +338,8 @@ class Campus {
     for (let i = 0; i < 6; i++) {
       const p = new THREE.Mesh(
         new THREE.CylinderGeometry(0.16, 0.16, 7, 8, 1, true),
-        new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 1.1,
-          transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+        new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color,
+          emissiveIntensity: 1.1 * T.emissive, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
       );
       const a = -0.95 + i * 0.38;
       p.position.set(Math.sin(a) * (PAD_R - 1.0), PAD_TOP + 3.5, Math.cos(a) * (PAD_R - 1.0));
@@ -320,7 +350,7 @@ class Campus {
 
     // substation: height = energised MW, ghost box = contracted but not yet live
     const sub = new THREE.Mesh(towerGeo, new THREE.MeshStandardMaterial({
-      color: 0x35352f, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: 0.5 }));
+      color: T.sub, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: 0.5 }));
     sub.position.set(0, PAD_TOP, -(PAD_R + 2.6));
     sub.scale.set(2.8, 0.001, 2.8);
     sub.castShadow = true;
@@ -342,7 +372,7 @@ class Campus {
       const g2 = new THREE.BoxGeometry(1, 0.4, 3.0);
       g2.translate(0.5, 0, 0);
       const mm = new THREE.Mesh(g2, new THREE.MeshStandardMaterial({
-        color, emissive: color, emissiveIntensity: emi, transparent: op < 1, opacity: op, roughness: 0.5 }));
+        color, emissive: color, emissiveIntensity: emi * T.emissive, transparent: op < 1, opacity: op, roughness: 0.5 }));
       mm.visible = false;
       this.bar.add(mm);
       return mm;
@@ -352,7 +382,7 @@ class Campus {
     this.segUnserved = seg(STATUS.critical, 1, 1.0);
     this.tick = new THREE.Mesh(
       new THREE.BoxGeometry(0.2, 1.1, 3.9),
-      new THREE.MeshStandardMaterial({ color: INK, emissive: INK, emissiveIntensity: 0.9 })
+      new THREE.MeshStandardMaterial({ color: INK, emissive: INK, emissiveIntensity: 0.9 * T.emissive })
     );
     this.bar.add(this.tick);
 
@@ -361,7 +391,7 @@ class Campus {
     track(name, 5.5, this.group, new THREE.Vector3(0, 7, 0), 26);
     this.nameSprite = name;
 
-    const stat = labelSprite('—', { color: '#c3c2b7', size: 40, weight: 500 });
+    const stat = labelSprite('—', { color: T.ink2, size: 40, weight: 500 });
     track(stat, 3.0, this.group, new THREE.Vector3(0, 7, 0), 20);
     this.statSprite = stat;
     this.labels = [name, stat];
@@ -401,11 +431,11 @@ class Campus {
       const target = Math.max(0.15, frac * compute * FLOOR_H);
       t.scale.y += (target - t.scale.y) * 0.16;
       const m = t.material;
-      const want = lit > 0.5 ? this.color : 0x2a2a28;
+      const want = lit > 0.5 ? this.color : T.towerOff;
       m.color.lerp(new THREE.Color(want), 0.12);
       m.emissive.lerp(new THREE.Color(lit > 0.5 ? this.color : 0x000000), 0.12);
       const pulse = 0.55 + 0.16 * Math.sin(time * 1.7 + i * 0.9);
-      m.emissiveIntensity += ((lit > 0.5 ? pulse : 0) - m.emissiveIntensity) * 0.15;
+      m.emissiveIntensity += ((lit > 0.5 ? pulse * T.emissive : 0) - m.emissiveIntensity) * 0.15;
       t.userData.crown.visible = gen === 'N';
     }
     // reserved / option slabs
@@ -441,7 +471,7 @@ class Campus {
     put(this.segTrain, served * KH, training * KH);
     put(this.segUnserved, (served + training) * KH, unserved * KH);
     this.tick.position.x = demand * KH;
-    this.tick.material.emissiveIntensity = unserved > 0.01 ? 1.6 : 0.8;
+    this.tick.material.emissiveIntensity = (unserved > 0.01 ? 1.6 : 0.8) * T.emissive;
     // rings
     for (const r of this.rings) {
       if (!r.visible) continue;
@@ -464,21 +494,21 @@ function buildSources() {
     const big = k === 'vendor';
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(big ? 17 : 10, big ? 6 : 4.5, big ? 9 : 7),
-      new THREE.MeshStandardMaterial({ color: 0x232321, roughness: 0.65, metalness: 0.55 })
+      new THREE.MeshStandardMaterial({ color: T.hub, roughness: 0.65, metalness: 0.55 })
     );
     body.position.y = big ? 3.0 : 2.25;
     body.castShadow = true; body.receiveShadow = true;
     g.add(body);
     const strip = new THREE.Mesh(
       new THREE.BoxGeometry(big ? 17.4 : 10.2, 0.5, big ? 9.4 : 7.2),
-      new THREE.MeshStandardMaterial({ color: STEEL, emissive: STEEL, emissiveIntensity: 0.8 })
+      new THREE.MeshStandardMaterial({ color: STEEL, emissive: STEEL, emissiveIntensity: 0.8 * T.emissive })
     );
     strip.position.y = big ? 6.1 : 4.6;
     g.add(strip);
-    const name = labelSprite(SRC_LABEL[k], { color: '#ffffff', size: 54, weight: 700 });
+    const name = labelSprite(SRC_LABEL[k], { color: T.ink, size: 54, weight: 700 });
     track(name, 4.2, g, new THREE.Vector3(0, big ? 6 : 4.5, 0), 17);
 
-    const sub = labelSprite(SRC_SUB[k], { color: '#898781', size: 36, weight: 500 });
+    const sub = labelSprite(SRC_SUB[k], { color: T.muted, size: 36, weight: 500 });
     track(sub, 2.3, g, new THREE.Vector3(0, big ? 6 : 4.5, 0), 11.5);
 
     sources[k] = { group: g, strip, name, sub, body };
@@ -508,7 +538,7 @@ const packetGeo = new THREE.OctahedronGeometry(1, 0);
 const packets = [];
 for (let i = 0; i < 28; i++) {
   const m = new THREE.Mesh(packetGeo, new THREE.MeshStandardMaterial({
-    color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.6, roughness: 0.25 }));
+    color: T.packet, emissive: T.packet, emissiveIntensity: 1.6 * T.emissive, roughness: 0.25 }));
   m.visible = false;
   m.castShadow = true;
   scene.add(m);
@@ -518,7 +548,7 @@ for (let i = 0; i < 28; i++) {
 // a ring at the vendor for the gen N launch
 const launchRing = new THREE.Mesh(
   new THREE.TorusGeometry(1, 0.4, 10, 80),
-  new THREE.MeshBasicMaterial({ color: 0x9085e9, transparent: true, opacity: 0 })
+  new THREE.MeshBasicMaterial({ color: LIGHT ? 0x4a3aa7 : 0x9085e9, transparent: true, opacity: 0 })
 );
 launchRing.visible = false;
 {
@@ -721,13 +751,13 @@ function sceneUpdate(time) {
     const col = SITE_COLOR[o.site];
     mesh.material.color.setHex(col);
     mesh.material.emissive.setHex(o.delivered ? col : STATUS.critical);
-    mesh.material.emissiveIntensity = 1.2 + 0.5 * Math.sin(time * 4 + o.placed);
+    mesh.material.emissiveIntensity = (1.2 + 0.5 * Math.sin(time * 4 + o.placed)) * T.emissive;
     if (route) touched.add(o.src + '|' + o.site);
   }
   for (let i = p; i < packets.length; i++) packets[i].visible = false;
   for (const s of Object.keys(routes)) for (const site of Object.keys(routes[s])) {
     const t = routes[s][site].tube.material;
-    const want = touched.has(s + '|' + site) ? 0.4 : 0.08;
+    const want = touched.has(s + '|' + site) ? T.laneHot : T.lane;
     t.opacity += (want - t.opacity) * 0.08;
   }
 
@@ -927,14 +957,14 @@ function onMonthEnter(i) {
     campuses[b.site].burst(b.delivered ? STATUS.good : STATUS.critical));
   if (i > 0 && f.launched && !F[i - 1].launched) {
     launchRing.visible = true; launchRing.userData.t = 0;
-    setSpriteText(sources.vendor.sub, 'gen N on sale · gen H discontinued', { color: '#9085e9', size: 36, weight: 600 });
+    setSpriteText(sources.vendor.sub, 'gen N on sale · gen H discontinued', { color: T.genN, size: 36, weight: 600 });
   }
-  if (i === 0) setSpriteText(sources.vendor.sub, SRC_SUB.vendor, { color: '#898781', size: 36, weight: 500 });
+  if (i === 0) setSpriteText(sources.vendor.sub, SRC_SUB.vendor, { color: T.muted, size: 36, weight: 500 });
   for (const site of RUN.sites) {
     const s = f.sites[site];
     setSpriteText(campuses[site].statSprite,
       `${SITE_CITY[site]} · ${s.capacity.toFixed(1)} kH · ${trim(s.power_mw)} MW`,
-      { color: '#c3c2b7', size: 40, weight: 600 });
+      { color: T.ink2, size: 40, weight: 600 });
   }
   syncHud(i);
 }
@@ -981,6 +1011,15 @@ $('step').addEventListener('click', () => {
   state.m = Math.min(M - 1, Math.floor(state.m) + 1);
 });
 $('speed').addEventListener('change', e => { state.speed = +e.target.value; });
+$('theme').addEventListener('click', () => {
+  const q = new URLSearchParams(location.search);
+  q.set('theme', LIGHT ? 'dark' : 'light');
+  q.set('run', $('run').value);
+  q.set('m', String(Math.round(state.m)));
+  if (state.truth) q.set('truth', '1'); else q.delete('truth');
+  if (!controls.autoRotate) q.set('spin', '0'); else q.delete('spin');
+  location.search = q.toString();
+});
 document.querySelectorAll('button[data-go]').forEach(b => b.addEventListener('click', () => {
   const k = b.dataset.go;
   if (k === 'world') controls.flyTo(30, -35, R * 3.65);
