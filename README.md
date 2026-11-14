@@ -12,6 +12,7 @@ rents spot, signs power, moves and resells hardware, and manages cash on a credi
 | Model | World | Games | Model reward | Reference reward, same worlds | Model as % of reference |
 |---|---|---|---|---|---|
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
+| Claude Fable 5 (Harbor + OpenCode) | v4 | 1 | 0.64 | 0.97 | 65% |
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v3 | 3 | 0.74–0.93 | 0.91–0.98 | 82–95% (mean ~90%) |
 | Gemini 4 Carbon (Harbor + OpenCode) | v3 | 5 | 0.25–0.37 | 0.80–0.94 | too slow to finish 24 months in 30 min |
 
@@ -21,6 +22,9 @@ Reward = oracle net cost / agent net cost (1 = as good as the perfect-informatio
   extra sites and options did not widen that gap. Hydrogen still over-provisions the early windows (91–108 kH-months
   vs 60 needed; 185–207 vs 140), buys and then dumps hardware ($275M of resales in one game), and skipped the brokers
   entirely in 2 of 3 games. But those mistakes cost it less than uncertainty costs the reference.
+- **Claude Fable 5 lost by the most so far**, at 65% of the reference in its one game ([results/fable5_v4.md](results/fable5_v4.md)):
+  it met all three windows with no penalties and finished in 13 of its 30 minutes, but bought 2.15x the compute window 1
+  needed on the credit line ($70M of interest against the reference's zero), then liquidated the surplus at a loss.
 - The levers left: strengthen the reference (its long commitments past month 23 cost it about $47M in the game
   Hydrogen won), and run more games and models.
 
@@ -90,7 +94,8 @@ do-nothing scores for that world, the agent's belief notes and actions).
 | `service.py`, `server.py` | the command interface and the Harbor sidecar server |
 | `TASK.md` | the rules the agent reads |
 | `build_harbor.py`, `harbor/gpu-world/` | the Harbor task and its generator |
-| `harbor/jobs/` | v4 Harbor runs (reference solution, Gemini 4 Hydrogen) |
+| `harbor/jobs/` | v4 Harbor runs (reference solution, Gemini 4 Hydrogen, Claude Fable 5) |
 | `results/ladder.json` | the v4 ladder |
+| `results/fable5_v4.md` | the Claude Fable 5 game: cost breakdown against the reference on its world |
 | `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
 | `docs/HANDOFF.md` | the original challenge brief and design notes |

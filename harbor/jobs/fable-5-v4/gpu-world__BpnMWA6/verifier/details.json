@@ -1,0 +1,188 @@
+{
+ "reward": 0.6362,
+ "seed": 34024457028360,
+ "net_cost": 1141.31,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1405.53,
+  "mark_to_market": 335.38,
+  "obligations": 71.16,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 1141.31,
+  "costs": {
+   "capex": 1012.0,
+   "power": 180.36,
+   "contracts": 272.87,
+   "spot": 5.21,
+   "unserved": 3.22,
+   "resale": -168.55,
+   "interest": 70.42,
+   "moves": 0.0,
+   "options": 30.0
+  }
+ },
+ "scale": {
+  "oracle": 726.14,
+  "reference": 745.95,
+  "do_nothing": 2980.21,
+  "reference_reward": 0.9734,
+  "do_nothing_reward": 0.2437
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0 beliefs: regime TIGHT (p~0.8: spot/index=2.7, lead-time news, res caps clipped to 1). GenN launch rumour ~14 => true 12-16, plan big N order at launch. Brokers unknown, testing A with 2k. Inference growth unknown (start ~6). Plan: front-load H (export-control risk), power us+14@6 ap+12@5, eu renewal ~m3, build 24m reservations ap/us, 20 options as tail hedge for m18-23. Target m16-23 capacity ~55kH"
+  },
+  {
+   "month": 1,
+   "text": "M1 beliefs: regime TIGHT still (shipped 2.58k~tight hi-end, index +2%, spot/index 1.76) though news says loosening - watch. Launch ~14. Broker A pending. Growth unknown. Plan: keep adding 24m res ap/us, H queue 11.4k clears ~m5, eu power renewal soon, big N order at launch, options now 30kH as m18-23 hedge."
+  },
+  {
+   "month": 2,
+   "text": "M2 beliefs: TIGHT confirmed (ship 1.42k, spot/index 2.3, CoWoS news). Broker A delivered once (p_reliable~0.72) so using A to bypass slow vendor queue. Launch ~14. Growth TBD. Plan: H fleet target ~26k by m8-10 (us14/eu8/ap8), eu power +10MW for post-19, N mega-order at launch sized to regime, 30kH options cover m18-23 gap, keep 1-2 24m res/mo while index low."
+  },
+  {
+   "month": 3,
+   "text": "M3 beliefs: TIGHT (index +12% to 1.83, ship 1.47k). Growth looks ~3-5% so far (6.5,6.0,6.2) - unclear. Launch ~14. A delivered 1/1. Plan: H fleet to ~37k (us14/eu8/ap15) + 46MW power => ~40kH owned+res by m10, window3 covered even w/o genN at 7% growth"
+  },
+  {
+   "month": 4,
+   "text": "M4 beliefs: Broker A now 1 deliver 1 cancel - p_reliable ~0.28, treat as unreliable, stop using A except pending 4k. Regime signals mixed: index +3.6pct tight-ish but spot/index 1.04 and cloud price-cut news loose-ish - maybe switching to LOOSE. Growth tracking ~3pct (6.5/6.0/6.2/6.5). Launch ~14. Plan: hold cash for genN order, no new buys this month, fleet en route us14 eu8 ap11-15 kH plus 7 res plus 30 options = window3 OK even without N."
+  },
+  {
+   "month": 5,
+   "text": "M5 beliefs: Regime flipped to LOOSE (shipped 6.39k, spot/index 0.72, HBM news). Rumours 14/14/14/11 intersect => launch m12-13 very likely. Broker A 2 of 3 ~ coin flip, avoid. Growth still ~3pct. Window1 done this month. Plan: queue clears m7, owned 37kH powered by m9. At launch order 12-16k N staggered within credit line, add ~10MW ap power ~m9-10 for N, resell surplus H m15+ 3k/mo as N lands, options held for m18-23 if shortfall. No buys this month to save credit room."
+  },
+  {
+   "month": 6,
+   "text": "M6 beliefs: LOOSE confirmed again (5.6k shipped, index -7pct). Growth ~3pct (demand 7.0 at m5 fits 3pct). Launch m12-13. Window1 complete 69/60. Plan: coast m7-11 (capacity ~37-42 vs demand ~7-8, window2 completes by ~m12), order ~12k N at launch split us/ap within credit, resell idle H from m16-19 when power tightens post-m19, exercise options only if growth switches to 7pct or N slips. Watch for export-control rumours and regime flip."
+  },
+  {
+   "month": 7,
+   "text": "M7 beliefs: Queue empty, 37k H fleet delivered. Regime unclear (index flat, spot/index 1.4, CoWoS tight news) - maybe loose still. Growth ~3pct. Launch m12-13 per rumour intersection. Plan unchanged: wait for launch, order ~12k N, keep ~400M+ credit room. Watch export controls."
+  },
+  {
+   "month": 8,
+   "text": "M8 beliefs: Window1 MET 129/60. Export-control rumour - low impact for me (H queue empty, N unaffected per rules). Rival spot squeeze this month - not buying spot. Regime ambiguous (index +7 tight, HBM news loose). Growth ~3pct (7.5 at m7 vs 7.38 model). Launch rumours still intersect m12-13. Plan: hold, order ~12k N at launch."
+  },
+  {
+   "month": 9,
+   "text": "M9 beliefs: Regime turning TIGHT (index +5 to 2.05, HBM yields bad). Launch rumours now ~12, combined belief m12-13. Growth 3pct still. Key risk: tight N allocation 1.5k/mo trickles. Fallback math: even with zero N, owned 37k + res 5 + 30 options exercised m17 covers window3 at 3pct growth (sum ~400 vs 320) and barely at 7pct. Plan: order 10-12k N at launch (credit room ~560 then), add broker N 4k if tight, consider resell H later. No action m9."
+  },
+  {
+   "month": 10,
+   "text": "M10 beliefs: TIGHT-ish (index +1.7, HBM bad). Growth 3pct. Launch m12-13, expect vendor confirm in m11 or m12 news. Window2 at 64/140 done by ~m12 on pace. Plan: at launch order 10-12k N vendor us/ap, maybe 4k broker A if tight, cash 9M credit room fine."
+  },
+  {
+   "month": 11,
+   "text": "M11 beliefs: No vendor launch confirmation this month => launch likely m13 (was 12-13). Index +5.8 to 2.21 => TIGHT, options (strike 1.6) deep ITM vs market. Growth 3pct. Plan: at launch order 10k N vendor (6 ap 4 us), skip brokers initially, exercise ~10-30 options at m17 as needed for window3, resell displaced H post-19. Window2 98/140 done next month."
+  },
+  {
+   "month": 12,
+   "text": "M12 beliefs: Launch CONFIRMED for m13. Regime TIGHT (index +5.3 to 2.33, spot/index 2.1, CoWoS) => N alloc ~1.5k/mo. Growth 3pct (8.49 at m11 fits). Plan: m13 order 10k N vendor ALL to ap (us power cliff at m19), signed +8MW ap now (energise m14-18) so m19-23 = N20 + H27 + res5 ~ 52kH vs inference ~12 => window3 ~360+ w/o options, 30 options spare. Resell idle H from m18-19 ~3k/mo if compute surplus. Window2 completes this month."
+  },
+  {
+   "month": 13,
+   "text": "M13 beliefs: Gen N LAUNCHED m13 (rumors were right). Ordered 10k N to ap (00M, cash ~-320, manageable interest vs options buffer). TIGHT => expect ~1.5k/mo deliveries, usable from m16 => ~+130 kH-mo in window3. Window2 MET 165/140. Index dropped 25pct at launch to 1.76/12m. Growth 3pct. Plan: monitor N delivery rate, resell idle H from ~m18 at 3k/mo, exercise options m17 only if needed, serve sites fine."
+  },
+  {
+   "month": 14,
+   "text": "M14 beliefs: TIGHT (index +4.7). Growth 3pct (8.74 at m13 vs model 8.8). N queue 10k, first shipments expected this month, usable m16. Rival spot squeeze - ignoring spot. Plan: hold, watch N delivery rate to calibrate option exercises at m16-17."
+  },
+  {
+   "month": 15,
+   "text": "M15 beliefs: ZERO N shipped m14 - concerning, tight alloc ~1-1.5k/mo at best. Window3 math: no-N spare ~229 vs 320 need, N trickle adds ~+95, options 30 backstop (exercise at m17 covers m18-23 at 1.6 strike which beats spot 2.4 and 6m res 2.1). Export rumour affects only H alloc/spot - low impact. Growth 3pct. Plan: at m17 count N arrivals and exercise enough options to close remaining gap with margin, start H resales ~m18-19 for idle units only."
+  },
+  {
+   "month": 16,
+   "text": "M16 beliefs: Window2 MET 264/140. N arriving ~1.1k/mo (tight). Demand 9.8 at m15 slightly above 3pct model - watching for 7pct switch. Window3 projection with N trickle: spare ~289 vs 320 => plan exercise ~10 options at m17 (covers m18-23, +60), keep 20 for later evidence. Resell idle H from m19 (us 4k idle at power cliff) and ap H as N displaces power. End state ap power binds 30MW ~m21."
+  },
+  {
+   "month": 17,
+   "text": "M17 beliefs: N pace ~1.5k/mo (2.93k in). Power cliff actually m20 (contracts run thru m19 inclusive). Window3 projection ~312-320 vs 320 - too tight, exercising 10 options now (res m18-23 at 1.6, +60 buffer => ~375). Keep 20 options for contingency (7pct switch or N slowdown). ap 30MW binds ~m20+: plan resell idle H 3k/mo from m20 (us 4k idle, then ap H displaced by N). Growth still 3pct (9.82 m16)."
+  },
+  {
+   "month": 18,
+   "text": "M18 beliefs: Comfortable now. Window3 72.5/320 with projected sum ~370 (incl 10kH res, N at 4k in / 6k queued ~1.4k/mo). Growth 3pct steady. 20 options likely expire unused - fine. Plan: m20+ resell idle H 3k/mo (us idle at cliff, ap displaced by N), no new buys, coast."
+  },
+  {
+   "month": 19,
+   "text": "M19 beliefs: On track - window3 123/320, need 39.4/mo, spare ~50/mo. ap power at 30MW cap exactly (H 21 + N 9) so selling 3k ap H now to make room for incoming N (frees 4.2MW = 2.6k N = 5.2kH). Resale plan: 3k/mo m19-23 (us 4k idle at m20 cliff, ap H displaced by N, eu 0.9k). Growth 3pct. 20 options spare."
+  },
+  {
+   "month": 20,
+   "text": "M20 beliefs: Demand 11.1 at m19 jumped - possible 7pct switch or noise, but window3 needs only 37/mo vs spare ~49/mo so safe either way. Sold 3k idle us H (2.5M). ap power headroom 2.2MW covers this month N arrivals. Plan: m21 sell 1k us idle + 2k ap H, m22 sell eu idle + ap rest. Options 20 expiring unused - fine."
+  },
+  {
+   "month": 21,
+   "text": "M21 beliefs: Growth looks switched to 7pct (~m18): 9.5, 11.1, 12.0. Still safe: need 34/mo, spare ~45/mo, all site inference covered thru m23 (us res 12 helps). Sold 2k ap H (frees 2.8MW for last 1.78k N queue) + 1k idle us H. m22 plan: sell eu idle 0.86k + any newly idle ap H. No option exercises needed."
+  },
+  {
+   "month": 22,
+   "text": "M22 beliefs: Window3 265/320, need 55 over 2 months vs spare ~46/mo => will complete at m23. ap power exactly fits final N queue 0.13k. Sold idle 0.86k eu H. m23: nothing needed, let settlement mark remaining fleet at 75pct used value. Growth ~7pct since m18 but amply covered."
+  },
+  {
+   "month": 23,
+   "text": "M23 final: Window3 completes this month (314.7+~43 spare vs 320). All three runs MET, zero unserved since m0 except 0.8kH. Selling 3k H + 3k N now (beats settlement mark slightly + interest). Final beliefs: regime tight most of mid/late game, launch was m13, growth switched ~3 to ~7pct around m18, broker A ~50pct, 20 options expire as cheap unused insurance."
+  }
+ ],
+ "actions": [
+  "contract_power 14 us",
+  "contract_power 12 ap",
+  "reserve 3 24 ap",
+  "reserve 3 24 us",
+  "buy_option 20",
+  "buy_gpus 6 H vendor ap",
+  "buy_gpus 2 H A ap",
+  "set_spot 1 ap",
+  "end_month",
+  "reserve 3 24 ap",
+  "reserve 2 24 us",
+  "buy_gpus 4 H vendor us",
+  "buy_option 10",
+  "end_month",
+  "contract_power 10 eu",
+  "buy_gpus 4 H vendor eu",
+  "buy_gpus 4 H A us",
+  "reserve 2 24 ap",
+  "end_month",
+  "contract_power 10 ap",
+  "buy_gpus 4 H A ap",
+  "buy_gpus 3 H vendor ap",
+  "set_spot 0 ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 8 ap",
+  "end_month",
+  "buy_gpus 10 N vendor ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "exercise_option 10 us",
+  "end_month",
+  "end_month",
+  "resell_gpus 3 H ap",
+  "end_month",
+  "resell_gpus 3 H us",
+  "end_month",
+  "resell_gpus 2 H ap",
+  "resell_gpus 1 H us",
+  "end_month",
+  "resell_gpus 0.86 H eu",
+  "end_month",
+  "resell_gpus 3 H us",
+  "resell_gpus 3 N ap",
+  "end_month"
+ ]
+}
