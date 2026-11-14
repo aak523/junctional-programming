@@ -68,6 +68,7 @@ class Bayes:
         self.export_start = None
         self.export_rumour = -99
         self.seen = -1
+        self.last_index = None
 
     def update(self, obs):
         t = obs["month"]
@@ -98,8 +99,17 @@ class Bayes:
                 self.export_start = t
         spike = any(n.startswith("Rival lab") for n in news)
         ratio = obs["prices"]["spot"] / obs["prices"]["reserve"][12] / (1.5 if spike else 1.0)
-        lp = {r: math.exp(-0.5 * ((math.log(ratio) - math.log(W.SPOT_MULT[r])) / 0.2) ** 2) for r in ("loose", "tight")}
+        lp = {r: math.exp(-0.5 * ((math.log(ratio) - math.log(W.SPOT_MULT[r])) / W.SPOT_NOISE) ** 2) for r in ("loose", "tight")}
         self._bayes(lp["tight"], lp["loose"])
+        # last month's contract-index drift is evidence about last month's regime (skip the launch month's step)
+        c = obs["prices"]["reserve"][12]
+        if self.last_index and not (obs["launched"] and self.launch == {t: 1.0}):
+            d = math.log(c / self.last_index)
+            ld = {r: math.exp(-0.5 * ((d - math.log(W.DRIFT[r])) / W.DRIFT_NOISE) ** 2) for r in ("loose", "tight")}
+            lt = (1 - W.SWITCH) * ld["tight"] + W.SWITCH * ld["loose"]   # regime may have switched since
+            ll = (1 - W.SWITCH) * ld["loose"] + W.SWITCH * ld["tight"]
+            self._bayes(lt, ll)
+        self.last_index = c
         # launch month
         if obs["launched"]:
             if len(self.launch) > 1:

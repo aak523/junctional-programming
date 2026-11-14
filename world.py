@@ -24,6 +24,9 @@ ALLOC = {"H": {"loose": 6.0, "tight": 2.0}, "N": {"loose": 4.0, "tight": 1.5}}  
 RESERVE_CAP = {"loose": 10.0, "tight": 3.0}  # kH of new reservations clouds accept per month
 SPOT_CAP = {"loose": 12.0, "tight": 3.0}     # kH of spot capacity you can get per month
 SPOT_MULT = {"loose": 1.1, "tight": 1.8}     # spot price / contract index (x lognormal noise)
+SPOT_NOISE = 0.3
+DRIFT = {"loose": 0.975, "tight": 1.04}       # monthly contract-index drift
+DRIFT_NOISE = 0.05
 TERM_FACTOR = {6: 1.15, 12: 1.0, 24: 0.9}
 RESALE = 0.75                             # resale (and settlement mark) = 75% of market value
 RESELL_CAP = 3.0                          # thousand GPUs resellable per month per generation
@@ -61,13 +64,13 @@ class World:
         self.demand = [round(6.0 * math.exp(g * k + rng.gauss(0, 0.05)), 2) for k in range(T)]
         c = [1.6]
         for k in range(1, T + 1):
-            x = c[-1] * (0.975 if r[k - 1] == "loose" else 1.04) * math.exp(rng.gauss(0, 0.02))
+            x = c[-1] * DRIFT[r[k - 1]] * math.exp(rng.gauss(0, DRIFT_NOISE))
             if k == self.launch:
                 x *= LAUNCH_PRICE
             c.append(min(4.0, max(0.8, x)))
         self.cindex = c
         self.spike = [rng.random() < SPIKE_P for _ in range(T)]
-        self.spot_noise = [math.exp(rng.gauss(0, 0.2)) for _ in range(T)]
+        self.spot_noise = [math.exp(rng.gauss(0, SPOT_NOISE)) for _ in range(T)]
         self.alloc_noise = [{g_: rng.uniform(0.7, 1.3) for g_ in ("H", "N")} for _ in range(T)]
         self.power_leads = [rng.randint(*POWER_LEAD) for _ in range(200)]
         self.news = [self._headlines(rng, k) for k in range(T)]
@@ -120,7 +123,7 @@ class World:
     def market_value(self, gen, k=None):
         k = self.t if k is None else k
         if gen == "H":
-            return GPU_PRICE["H"] * 0.98 ** k * (1.1 if self.regime[min(k, T - 1)] == "tight" else 1.0) * (LAUNCH_MV if k >= self.launch else 1.0)
+            return GPU_PRICE["H"] * 0.98 ** k * (LAUNCH_MV if k >= self.launch else 1.0)
         return GPU_PRICE["N"] * 0.98 ** max(0, k - self.launch) if k >= self.launch else 0.0
 
     def spot_price(self, k=None):
