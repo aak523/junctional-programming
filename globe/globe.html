@@ -125,7 +125,21 @@
     width: min(320px, calc(100% - 32px));
     display: flex; flex-direction: column; gap: 8px;
   }
-  .pane > h2 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .pane > h2 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  /* Info button beside each pane title; its explanation appears only on hover or focus. */
+  .info { flex: none; width: 14px; height: 14px; padding: 0; border: 0; background: none; color: var(--muted); cursor: help; display: grid; place-items: center; opacity: 0.6; }
+  .info:hover, .info:focus-visible { opacity: 1; color: var(--fg); outline: none; }
+  .info svg { width: 12px; height: 12px; }
+  .tip {
+    position: fixed; z-index: 10; max-width: 280px; box-sizing: border-box; padding: 10px 12px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--coast);
+    font-size: 12px; font-weight: 400; line-height: 1.5; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .tip.show { opacity: 1; }
+  .tip[hidden] { display: none; }
+  .tip p { margin: 0; }
+  .tip p + p { margin-top: 6px; }
   .training svg, .demand svg { display: block; width: 100%; height: auto; overflow: visible; }
   .chart-text { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
   .chart-num { font-size: 11px; fill: var(--fg); font-variant-numeric: tabular-nums; }
@@ -170,12 +184,12 @@
 
 <div id="stage"></div>
 <div class="panes">
-  <aside class="pane log" id="log" aria-labelledby="log-h"><h2 id="log-h">command log</h2></aside>
-  <aside class="pane flow" aria-labelledby="flow-h"><h2 id="flow-h">globe overview</h2><svg id="flow" viewBox="0 0 300 214" role="img"></svg></aside>
+  <aside class="pane log" id="log" aria-labelledby="log-h"><h2><span id="log-h">command log</span><button class="info" type="button" data-info="log" aria-label="About command log" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2></aside>
+  <aside class="pane flow" aria-labelledby="flow-h"><h2><span id="flow-h">globe overview</span><button class="info" type="button" data-info="flow" aria-label="About globe overview" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="flow" viewBox="0 0 300 214" role="img"></svg></aside>
 </div>
 <div class="panes panes-right">
-  <aside class="pane pending" id="pending" aria-labelledby="pending-h" hidden><h2 id="pending-h">outstanding orders</h2><ol></ol></aside>
-  <aside class="pane demand" aria-labelledby="demand-h"><h2 id="demand-h">compute</h2><svg id="compute" viewBox="0 0 274 74" role="img"></svg><svg id="demand" viewBox="0 0 274 132" role="img" style="margin-top:10px"></svg></aside>
+  <aside class="pane pending" id="pending" aria-labelledby="pending-h" hidden><h2><span id="pending-h">outstanding orders</span><button class="info" type="button" data-info="pending" aria-label="About outstanding orders" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ol></ol></aside>
+  <aside class="pane demand" aria-labelledby="demand-h"><h2><span id="demand-h">compute</span><button class="info" type="button" data-info="compute" aria-label="About compute" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="compute" viewBox="0 0 274 74" role="img"></svg><svg id="demand" viewBox="0 0 274 132" role="img" style="margin-top:10px"></svg></aside>
 </div>
 <div class="center">
 <div class="bar">
@@ -195,8 +209,9 @@
   </div>
   <output class="num" id="num" for="month">0</output>
 </div>
-<aside class="pane training" aria-labelledby="training-h"><h2 id="training-h">training</h2><svg id="train" viewBox="0 0 294 12" role="img"></svg></aside>
+<aside class="pane training" aria-labelledby="training-h"><h2><span id="training-h">training</span><button class="info" type="button" data-info="training" aria-label="About training" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="train" viewBox="0 0 294 12" role="img"></svg></aside>
 </div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
 <div class="error" id="err" hidden>The 3D view could not start. This browser may not support WebGL.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1184,6 +1199,45 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
   });
   setMonth(-1);
   setPlaying(false);   // start paused
+
+  // Pane explanations, shown on demand from each pane's info button.
+  const INFO = {
+    log: [
+      "Every command the run sent, month by month, in the order it was sent. Refused commands are struck through.",
+      "Italic lines at the top of a month are what arrived at the end of the month before: GPUs received, broker orders cancelled, moves arriving. Each arrow joins an order to where it arrived.",
+      "The first word is coloured by command type; sites, suppliers and GPU generations take their globe colours."],
+    flow: [
+      "The globe flattened into rows. Top: suppliers, with the GPUs ordered from each and not yet delivered (outline). Middle: datacentres, with the GPUs they own; bright is powered, dim is idle, blue is gen H, amber gen N. Bottom: compute rented for each site, reserved contracts solid and the standing spot request as an outline.",
+      "Faint curves are what moved at the last step; a labelled curve is a move still in transit. Counts are thousands of GPUs (kH for rented compute)."],
+    pending: [
+      "Buy orders placed but not yet fully delivered: the command that placed each, and how many of its GPUs are still to arrive (thousands).",
+      "Vendor orders arrive in parts: none sooner than 3 months after ordering, then a capped amount each month, first come first served. Broker orders arrive in full or are cancelled.",
+      "Click an order to find it in the command log."],
+    compute: [
+      "This month's compute at each site against what it is expected to need. Bar: capacity by source, owned powered GPUs in the site's colour, reserved compute solid yellow, the spot request as a yellow outline. Bracket: the range this month's inference demand can fall in; the actual figure is only revealed when the month ends. Inference must be served at its own site.",
+      "The all row adds the training still needed each month to meet the current window.",
+      "The chart is inference demand per site: what has been seen so far, and the range the rules allow from here on (3–7% growth a month, ±5% noise). Shading under a line is demand that went unserved."],
+    training: [
+      "Training runs need a set amount of compute within each window of months: 60 kH-months in months 0–7, 140 in 8–15 and 320 in 16–23. Only the current window is shown.",
+      "The bar is what is done so far against the target (tick). The lighter part is last month's spare capacity: compute left over after inference, all of which goes to training. Green means the window was met, red that it was missed."],
+  };
+  const tip = document.getElementById("tip");
+  const showTip = (btn) => {
+    tip.replaceChildren(...INFO[btn.dataset.info].map((t) => Object.assign(document.createElement("p"), { textContent: t })));
+    tip.hidden = false;
+    const r = btn.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    const left = Math.min(Math.max(8, r.left - 12), innerWidth - w - 8);
+    const top = r.bottom + 8 + h > innerHeight - 8 ? r.top - h - 8 : r.bottom + 8;
+    tip.style.left = `${left}px`; tip.style.top = `${Math.max(8, top)}px`;
+    requestAnimationFrame(() => tip.classList.add("show"));
+  };
+  const hideTip = () => { tip.classList.remove("show"); tip.hidden = true; };
+  for (const btn of document.querySelectorAll(".info")) {
+    btn.addEventListener("pointerenter", () => showTip(btn));
+    btn.addEventListener("pointerleave", hideTip);
+    btn.addEventListener("focus", () => showTip(btn));
+    btn.addEventListener("blur", hideTip);
+  }
 
   // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.
   const BASE_DIST = 4.4;
