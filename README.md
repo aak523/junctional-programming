@@ -9,9 +9,6 @@ rents spot, signs power, moves and resells hardware, and manages cash on a credi
 
 ## Status (14 Nov 2026)
 
-This README is the single source of truth for results and design: update figures here, nowhere else.
-(`results/v3/SUMMARY.md` is a frozen archive of the v3 runs.)
-
 | Model | World | Games | Model reward | Reference reward, same worlds | Model as % of reference |
 |---|---|---|---|---|---|
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
