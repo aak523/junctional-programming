@@ -1176,7 +1176,7 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
     goTo(k, Math.abs(k - month) > 1 ? JUMP_MS : FLIGHT_MS);
   });
   setMonth(0);
-  setPlaying(!reduce);
+  setPlaying(false);   // start paused
 
   // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.
   const BASE_DIST = 4.4;
