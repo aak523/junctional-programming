@@ -15,7 +15,7 @@ const LIGHT = THEME === 'light';
 
 const THEMES = {
   dark: {
-    bg: 0x0d0d0d, ocean: 0x0d2a4a, halo: 0x3987e5, haloA: 0.32, haloAdd: true,
+    bg: 0x0d0d0d, ocean: 0x0d2a4a, land: 0xffffff, halo: 0x3987e5, haloA: 0.22, haloAdd: true,
     graticule: 0x9b9a93, gratA: 0.18, coast: 0xffffff, coastA: 0.62,
     stars: true, pad: 0x1d1d1b, towerOff: 0x2a2a28, crown: 0xe8e6df, hub: 0x232321, steel: 0x6f6f68,
     sub: 0x35352f, tick: 0xffffff, packet: 0xffffff, lane: 0.08, laneHot: 0.40,
@@ -24,7 +24,7 @@ const THEMES = {
     site: { us: 0xffffff, eu: 0xc3c2b7, ap: 0x898781 },
   },
   light: {
-    bg: 0xffffff, ocean: 0xd3e6f6, halo: 0x0b0b0b, haloA: 0.5, haloAdd: false,
+    bg: 0xffffff, ocean: 0xd3e6f6, land: 0x0b0b0b, halo: 0x0b0b0b, haloA: 0.5, haloAdd: false,
     graticule: 0x0b0b0b, gratA: 0.13, coast: 0x0b0b0b, coastA: 0.75,
     stars: false, pad: 0xeceae3, towerOff: 0xc3c2b7, crown: 0x0b0b0b, hub: 0xe4e2db, steel: 0x52514e,
     sub: 0xd6d4cc, tick: 0x0b0b0b, packet: 0x0b0b0b, lane: 0.22, laneHot: 0.8,
@@ -34,6 +34,7 @@ const THEMES = {
   },
 };
 const T = THEMES[THEME];
+const css = hex => '#' + hex.toString(16).padStart(6, '0');
 const SITE_COLOR = T.site;
 const SITE_NAME  = { us: 'US', eu: 'EU', ap: 'AP' };
 const STATUS = { good: 0x0ca30c, warning: 0xfab219, serious: 0xec835a, critical: 0xd03b3b };
@@ -129,15 +130,16 @@ scene.add(fill);
 const globe = new THREE.Group();
 scene.add(globe);
 
-globe.add(new THREE.Mesh(
-  new THREE.SphereGeometry(R, 96, 64),
-  LIGHT ? new THREE.MeshBasicMaterial({ color: T.ocean })
-        : new THREE.MeshStandardMaterial({ color: T.ocean, roughness: 0.92, metalness: 0.08 })
-));
+// the sea, and the land painted onto it once land.json lands
+const seaMat = LIGHT ? new THREE.MeshBasicMaterial({ color: T.ocean })
+                     : new THREE.MeshStandardMaterial({ color: T.ocean, roughness: 0.92, metalness: 0.08 });
+const sea = new THREE.Mesh(new THREE.SphereGeometry(R, 96, 64), seaMat);
+sea.rotation.y = -Math.PI / 2;   // u = 0 sits on the antimeridian, like the painted map
+globe.add(sea);
 
 // atmosphere: a fresnel rim on a slightly larger back-facing shell
 globe.add(new THREE.Mesh(
-  new THREE.SphereGeometry(R * (LIGHT ? 1.035 : 1.09), 64, 48),
+  new THREE.SphereGeometry(R * (LIGHT ? 1.035 : 1.05), 64, 48),
   new THREE.ShaderMaterial({
     uniforms: { c: { value: new THREE.Color(T.halo) }, a: { value: T.haloA } },
     vertexShader: `varying vec3 vN; varying vec3 vP;
@@ -145,7 +147,7 @@ globe.add(new THREE.Mesh(
         vec4 mv = modelViewMatrix * vec4(position, 1.0); vP = mv.xyz;
         gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `uniform vec3 c; uniform float a; varying vec3 vN; varying vec3 vP;
-      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(-vP))), LIGHT ? 6.0 : 3.2);
+      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(-vP))), ${LIGHT ? '6.0' : '4.6'});
         gl_FragColor = vec4(c, f * a); }`,
     side: THREE.BackSide, blending: T.haloAdd ? THREE.AdditiveBlending : THREE.NormalBlending,
     transparent: true, depthWrite: false,
@@ -166,8 +168,37 @@ globe.add(new THREE.Mesh(
     color: T.graticule, transparent: true, opacity: T.gratA })));
 }
 
-// land: coastlines on the sea
+// land: a filled equirectangular map of the continents, painted into a canvas and
+// wrapped onto the sea sphere, so the blue only ever shows where there is water.
+function landTexture(rings) {
+  const W = Math.min(4096, renderer.capabilities.maxTextureSize), H = W / 2;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  x.fillStyle = css(T.ocean);
+  x.fillRect(0, 0, W, H);
+  x.fillStyle = css(T.land);
+  x.beginPath();
+  rings.forEach(flat => {
+    for (let i = 0; i + 1 < flat.length; i += 2) {
+      const px = (flat[i] + 180) / 360 * W, py = (90 - flat[i + 1]) / 180 * H;
+      if (i) x.lineTo(px, py); else x.moveTo(px, py);
+    }
+    x.closePath();
+  });
+  x.fill('evenodd');            // lakes punched out of the landmass they sit in
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.needsUpdate = true;
+  return tex;
+}
+
 fetch('./data/land.json').then(r => r.json()).then(land => {
+  seaMat.map = landTexture(land.rings);
+  seaMat.color.set(0xffffff);   // the map carries the colour now
+  seaMat.needsUpdate = true;
+
   const seg = [];
   land.rings.forEach(flat => {
     for (let i = 0; i + 3 < flat.length; i += 2) {
