@@ -1,0 +1,92 @@
+{
+ "reward": 0.3721,
+ "seed": 251370261768482,
+ "net_cost": 1786.71,
+ "months_played": 9,
+ "milestones_met": 2,
+ "settlement": {
+  "spend": 674.55,
+  "mark_to_market": 196.74,
+  "obligations": 36.0,
+  "milestones_met": 2,
+  "missed": [
+   23
+  ],
+  "penalties": 1272.9,
+  "net_cost": 1786.71,
+  "costs": {
+   "capex": 361.75,
+   "power": 127.2,
+   "contracts": 185.6,
+   "spot": 0.0,
+   "unserved": 0.0,
+   "resale": 0.0,
+   "interest": 0.0
+  }
+ },
+ "scale": {
+  "oracle": 664.75,
+  "reference": 718.16,
+  "do_nothing": 3233.86,
+  "reference_reward": 0.9256,
+  "do_nothing_reward": 0.2056
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "\"M0 beliefs: regime uncertain-leaning-loose after 5kH reservation fill despite tight headline and 2.19x spot/index"
+  },
+  {
+   "month": 1,
+   "text": "\"M1 beliefs: regime Loose (~92% prob given 4k H shipment, 5kH reservation fill, -6.7% index drop to .493M, and price-cut news) | Gen N launch m17-18 | inf growth uncertain (m0=5.67kH) | brokers A/B awaiting first probe results. Plan: W1 already covered (~135 kH-m), ordering 6k H pre-m5 export-control window for W2/W3 base, second 0.1k broker probes, sign W2 power next month.\""
+  },
+  {
+   "month": 2,
+   "text": "\"M2 beliefs: regime ~60% Loose / 40% Tight (index +3.6% to .547M, rival-adjusted spot ~1.52x index) | Gen N launch m17-18 | inf growth leaning 7% (~68% prob after m1=6.85kH) | brokers A & B both ~72% reliable (1/1 delivered). Plan: sign 16MW power now (energises m5..10 for 46MW peak / 30MW m20..23), hold cash (8M) with 14k H already queued.\""
+  },
+  {
+   "month": 3,
+   "text": "\"M3 beliefs: regime Loose (~99% prob: 4.98k H shipped, spot .268M = 0.81x index, CoWoS expansion news) | Gen N launch m17-18 (rumours m19 and m17) | inf growth ~55% 3% vs 45% 7% (m0=5.67, m1=6.85, m2=6.20) | brokers A & B both ~87% reliable (2/2 delivered). Plan: W1 (~169 kH-m) and W2 (267.2 kH-m) fully covered by 28.4k H + 46MW power + 5kH cloud, hold actions to accumulate cash for W3.\""
+  },
+  {
+   "month": 4,
+   "text": "\"M4 beliefs: regime Loose (~95% prob: 4.95k H shipped, index -3.9% to .510M, inventory buildup news) | Gen N launch m17-18 (rumours 19, 17, 19) | inf growth ~52% 7% vs 48% 3% (m0..3: 5.67, 6.85, 6.20, 6.97) | brokers A & B ~87% reliable. Plan: final 4.07k H ships end of m4 (completing 28.4k H pre-m5 export window), W1 at 41.6/60, hold cash (51M) for W3 procurement.\""
+  },
+  {
+   "month": 5,
+   "text": "\"M5 beliefs: regime Tight (~96% prob: m4 shipped 2.22k of 4.07k, index +6.0% to .600M, HBM yield cut news) | Gen N launch 50/50 m17 vs m18 (rumours 19,17,19,16) | inf growth ~90% 3%/mo pre-m8 (m0..4: 5.67,6.85,6.20,6.97,6.95) with 50% switch risk in m8..15 | brokers A & B ~87% reliable. Plan: last 1.86k H ships now, W1 completes this month (~74/60), accumulate cash (77M -> 05M) for W3.\""
+  },
+  {
+   "month": 6,
+   "text": "\"M6 beliefs: regime Tight (~93% prob: spot .727M = 1.73x index .580M) | export controls ~75% likely imminent (drafting news) | Gen N launch 50/50 m17 vs m18 | inf growth ~50/50 3% vs 7% (m5=7.72kH gives +6.4%/m raw slope from m0=5.67) | brokers A & B ~87% reliable. Plan: all 28.4k H delivered before export controls, W1 already done (73.22/60), W2 covered (267.2 kH-m), build cash (05M -> 33M) for W3.\""
+  },
+  {
+   "month": 7,
+   "text": "\"M7 beliefs: regime Tight (~95% prob: index +2.8% to .625M, CoWoS fully booked news) | export controls not yet active (~65% still pending after m6 rumour) | Gen N launch 50/50 m17 vs m18 | inf growth ~93% 3%/mo in W1 (m6=7.38kH) with 50% switch-to-7% risk in m8..15 | brokers A & B ~87% reliable (40% decay risk in m8..15). Plan: finish W1 (>113/60), enter W2 at 33.4kH/m, cash 33M -> 61M.\""
+  },
+  {
+   "month": 8,
+   "text": "\"M8 beliefs: regime ~75% Loose (spot .345M = 0.83x index .630M) | Gen N launch 100% Month 18 (m5 rumour 16 and m8 rumour 20 bracket L+-2 uniquely at L=18) | inf growth 3% through m7 (7.77kH), watching m8..15 for 50% switch to 7% | export controls ~40% risk remaining in m8..15 | brokers A & B ~87% initially reliable (watching 40% decay risk in m8..15). Plan: W1 MET (113.8/60), W2 running at 33.4kH/m, accumulate cash (61M) until m11-12 W3 power & cloud buildout.\""
+  }
+ ],
+ "actions": [
+  "contract_power 14",
+  "reserve 5 24",
+  "buy_gpus 8 H vendor",
+  "buy_gpus 0.1 H A",
+  "buy_gpus 0.1 H B",
+  "end_month",
+  "buy_gpus 6 H vendor",
+  "buy_gpus 0.1 H A",
+  "buy_gpus 0.1 H B",
+  "end_month",
+  "contract_power 16",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month"
+ ]
+}

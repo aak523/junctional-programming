@@ -1,0 +1,103 @@
+{
+ "reward": 0.2994,
+ "seed": 260298335429083,
+ "net_cost": 2143.25,
+ "months_played": 11,
+ "milestones_met": 1,
+ "settlement": {
+  "spend": 576.25,
+  "mark_to_market": 180.12,
+  "obligations": 41.11,
+  "milestones_met": 1,
+  "missed": [
+   15,
+   23
+  ],
+  "penalties": 1706.0,
+  "net_cost": 2143.25,
+  "costs": {
+   "capex": 375.0,
+   "power": 124.8,
+   "contracts": 122.41,
+   "spot": 0.0,
+   "unserved": 0.0,
+   "resale": -45.96,
+   "interest": 0.0
+  }
+ },
+ "scale": {
+  "oracle": 641.69,
+  "reference": 798.44,
+  "do_nothing": 3456.34,
+  "reference_reward": 0.8037,
+  "do_nothing_reward": 0.1857
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0 beliefs: supply ~75% loose (inventory headline, spot/idx 1.41x), genN launch M11..18 uniform, brokers A/B 50% reliable untested, inf growth 50/50 3% vs 7%, plan: 32MW energises M8 so bridge W1 with 2kH 12m reserve and pre-buy 8k H for M8 ramp"
+  },
+  {
+   "month": 1,
+   "text": "M1 beliefs: M0 was loose (4k shipped, idx -5.9%) but M1 ~90% switched to tight (spot .88M = 3.24x idx), genN launch M14..18 (rumour around M16), brokers A/B 50% reliable untested, inf growth ~55% 7% vs 45% 3% (M0 6.34kH), plan: lock 1kH 24m at .356M before tight drift and buy 4k H to reach 26k H for M8..19"
+  },
+  {
+   "month": 2,
+   "text": "M2 beliefs: M1 confirmed tight (idx +10.1% to .658M) and M2 ~70% switched back to loose (spot .491M = 0.90x idx), genN launch M14..18 uniform, brokers A/B 50% reliable untested, inf growth ~55% 3% vs 45% 7% (6.34->6.56kH), plan: hold actions since W1 committed 92.6kH-mo matches expected 91.4kH-mo and observe M2 queue shipment"
+  },
+  {
+   "month": 3,
+   "text": "M3 beliefs: M2 confirmed loose (4.46k shipped, idx -9.6%) and M3 ~85% loose (spot 2.01x idx explained by 1.5x rival buying), genN launch M14..18 around M16, brokers A/B 50% reliable untested, inf growth ~82% 7%/mo (6.34->6.56->7.27kH), plan: skip .01M rival spot, buy 3k H to reach 29k H (~250kH-mo in W2), fill ~3.6kH W1 gap via M4..7 loose spot"
+  },
+  {
+   "month": 4,
+   "text": "M4 beliefs: supply ~92% loose (6.58k shipped, idx -5.0% to .424M, price-cut headline), genN launch M14..18 around M16, brokers A/B 50% reliable untested, inf growth ~98% 7%/mo (6.34->6.56->7.27->7.95kH), plan: lock 2kH 12m at .424M to cover ~6kH-mo W1 gap in M5..7 and allow pre-launch H resale later"
+  },
+  {
+   "month": 5,
+   "text": "M5 beliefs: supply ~99% loose (idx -3.6% to .373M, spot /usr/bin/bash.671M = 0.49x idx, price-cut headline), genN launch M14..18 around M16, brokers A/B 50% reliable untested, inf growth ~85% 7%/mo (7.64kH in M4), plan: skip even /usr/bin/bash.67M spot since M5..7 committed 49.3kH-mo exceeds ~46.5kH-mo needed, let final 3k H ship end of M5"
+  },
+  {
+   "month": 6,
+   "text": "M6 beliefs: supply ~96% loose (HBM loosens headline, idx .383M, spot 1.30x), genN launch narrowed to M14..17 (rumours M16 and M15), brokers A/B 50% reliable untested, inf growth ~95% 7%/mo (8.23kH in M5), plan: hold actions for M6 since W1 needs 10.84kH-mo train + ~18.9kH-mo inf vs 32.86kH-mo committed, verify exact M7 buffer next month"
+  },
+  {
+   "month": 7,
+   "text": "M7 beliefs: supply ~90% loose (idx -4.6% to .320M, spot 1.61x), export control rumour likely imminent M8..13 but all 29k H already delivered, genN launch M14..17 (three rumours M16/M15/M16 -> E[L]~15.7), brokers A/B 50% reliable untested, inf growth 7%/mo (8.78kH in M6), plan: finish W1 60/60 cleanly with 0 spot and power all 29k H on 48MW starting M8"
+  },
+  {
+   "month": 8,
+   "text": "M8 beliefs: supply ~96% loose (inventory headline, idx -6.3% to .237M, spot 1.26x), export controls active M8..13 (harmless since 29k H delivered), genN launch 100% in M15..17 (rumours M16/15/16/17 -> E[L]~16), brokers A/B 50% reliable untested, inf growth 7%/mo (10.51kH in M7, watch for 50% switch in M8..15), plan: run 34kH/mo in W2 and accumulate cash for M11..15 cloud/genN"
+  },
+  {
+   "month": 9,
+   "text": "M9 beliefs: supply ~99% loose (idx -7.4% to .145M, spot /usr/bin/bash.579M = 0.51x idx), genN launch 100% in M16..17 (intersecting M6 rumour 15 and M9 rumour 18), brokers A/B 50% reliable untested, inf growth ~70% 7% vs 30% switched to 3% at M8 (10.42kH in M8), plan: hold 29k H through M10 then resell excess 6.14k H pre-launch in M11..13 paired with 0-overhang M11 12m cloud"
+  },
+  {
+   "month": 10,
+   "text": "M10 beliefs: supply ~98% loose (idx -3.8% to .101M, spot .192M = 1.08x idx), export controls active M8..13, genN launch 100% in M16..17, brokers A/B 50% reliable untested, inf growth ~90% still 7%/mo (12.01kH in M9), plan: resell first 3k of 6.14k post-M19-unpowered H now at 5.32M/k and pair second 3k resale in M11 with 0-overhang 12m cloud"
+  }
+ ],
+ "actions": [
+  "contract_power 16",
+  "contract_power 16",
+  "reserve 2 12",
+  "buy_gpus 8 H",
+  "end_month",
+  "reserve 1 24",
+  "buy_gpus 4 H",
+  "end_month",
+  "end_month",
+  "buy_gpus 3 H",
+  "end_month",
+  "reserve 2 12",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "resell_gpus 3 H",
+  "end_month"
+ ]
+}
