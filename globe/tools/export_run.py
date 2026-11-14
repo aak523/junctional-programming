@@ -19,9 +19,15 @@ and, for the month-end settlement that leads into the next month:
                                  capacity left over for training (kH)
   window_training                training done so far in each training window, including this month (kH-months)
   met                            {last month of window: true/false} for windows already decided
+Money ($M): commands[i].cost is what each command cost (negative for income); cash is the cash after the month's
+commands; costs is spending so far by category; month_end is what the settlement charged at each site and in
+interest, and refunded at each supplier; deliveries[].value is what the delivered GPUs cost (the refund for a
+cancelled order, the shipping cost for a move); if_stopped is the final score if the agent stopped sending commands
+here (the game's own finish(): standing contracts run on, then settlement).
 The top level also carries the rules a player knows about demand and training (rules) and the state before any
 command (start: sites with owned, powered and own compute, and waiting).
 """
+import copy
 import json
 import sys
 from collections import defaultdict
@@ -32,6 +38,16 @@ import policies  # noqa: E402
 import world as W  # noqa: E402
 
 SUPPLIERS = ("vendor",) + tuple(W.BROKERS)
+
+
+def if_stopped(world):
+    w2 = copy.deepcopy(world)
+    st = w2.finish()
+    return {k: st[k] for k in ("net_cost", "spend", "mark_to_market", "obligations", "penalties", "milestones_met")}
+
+
+def costs(world):
+    return {k: round(v, 2) for k, v in world.cost.items()}
 
 
 def waiting(queue):
@@ -47,7 +63,7 @@ w = W.World(seed)
 pol = pol_factory(w) if getattr(pol_factory, "needs_world", False) else pol_factory()
 months = []
 # The world before any command: GPUs already at the sites, what month 0's power would run, and orders already queued.
-start = {"sites": {}, "waiting": waiting(w.queue)}
+start = {"sites": {}, "waiting": waiting(w.queue), "cash": round(w.cash, 2), "costs": costs(w), "if_stopped": if_stopped(w)}
 for s_ in W.SITES:
     _, pw = w.powered(s_, 0)
     start["sites"][s_] = {"owned": {g: round(v, 3) for g, v in w.owned[s_].items()},
@@ -58,12 +74,13 @@ while w.t < W.T:
     commands = []
 
     def act(c):
+        cash0 = w.cash
         try:
             r = w.command(c)
         except ValueError:
             commands.append({"c": c, "ok": False})
             raise
-        commands.append({"c": c, "ok": True})
+        commands.append({"c": c, "ok": True, "cost": round(cash0 - w.cash, 2)})
         if c.split()[0] == "buy_gpus":
             order_ref[w.next_id - 1] = [len(months), len(commands) - 1]
         return r
@@ -74,33 +91,39 @@ while w.t < W.T:
         except ValueError:
             pass
     owned = {s: {g: round(v, 3) for g, v in w.owned[s].items()} for s in W.SITES}
+    cash_now, costs_now, stopped = round(w.cash, 2), costs(w), if_stopped(w)
+    paid = {o["id"]: o["paid"] / o["qty"] for o in w.queue}   # $M per thousand GPUs of each order
+    k = w.t
+    contract_cost = {s: sum(c["qty"] * c["price"] for c in w.contracts if c["site"] == s and c["start"] <= k < c["end"]) for s in W.SITES}
     before = waiting(w.queue)
     pending = [order_ref[o["id"]] + [round(o["left"], 3)] for o in w.queue if o["left"] > 1e-9 and o["id"] in order_ref]
     left_before = {o["id"]: (o["src"], o["site"], o["gen"], o["left"]) for o in w.queue if o["src"] == "vendor"}
     w.end_month()
     rep = w.history[-1]
     left_after = {o["id"]: o["left"] for o in w.queue}
-    agg, refs = defaultdict(float), defaultdict(list)
+    agg, refs, value = defaultdict(float), defaultdict(list), defaultdict(float)
     for oid, (src, site, gen, left) in left_before.items():
         shipped = left - left_after.get(oid, 0.0)
         if shipped > 1e-9:
             agg[(src, site, gen, True)] += shipped
+            value[(src, site, gen, True)] += shipped * paid.get(oid, 0.0)
             if oid in order_ref:
                 refs[(src, site, gen, True)].append(order_ref[oid])
     for b in rep["broker"]:
         key = (b["src"], b["site"], b["gen"], b["delivered"])
         agg[key] += b["qty"]
+        value[key] += b["qty"] * paid.get(b["id"], 0.0) * (1 if b["delivered"] else W.BROKER_REFUND)
         if b["id"] in order_ref:
             refs[key].append(order_ref[b["id"]])
-    deliveries = [{"src": s, "site": site, "gen": g, "qty": round(q, 3), "ok": ok, "orders": refs[(s, site, g, ok)]}
-                  for (s, site, g, ok), q in agg.items()]
+    deliveries = [{"src": s, "site": site, "gen": g, "qty": round(q, 3), "ok": ok, "orders": refs[(s, site, g, ok)],
+                   "value": round(value[(s, site, g, ok)], 2)} for (s, site, g, ok), q in agg.items()]
     # GPU moves between datacentres made this month arrive for next month (the world does not keep the source site,
     # so read it from the command: move_gpus <qty> <gen> <from> <to>).
     for i, c in enumerate(commands):
         parts = c["c"].split()
         if c["ok"] and parts[0] == "move_gpus" and len(parts) >= 5:
             deliveries.append({"src": parts[3], "site": parts[4], "gen": parts[2], "qty": float(parts[1]), "ok": True,
-                               "move": True, "orders": [[len(months), i]]})
+                               "move": True, "orders": [[len(months), i]], "value": c.get("cost", 0.0)})
     months.append({"month": len(months), "commands": commands,
                    "sites": {s: {"owned": owned[s], "powered": rep["sites"][s]["powered"]} for s in W.SITES},
                    "waiting": before, "pending": pending, "deliveries": deliveries, "remaining": waiting(w.queue),
@@ -108,6 +131,14 @@ while w.t < W.T:
                                   "spot_req": x["spot_requested"], "spot": x["spot_filled"], "training": x["training"]}
                               for s, x in rep["sites"].items()},
                    "window_training": [round(w.window_training(a, d), 2) for a, d, _ in W.MILESTONES],
+                   "cash": cash_now, "costs": costs_now, "if_stopped": stopped,
+                   "month_end": {"sites": {s: round(x["power_mw"] * W.POWER_COST[s] + contract_cost[s]
+                                                    + x["spot_filled"] * rep["spot_price"] * W.SITE_PRICE[s]
+                                                    + (x["demand"] - x["served"]) * W.UNSERVED_INFERENCE, 2)
+                                           for s, x in rep["sites"].items()},
+                                 "interest": rep["interest"],
+                                 "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
+                                             for b in rep["broker"] if not b["delivered"]}},
                    "met": {str(d): v for d, v in w.met.items()}})
 rules = {"demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
          "milestones": [list(m) for m in W.MILESTONES]}
