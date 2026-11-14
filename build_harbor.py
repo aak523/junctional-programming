@@ -42,7 +42,14 @@ cpus = 2
 memory_mb = 4096
 '''
 
+OPENCODE = "1.19.5"
+
+# OpenCode is baked in: Harbor skips its own install when `opencode --version` works, and installing Node and
+# OpenCode at agent setup can exceed Harbor's 360 s setup timeout.
 MAIN_DOCKERFILE = f'''FROM python:3.12-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl bash nodejs npm ca-certificates \\
+    && rm -rf /var/lib/apt/lists/* \\
+    && npm i -g opencode-ai@{OPENCODE} && opencode --version
 RUN pip install --no-cache-dir {PINS}
 COPY gpu /usr/local/bin/gpu
 RUN chmod 755 /usr/local/bin/gpu
