@@ -68,7 +68,8 @@
   .log .arrows path { fill: none; stroke-width: 1; stroke-opacity: 0.6; }
   .panes-right { left: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
   .pending { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
-  .pending[hidden] { display: none; }
+  .pane .empty { margin: 0; font-size: 11px; font-style: italic; color: var(--muted); }
+  .pane .empty[hidden] { display: none; }
   .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
   .pending li { cursor: pointer; }
@@ -188,7 +189,7 @@
   <aside class="pane flow" aria-labelledby="flow-h"><h2><span id="flow-h">globe overview</span><button class="info" type="button" data-info="flow" aria-label="About globe overview" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="flow" viewBox="0 0 300 214" role="img"></svg></aside>
 </div>
 <div class="panes panes-right">
-  <aside class="pane pending" id="pending" aria-labelledby="pending-h" hidden><h2><span id="pending-h">outstanding orders</span><button class="info" type="button" data-info="pending" aria-label="About outstanding orders" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ol></ol></aside>
+  <aside class="pane pending" id="pending" aria-labelledby="pending-h"><h2><span id="pending-h">outstanding orders</span><button class="info" type="button" data-info="pending" aria-label="About outstanding orders" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ol></ol><p class="empty">no orders outstanding</p></aside>
   <aside class="pane demand" aria-labelledby="demand-h"><h2><span id="demand-h">compute</span><button class="info" type="button" data-info="compute" aria-label="About compute" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="compute" viewBox="0 0 274 74" role="img"></svg><svg id="demand" viewBox="0 0 274 132" role="img" style="margin-top:10px"></svg></aside>
 </div>
 <div class="center">
@@ -1056,6 +1057,8 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
     else if (j && SUPPLIER_TOKENS.has(tok)) span.dataset.ent = tok;
     li.appendChild(span);
   });
+  const logEmpty = Object.assign(document.createElement("p"), { className: "empty", textContent: "no commands run yet" });
+  log.appendChild(logEmpty);
   const logItems = [];   // [month][command index] -> li
   const evtItems = [];   // [month][delivery index] -> li of the received/cancelled line, in the next month's section
   const fmtQ = (q) => `${Math.round(q * 100) / 100}k`;   // thousands of GPUs
@@ -1124,6 +1127,7 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
   };
   // Pending buy orders at month k: the original command and how much of it is still to come.
   const pendingPane = document.getElementById("pending"), pendingList = pendingPane.querySelector("ol");
+  const pendingEmpty = pendingPane.querySelector(".empty");
   const showPending = (k) => {
     pendingList.replaceChildren();
     for (const [om, oi, left] of M(k).pending || []) {
@@ -1145,10 +1149,11 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
       });
       pendingList.appendChild(li);
     }
-    pendingPane.hidden = !pendingList.children.length;
+    pendingEmpty.hidden = pendingList.children.length > 0;
   };
   const showLog = (k) => {
     logSections.forEach((sec, i) => { sec.hidden = i > k; sec.classList.toggle("now", i === k); });
+    logEmpty.hidden = k >= 0;
     drawArrows(k);
     log.scrollTop = log.scrollHeight;
     showPending(k);
