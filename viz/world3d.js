@@ -15,26 +15,27 @@ const LIGHT = THEME === 'light';
 
 const THEMES = {
   dark: {
-    bg: 0x0d0d0d, ocean: 0x0d2a4a, land: 0xffffff,
-    graticule: 0x9b9a93, gratA: 0.18, coast: 0xffffff, coastA: 0.62,
-    stars: true, pad: 0x1d1d1b, towerOff: 0x2a2a28, crown: 0xe8e6df, hub: 0x232321, steel: 0x6f6f68,
-    sub: 0x35352f, tick: 0xffffff, packet: 0xffffff, lane: 0.08, laneHot: 0.40,
-    emissive: 1, bloom: true, amb: 0.42, keyLight: 1.0, fillLight: 0.45, fillHue: 0x4a6fa5,
-    ink: '#ffffff', ink2: '#c3c2b7', muted: '#898781', genN: '#9085e9',
-    site: { us: 0xffffff, eu: 0xc3c2b7, ap: 0x898781 },
+    bg: 0x08090b, ocean: 0x0b0e12, land: 0x191d23,
+    graticule: 0xffffff, gratA: 0.055, coast: 0xf2f1ec, coastA: 0.85,
+    stars: false, pad: 0x101317, towerOff: 0x1b1f25, crown: 0xf2f1ec, hub: 0x14181d, steel: 0x6b7076,
+    sub: 0x272b31, tick: 0xf2f1ec, packet: 0xf2f1ec, lane: 0.07, laneHot: 0.38,
+    emissive: 1, bloom: true, amb: 0.40, keyLight: 0.95, fillLight: 0.30, fillHue: 0x3f4a57,
+    ink: '#f2f1ec', ink2: '#9a9a94', muted: '#5f5f5b', genN: '#8f86d8',
+    site: { us: 0xf2f1ec, eu: 0xb6b6af, ap: 0x7c7c76 },
   },
   light: {
-    bg: 0xffffff, ocean: 0xe8f3fb, land: 0xffffff,
-    graticule: 0x0b0b0b, gratA: 0.13, coast: 0x0b0b0b, coastA: 0.75,
-    stars: false, pad: 0xeceae3, towerOff: 0xc3c2b7, crown: 0x0b0b0b, hub: 0xe4e2db, steel: 0x52514e,
-    sub: 0xd6d4cc, tick: 0x0b0b0b, packet: 0x0b0b0b, lane: 0.22, laneHot: 0.8,
-    emissive: 0.12, bloom: false, amb: 0.92, keyLight: 0.22, fillLight: 0.08, fillHue: 0xc9d6e6,
-    ink: '#0b0b0b', ink2: '#52514e', muted: '#6f6e69', genN: '#4a3aa7',
-    site: { us: 0x0b0b0b, eu: 0x52514e, ap: 0x898781 },
+    bg: 0xf7f6f2, ocean: 0xe6eaee, land: 0xfbfaf7,
+    graticule: 0x121211, gratA: 0.07, coast: 0x121211, coastA: 0.8,
+    stars: false, pad: 0xefeee9, towerOff: 0xd6d5cf, crown: 0x121211, hub: 0xe6e5e0, steel: 0x56565a,
+    sub: 0xdcdbd5, tick: 0x121211, packet: 0x121211, lane: 0.20, laneHot: 0.75,
+    emissive: 0.12, bloom: false, amb: 3.4, keyLight: 0.55, fillLight: 0.18, fillHue: 0xdfe2e4,
+    ink: '#121211', ink2: '#56565a', muted: '#86868a', genN: '#4a3aa7',
+    site: { us: 0x121211, eu: 0x56565a, ap: 0x8c8c90 },
   },
 };
 const T = THEMES[THEME];
 const css = hex => '#' + hex.toString(16).padStart(6, '0');
+const metal = v => LIGHT ? v * 0.12 : v;   // the paper key has no shine to catch
 const SITE_COLOR = T.site;
 const SITE_NAME  = { us: 'US', eu: 'EU', ap: 'AP' };
 const STATUS = { good: 0x0ca30c, warning: 0xfab219, serious: 0xec835a, critical: 0xd03b3b };
@@ -112,7 +113,7 @@ try {
   if (LIGHT) throw new Error('no bloom on white');
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.48, 0.6, 0.82);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.34, 0.5, 0.90);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 } catch (e) { console.warn('bloom unavailable, falling back to plain render', e); composer = null; }
@@ -285,7 +286,7 @@ class Campus {
 
     const pad = new THREE.Mesh(
       new THREE.CylinderGeometry(PAD_R, PAD_R - 1.2, 2.6, 64),
-      new THREE.MeshStandardMaterial({ color: T.pad, roughness: 0.75, metalness: 0.25 })
+      new THREE.MeshStandardMaterial({ color: T.pad, roughness: 0.75, metalness: metal(0.25) })
     );
     pad.position.y = PAD_TOP - 1.3; pad.receiveShadow = true;
     pad.userData.site = site;
@@ -309,7 +310,7 @@ class Campus {
     for (let i = 0; i < cols * cols; i++) {
       const cx = (i % cols - (cols - 1) / 2) * step;
       const cz = (Math.floor(i / cols) - (cols - 1) / 2) * step;
-      const mat = new THREE.MeshStandardMaterial({ color: T.towerOff, emissive: 0x000000, roughness: 0.45, metalness: 0.35 });
+      const mat = new THREE.MeshStandardMaterial({ color: T.towerOff, emissive: 0x000000, roughness: 0.45, metalness: metal(0.35) });
       const m = new THREE.Mesh(towerGeo, mat);
       m.position.set(cx, PAD_TOP, cz);
       m.scale.set(step * 0.52, 0.001, step * 0.52);
@@ -357,7 +358,7 @@ class Campus {
 
     // substation: height = energised MW, ghost box = contracted but not yet live
     const sub = new THREE.Mesh(towerGeo, new THREE.MeshStandardMaterial({
-      color: T.sub, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: 0.5 }));
+      color: T.sub, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: metal(0.5) }));
     sub.position.set(0, PAD_TOP, -(PAD_R + 2.6));
     sub.scale.set(2.8, 0.001, 2.8);
     sub.castShadow = true;
@@ -501,7 +502,7 @@ function buildSources() {
     const big = k === 'vendor';
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(big ? 17 : 10, big ? 6 : 4.5, big ? 9 : 7),
-      new THREE.MeshStandardMaterial({ color: T.hub, roughness: 0.65, metalness: 0.55 })
+      new THREE.MeshStandardMaterial({ color: T.hub, roughness: 0.65, metalness: metal(0.55) })
     );
     body.position.y = big ? 3.0 : 2.25;
     body.castShadow = true; body.receiveShadow = true;
