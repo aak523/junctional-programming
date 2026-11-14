@@ -12,6 +12,8 @@ P=$(( $(nproc) - 2 ))
 # A100 measurements: batch 1 x accum 16, no activation checkpointing, Liger fused loss = 6.1k tok/s (3.2x the defaults);
 # an example is ~5.2k tokens, so SFT uses a random 4,800 of the 9,600 teacher examples (~70 min)
 SFT_LIMIT=${SFT_LIMIT:-4800}
+# round 2 sized to the same ~70 min: 60 seeds x 6 samples, 2 relabelled episodes per seed, 10% replay of the teacher data
+DAGGER_SEEDS="11000 ${DAGGER_END:-11060}"
 mkdir -p train/logs train/data train/ckpt train/results
 stage=$1
 run() {
@@ -25,13 +27,13 @@ run() {
     mask)       python train/sft.py --data train/data/sft_ref.jsonl --limit 320 --max-steps 20 --liger --out train/ckpt/mask ;;
     sft)        python train/sft.py --data train/data/sft_ref.jsonl --limit $SFT_LIMIT --liger --out train/ckpt/sft --merge-out train/ckpt/sft-merged &&
                 python train/eval_llm.py --model train/ckpt/sft-merged $EVAL --name sft ;;
-    sample)     python train/rollout.py --model train/ckpt/sft-merged --seeds 11000 11100 --k 6 --temperature 0.8 \
+    sample)     python train/rollout.py --model train/ckpt/sft-merged --seeds $DAGGER_SEEDS --k 6 --temperature 0.8 \
                   --out train/data/dagger_samples.jsonl &&
-                python train/rollout.py --model train/ckpt/sft-merged --seeds 11000 11100 --k 1 --temperature 0 \
+                python train/rollout.py --model train/ckpt/sft-merged --seeds $DAGGER_SEEDS --k 1 --temperature 0 \
                   --out train/data/dagger_greedy.jsonl ;;
-    relabel)    python train/relabel.py train/data/dagger_samples.jsonl --per-seed 4 --procs $P --out train/data/dagger_relabel.jsonl &&
+    relabel)    python train/relabel.py train/data/dagger_samples.jsonl --per-seed ${PER_SEED:-2} --procs $P --out train/data/dagger_relabel.jsonl &&
                 python train/select_round2.py --samples train/data/dagger_samples.jsonl --greedy train/data/dagger_greedy.jsonl \
-                  --relabel train/data/dagger_relabel.jsonl --sft train/data/sft_ref.jsonl --replay ${REPLAY:-0.2} \
+                  --relabel train/data/dagger_relabel.jsonl --sft train/data/sft_ref.jsonl --replay ${REPLAY:-0.1} \
                   --out train/data/round2.jsonl --stats train/results/round2_stats.json ;;
     round2)     python train/sft.py --data train/data/round2.jsonl --init-adapter train/ckpt/sft --lr 5e-5 --liger --out train/ckpt/dagger \
                   --merge-out train/ckpt/dagger-merged &&
