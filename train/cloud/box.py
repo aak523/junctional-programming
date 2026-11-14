@@ -2,8 +2,9 @@
 environment, else from the repository's gitignored .env; they are never printed or sent to the box.
 
 usage: python train/cloud/box.py status            balance, H100/A100 availability, our instances
-       python train/cloud/box.py up [--type T] [--location L]
-       python train/cloud/box.py down              delete every gpu-world-train instance and confirm
+       python train/cloud/box.py up [--type T] [--location L] [--name gpu-world-train-h100]
+       python train/cloud/box.py down [--name N]   delete gpu-world-train* instances (or just N) and confirm
+Each box's IP is written to train/cloud/box_ip.<name>; train/cloud/box_ip names the active box.
 """
 import argparse
 import os
@@ -48,8 +49,8 @@ def client():
     return VerdaClient(*creds())
 
 
-def ours(c):
-    return [i for i in c.instances.get() if i.hostname.startswith(HOST) and i.status != "deleted"]
+def ours(c, name=None):
+    return [i for i in c.instances.get() if i.status != "deleted" and (i.hostname == name if name else i.hostname.startswith(HOST))]
 
 
 def status(c):
@@ -65,9 +66,9 @@ def status(c):
         print(f"instance {i.id} {i.hostname} {i.status} {i.ip} {i.location} {i.instance_type}")
 
 
-def up(c, itype, location):
-    if ours(c):
-        sys.exit("a gpu-world-train instance already exists; run status or down")
+def up(c, itype, location, name):
+    if ours(c, name):
+        sys.exit(f"{name} already exists; run status or down")
     choices = [(t, loc) for t in ([itype] if itype else TYPES) for loc in ([location] if location else LOCATIONS)]
     pick = next(((t, loc) for t, loc in choices if c.instances.is_available(t, False, loc)), None)
     if not pick:
@@ -77,27 +78,29 @@ def up(c, itype, location):
     key_id = keys[0].id if keys else c.ssh_keys.create("gpu-world-train", key).id
     script = c.startup_scripts.create(f"gpu-world-setup-{int(time.time())}", (HERE / "startup.sh").read_text())
     print(f"creating {pick[0]} in {pick[1]} ...", flush=True)
-    inst = c.instances.create(instance_type=pick[0], image=IMAGE, hostname=HOST, description="GPU World fine-tuning",
+    inst = c.instances.create(instance_type=pick[0], image=IMAGE, hostname=name, description="GPU World fine-tuning",
                               ssh_key_ids=[key_id], location=pick[1], startup_script_id=script.id,
-                              os_volume={"name": HOST + "-os", "size": 200}, is_spot=False, max_wait_time=900)
+                              os_volume={"name": name + "-os", "size": 200}, is_spot=False, max_wait_time=900)
     for _ in range(180):
         inst = c.instances.get_by_id(inst.id)
         if inst.status == "running" and inst.ip:
             break
         time.sleep(5)
     print(f"instance {inst.id} {inst.status} ip {inst.ip}\nssh root@{inst.ip}")
-    (HERE / "box_ip").write_text(str(inst.ip or ""))
+    (HERE / f"box_ip.{name}").write_text(str(inst.ip or ""))
+    if name == HOST:
+        (HERE / "box_ip").write_text(str(inst.ip or ""))
 
 
-def down(c):
+def down(c, name=None):
     from verda.constants import Actions
-    for i in ours(c):
+    for i in ours(c, name):
         print(f"deleting {i.id} {i.hostname} ({i.status})", flush=True)
         c.instances.action(i.id, Actions.DELETE, delete_permanently=True)
     for _ in range(60):
-        left = ours(c)
+        left = ours(c, name)
         if not left:
-            print("no gpu-world-train instances remain")
+            print(f"no {name or HOST + '*'} instances remain")
             return
         time.sleep(5)
     sys.exit(f"still present: {[(i.id, i.status) for i in left]}")
@@ -108,6 +111,8 @@ if __name__ == "__main__":
     ap.add_argument("cmd", choices=["status", "up", "down"])
     ap.add_argument("--type")
     ap.add_argument("--location")
+    ap.add_argument("--name")
     a = ap.parse_args()
     c = client()
-    {"status": lambda: status(c), "up": lambda: up(c, a.type, a.location), "down": lambda: down(c)}[a.cmd]()
+    {"status": lambda: status(c), "up": lambda: up(c, a.type, a.location, a.name or HOST),
+     "down": lambda: down(c, a.name)}[a.cmd]()
