@@ -453,7 +453,11 @@ const RUN = __RUN__;
       fillStack(blocks, [[hollowMat.N, waiting[id].N, true], [hollowMat.H, waiting[id].H, true]]);
     }
   };
-  const showMonth = (k) => { showSites(RUN.months[k]); showSuppliers(RUN.months[k].waiting); showFlow(RUN.months[k]); };
+  // Step k is month k after its commands; k = -1 is the start, before any command.
+  const START = { month: -1, commands: [], pending: [], deliveries: [], sites: RUN.start.sites, waiting: RUN.start.waiting,
+    settle: Object.fromEntries(Object.entries(RUN.start.sites).map(([s, x]) => [s, { own: x.own, reserved: 0, spot_req: 0, spot: 0 }])) };
+  const M = (k) => (k < 0 ? START : RUN.months[k]);
+  const showMonth = (k) => { showSites(M(k)); showSuppliers(M(k).waiting); showFlow(M(k)); };
 
   // ---------------------------------------------------------------- flow pane
   // Suppliers in the top row, datacentres in the bottom row. Each node: name, total in thousands of GPUs,
@@ -606,7 +610,7 @@ const RUN = __RUN__;
   };
   const spawnPulses = (k) => {
     if (reduce) return;
-    (RUN.months[k].commands || []).forEach((c, i) => {
+    (M(k).commands || []).forEach((c, i) => {
       const b = c.ok && (parseBuy(c.c) || parseMove(c.c));
       if (!b) return;
       const li = logItems[k] && logItems[k][i];
@@ -624,7 +628,7 @@ const RUN = __RUN__;
     // plus moves made in each month entered, which fly out to the midpoint.
     const legs = [];
     for (let k = Math.min(from, to); k < Math.max(from, to); k++) {
-      for (const d of RUN.months[k].deliveries) legs.push([d, d.move ? 0.5 : 0, 1]);
+      for (const d of M(k).deliveries) legs.push([d, d.move ? 0.5 : 0, 1]);
       for (const d of RUN.months[k + 1] ? RUN.months[k + 1].deliveries : []) if (d.move) legs.push([d, 0, 0.5]);
     }
     for (const [d, t0, t1] of legs) {
@@ -657,7 +661,7 @@ const RUN = __RUN__;
     if (!anim.items.length) return;
     anim.lit = [];
     for (let k = Math.min(from, to); k < Math.max(from, to); k++) {
-      for (const d of RUN.months[k].deliveries) for (const [om, oi] of d.orders || []) {
+      for (const d of M(k).deliveries) for (const [om, oi] of d.orders || []) {
         const li = logItems[om] && logItems[om][oi];
         if (li) { lightOn(li); anim.lit.push(li); }
       }
@@ -677,7 +681,7 @@ const RUN = __RUN__;
       parked.remove(c);
     }
     flowParkedG.replaceChildren();
-    for (const d of RUN.months[k].deliveries) {
+    for (const d of M(k).deliveries) {
       if (!d.move || d.qty < 0.01) continue;
       const a = anchors[d.src].position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
       const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
@@ -721,7 +725,7 @@ const RUN = __RUN__;
   const showGhosts = (k) => {
     clearGroup(ghosts);
     flowGhostG.replaceChildren();
-    if (k === 0) return;
+    if (k <= 0) return;
     for (const d of RUN.months[k - 1].deliveries) {
       if (d.qty < 0.01) continue;
       const fromA = d.move ? anchors[d.src] : supplierAnchors[d.src];
@@ -742,7 +746,7 @@ const RUN = __RUN__;
     clearGroup(rentals);
     flowRentG.replaceChildren();
     for (const site of Object.keys(SITES)) {
-      const x = RUN.months[k].settle[site], id = `cloud-${site}`;
+      const x = M(k).settle[site], id = `cloud-${site}`;
       setBar(id, [["var(--cmd-rent)", 1, x.reserved], ["var(--cmd-rent)", 1, x.spot_req, true]]);
       if (x.reserved + x.spot_req < 0.005) continue;
       const a = cloudAnchors[id].position.clone().normalize(), b = anchors[site].position.clone().normalize();
@@ -760,7 +764,7 @@ const RUN = __RUN__;
     const rate = known ? Object.values(known.settle).reduce((s, x) => s + x.training, 0) : 0;
     // Only the window the current month falls in.
     RUN.rules.milestones.forEach(([a, d, target], i) => {
-      if (k < a || k > d) return;
+      if (Math.max(k, 0) < a || Math.max(k, 0) > d) return;   // the start shows the first window
       const y = 1, done = known ? known.window_training[i] : 0;
       const decided = known && String(d) in known.met, met = decided && known.met[String(d)];
       const label = svgEl("text", { class: "chart-text", x: 0, y: y + 8 }, trainSvg);
@@ -834,16 +838,16 @@ const RUN = __RUN__;
     computeSvg.replaceChildren();
     let cap = 0, lo = 0, hi = 0;
     Object.keys(SITES).forEach((site, i) => {
-      const x = RUN.months[k].settle[site], [l, h] = band(k, site, k);
+      const x = M(k).settle[site], [l, h] = band(Math.max(k, 0), site, Math.max(k, 0));
       cap += siteCap(x); lo += l; hi += h;
       computeRow(i * 17 + 2, site, site, `var(--site-${site})`,
         [[x.own, `var(--site-${site})`], [x.reserved, "var(--cmd-rent)"], [x.spot_req, "var(--cmd-rent)", true]],
         [l, h], siteMax, `${fmt1(siteCap(x))} / ${fmt1(l)}–${fmt1(h)}`);
     });
-    const tr = trainingNeed(k);
-    const owned = Object.values(RUN.months[k].settle).reduce((t, x) => t + x.own, 0);
-    const res = Object.values(RUN.months[k].settle).reduce((t, x) => t + x.reserved, 0);
-    const spot = Object.values(RUN.months[k].settle).reduce((t, x) => t + x.spot_req, 0);
+    const tr = trainingNeed(Math.max(k, 0));
+    const owned = Object.values(M(k).settle).reduce((t, x) => t + x.own, 0);
+    const res = Object.values(M(k).settle).reduce((t, x) => t + x.reserved, 0);
+    const spot = Object.values(M(k).settle).reduce((t, x) => t + x.spot_req, 0);
     svgEl("line", { x1: 0, x2: 274, y1: 54, y2: 54, stroke: "var(--grid)" }, computeSvg);
     computeRow(59, "all", null, "var(--fg)", [[owned, "var(--fg)"], [res, "var(--cmd-rent)"], [spot, "var(--cmd-rent)", true]],
       [lo + tr, hi + tr], totalMax, `${fmt1(cap)} / ${fmt1(lo + tr)}–${fmt1(hi + tr)}`);
@@ -862,13 +866,13 @@ const RUN = __RUN__;
     }
     const mo = svgEl("text", { class: "chart-text", x: PL - 7, y: DH - 2, "text-anchor": "end" }, demandSvg);
     mo.textContent = "month";
-    svgEl("line", { x1: dx(k), x2: dx(k), y1: PT, y2: DH - PB, stroke: "var(--grid)", "stroke-dasharray": "2 2" }, demandSvg);
+    svgEl("line", { x1: dx(Math.max(k, 0)), x2: dx(Math.max(k, 0)), y1: PT, y2: DH - PB, stroke: "var(--grid)", "stroke-dasharray": "2 2" }, demandSvg);
     for (const site of Object.keys(SITES)) {
       const col = `var(--site-${site})`;
       const from = k > 0 ? k - 1 : 0, lo = [], hi = [];
       for (let m = from; m < MONTHS; m++) { const [l, h] = band(k, site, m); lo.push(`${dx(m)},${dy(l)}`); hi.unshift(`${dx(m)},${dy(h)}`); }
       svgEl("polygon", { points: [...lo, ...hi].join(" "), fill: col, "fill-opacity": 0.14, "data-ent": site, class: "ent-band" }, demandSvg);
-      if (k === 0) continue;
+      if (k <= 0) continue;
       const past = RUN.months.slice(0, k).map((m) => m.settle[site]);
       const gap = past.some((x) => x.served < x.demand - 0.005);
       if (gap) svgEl("polygon", { points: [...past.map((x, m) => `${dx(m)},${dy(x.demand)}`), ...past.map((x, m) => `${dx(m)},${dy(x.served)}`).reverse()].join(" "),
@@ -1015,8 +1019,8 @@ const RUN = __RUN__;
   // ---------------------------------------------------------------- playback
   const LAST = RUN.months.length - 1, STEP_MS = 1300;
   const slider = document.getElementById("month"), num = document.getElementById("num"), play = document.getElementById("play");
-  slider.max = String(LAST);
-  const ticks = RUN.months.map(() => document.getElementById("ticks").appendChild(document.createElement("i")));
+  slider.max = String(LAST + 1);   // slider value = step + 1; 0 is the start
+  const ticks = [START, ...RUN.months].map(() => document.getElementById("ticks").appendChild(document.createElement("i")));
   const JUMP_MS = 650;   // flight time when several months are crossed at once
   let month = 0, playing = false, lastStep = 0;
   // Command log: one section per month, each listing that month's commands as sent; refused ones struck through.
@@ -1107,7 +1111,7 @@ const RUN = __RUN__;
   const pendingPane = document.getElementById("pending"), pendingList = pendingPane.querySelector("ol");
   const showPending = (k) => {
     pendingList.replaceChildren();
-    for (const [om, oi, left] of RUN.months[k].pending || []) {
+    for (const [om, oi, left] of M(k).pending || []) {
       const c = RUN.months[om].commands[oi];
       if (!c) continue;
       const li = document.createElement("li"), cmd = document.createElement("span"), q = document.createElement("span");
@@ -1137,10 +1141,10 @@ const RUN = __RUN__;
 
   const setMonth = (k) => {
     month = k;
-    slider.value = String(k);
-    num.value = String(k); num.textContent = String(k);
-    ticks.forEach((t, i) => t.classList.toggle("past", i <= k));
-    document.getElementById("prev").disabled = k === 0;
+    slider.value = String(k + 1);
+    num.value = k < 0 ? "–" : String(k); num.textContent = num.value;
+    ticks.forEach((t, i) => t.classList.toggle("past", i <= k + 1));
+    document.getElementById("prev").disabled = k < 0;
     document.getElementById("next").disabled = k === LAST;
     showMonth(k);
     showLog(k);
@@ -1161,12 +1165,12 @@ const RUN = __RUN__;
     lastStep = performance.now();
   };
   play.addEventListener("click", () => {
-    if (!playing && month >= LAST) { clearAnims(); pulses.forEach((pl) => pl.li && lightOff(pl.li)); pulses = []; setMonth(0); }
+    if (!playing && month >= LAST) { clearAnims(); pulses.forEach((pl) => pl.li && lightOff(pl.li)); pulses = []; setMonth(-1); }
     setPlaying(!playing);
   });
   const prevBtn = document.getElementById("prev"), nextBtn = document.getElementById("next");
   const stepBy = (d) => {
-    const k = Math.max(0, Math.min(LAST, month + d));
+    const k = Math.max(-1, Math.min(LAST, month + d));
     if (k === month) return;
     setPlaying(false);
     goTo(k, FLIGHT_MS);
@@ -1175,10 +1179,10 @@ const RUN = __RUN__;
   nextBtn.addEventListener("click", () => stepBy(1));
   slider.addEventListener("input", () => {
     setPlaying(false);
-    const k = Number(slider.value);
+    const k = Number(slider.value) - 1;
     goTo(k, Math.abs(k - month) > 1 ? JUMP_MS : FLIGHT_MS);
   });
-  setMonth(0);
+  setMonth(-1);
   setPlaying(false);   // start paused
 
   // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.

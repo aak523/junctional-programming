@@ -19,7 +19,8 @@ and, for the month-end settlement that leads into the next month:
                                  capacity left over for training (kH)
   window_training                training done so far in each training window, including this month (kH-months)
   met                            {last month of window: true/false} for windows already decided
-The top level also carries the rules a player knows about demand and training (rules).
+The top level also carries the rules a player knows about demand and training (rules) and the state before any
+command (start: sites with owned, powered and own compute, and waiting).
 """
 import json
 import sys
@@ -45,6 +46,13 @@ pol_factory, stop = policies.LADDER[name]
 w = W.World(seed)
 pol = pol_factory(w) if getattr(pol_factory, "needs_world", False) else pol_factory()
 months = []
+# The world before any command: GPUs already at the sites, what month 0's power would run, and orders already queued.
+start = {"sites": {}, "waiting": waiting(w.queue)}
+for s_ in W.SITES:
+    _, pw = w.powered(s_, 0)
+    start["sites"][s_] = {"owned": {g: round(v, 3) for g, v in w.owned[s_].items()},
+                          "powered": {g: round(v, 2) for g, v in pw.items()},
+                          "own": round(sum(pw[g] * W.COMPUTE[g] for g in pw), 2)}
 order_ref = {}   # order id -> [month, index of its buy_gpus command in that month's list]
 while w.t < W.T:
     commands = []
@@ -103,7 +111,7 @@ while w.t < W.T:
                    "met": {str(d): v for d, v in w.met.items()}})
 rules = {"demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
          "milestones": [list(m) for m in W.MILESTONES]}
-json.dump({"policy": name, "seed": seed, "rules": rules, "months": months}, open(out, "w"), separators=(",", ":"))
+json.dump({"policy": name, "seed": seed, "rules": rules, "start": start, "months": months}, open(out, "w"), separators=(",", ":"))
 print(f"{len(months)} months; deliveries {sum(len(m['deliveries']) for m in months)}, "
       f"cancelled {sum(1 for m in months for d in m['deliveries'] if not d['ok'])}, "
       f"peak vendor queue {max(sum(m['waiting']['vendor'].values()) for m in months):.1f}k")
