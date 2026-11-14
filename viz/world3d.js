@@ -12,22 +12,54 @@ const SITE_NAME  = { us: 'US', eu: 'EU', ap: 'AP' };
 const STATUS = { good: 0x0ca30c, warning: 0xfab219, serious: 0xec835a, critical: 0xd03b3b };
 const INK = 0xffffff, STEEL = 0x6f6f68;
 
-const SITE_POS = {
-  us: new THREE.Vector3(-26, 0, 8),
-  eu: new THREE.Vector3(  0, 0,  2),
-  ap: new THREE.Vector3( 26, 0, 10),
-};
-const SRC_POS = {
-  vendor: new THREE.Vector3(  0, 0, -54),
-  A:      new THREE.Vector3(-36, 0, -42),
-  B:      new THREE.Vector3( 36, 0, -44),
-};
-const SRC_LABEL = { vendor: 'VENDOR', A: 'BROKER A', B: 'BROKER B' };
-const SRC_SUB = { vendor: 'list price · allocated queue', A: '1.10x · 2-month confirm', B: '1.25x · 2-month confirm' };
+const R = 74;                // globe radius
+const PAD_R = 8;             // campus platform radius
+const PAD_TOP = 1.9;         // local height of the platform deck
+const KH = 0.34;             // world units per kH on the ground gauges
+const FLOOR_H = 3.0;         // tower height per kH of compute
 
-const PAD_R = 11;            // campus platform radius
-const KH = 0.40;             // world units per kH on the ground bars
-const FLOOR_H = 3.6;         // tower height per kH of compute
+// lat, lon. The sites are the three classic datacentre regions; the vendor is the fab.
+const SITE_GEO = { us: [39.0, -77.5], eu: [50.1, 8.7], ap: [1.35, 103.8] };
+const SITE_CITY = { us: 'Ashburn', eu: 'Frankfurt', ap: 'Singapore' };
+const SRC_GEO = { vendor: [23.8, 120.9], A: [25.2, 55.3], B: [9.0, -79.5] };
+const SRC_LABEL = { vendor: 'VENDOR', A: 'BROKER A', B: 'BROKER B' };
+const SRC_SUB = {
+  vendor: 'Taiwan fab · allocated queue',
+  A: 'Dubai · 1.10x · confirms in 2 months',
+  B: 'Panama · 1.25x · confirms in 2 months',
+};
+
+// lon 0 faces +Z, lat 90 is +Y, so camera theta = lon and phi = 90° − lat.
+const D2R = Math.PI / 180;
+function geo(lat, lon, r = R) {
+  const a = lat * D2R, b = lon * D2R;
+  return new THREE.Vector3(r * Math.cos(a) * Math.sin(b), r * Math.sin(a), r * Math.cos(a) * Math.cos(b));
+}
+const SITE_POS = {}, SRC_POS = {};
+for (const k in SITE_GEO) SITE_POS[k] = geo(...SITE_GEO[k]);
+for (const k in SRC_GEO) SRC_POS[k] = geo(...SRC_GEO[k]);
+
+// stand a group on the sphere: its +Y becomes the surface normal
+const UP = new THREE.Vector3(0, 1, 0);
+function standOn(group, pos, sink = 0.6) {
+  const n = pos.clone().normalize();
+  group.position.copy(n).multiplyScalar(pos.length() - sink);
+  group.quaternion.setFromUnitVectors(UP, n);
+}
+
+// a great-circle arc that lifts off the surface, as a curve with getPointAt()
+function greatArc(a, b, extra = 0) {
+  const ua = a.clone().normalize(), ub = b.clone().normalize();
+  const ang = ua.angleTo(ub);
+  const lift = R * (0.10 + 0.34 * ang / Math.PI) + extra;
+  const pts = [];
+  for (let i = 0; i <= 64; i++) {
+    const t = i / 64;
+    const v = new THREE.Vector3().copy(ua).lerp(ub, t).normalize();
+    pts.push(v.multiplyScalar(R + 1.4 + lift * Math.sin(Math.PI * t)));
+  }
+  return new THREE.CatmullRomCurve3(pts);
+}
 
 // ---------------------------------------------------------------- renderer
 const stage = document.getElementById('stage');
@@ -42,10 +74,10 @@ stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0d0d0d);
-scene.fog = new THREE.Fog(0x0d0d0d, 120, 310);
 
-const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.5, 900);
-camera.position.set(0, 58, 88);
+
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 1, 2400);
+camera.position.copy(geo(30, -35, 270));
 
 let composer = null;
 try {
@@ -57,30 +89,88 @@ try {
 } catch (e) { console.warn('bloom unavailable, falling back to plain render', e); composer = null; }
 
 // ---------------------------------------------------------------- lights & ground
-scene.add(new THREE.HemisphereLight(0x8899bb, 0x0a0a0a, 0.55));
-const key = new THREE.DirectionalLight(0xffffff, 1.15);
-key.position.set(-60, 90, 60);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-const sc = key.shadow.camera;
-sc.left = -110; sc.right = 110; sc.top = 110; sc.bottom = -110; sc.near = 1; sc.far = 300;
+scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+const key = new THREE.DirectionalLight(0xffffff, 1.0);
+key.position.copy(geo(35, -60, 400));
 scene.add(key);
-const fill = new THREE.DirectionalLight(0x4a6fa5, 0.4);
-fill.position.set(70, 40, -60);
+const fill = new THREE.DirectionalLight(0x4a6fa5, 0.45);
+fill.position.copy(geo(-20, 130, 400));
 scene.add(fill);
 
-const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(230, 96),
-  new THREE.MeshStandardMaterial({ color: 0x111110, roughness: 0.95, metalness: 0.05 })
-);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.02;
-ground.receiveShadow = true;
-scene.add(ground);
+// ---------------------------------------------------------------- the globe
+const globe = new THREE.Group();
+scene.add(globe);
 
-const grid = new THREE.GridHelper(300, 75, 0x2c2c2a, 0x202020);
-grid.material.transparent = true; grid.material.opacity = 0.5;
-scene.add(grid);
+globe.add(new THREE.Mesh(
+  new THREE.SphereGeometry(R, 96, 64),
+  new THREE.MeshStandardMaterial({ color: 0x0f1822, roughness: 0.92, metalness: 0.08 })
+));
+
+// atmosphere: a fresnel rim on a slightly larger back-facing shell
+globe.add(new THREE.Mesh(
+  new THREE.SphereGeometry(R * 1.09, 64, 48),
+  new THREE.ShaderMaterial({
+    uniforms: { c: { value: new THREE.Color(0x3987e5) } },
+    vertexShader: `varying vec3 vN; varying vec3 vP;
+      void main(){ vN = normalize(normalMatrix * normal);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0); vP = mv.xyz;
+        gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 c; varying vec3 vN; varying vec3 vP;
+      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(-vP))), 3.2);
+        gl_FragColor = vec4(c, f * 0.32); }`,
+    side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+  })
+));
+
+// graticule every 30 degrees
+{
+  const pts = [];
+  const push = (a, b) => { pts.push(a.x, a.y, a.z, b.x, b.y, b.z); };
+  for (let lon = -180; lon < 180; lon += 30)
+    for (let lat = -88; lat < 88; lat += 4) push(geo(lat, lon, R + 0.2), geo(lat + 4, lon, R + 0.2));
+  for (let lat = -60; lat <= 60; lat += 30)
+    for (let lon = -180; lon < 180; lon += 4) push(geo(lat, lon, R + 0.2), geo(lat, lon + 4, R + 0.2));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  globe.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+    color: 0x1d3347, transparent: true, opacity: 0.5 })));
+}
+
+// land: a dot matrix with coastlines over it
+fetch('./data/land.json').then(r => r.json()).then(land => {
+  const dots = [];
+  land.dots.forEach(([lat, lon]) => { const v = geo(lat, lon, R + 0.45); dots.push(v.x, v.y, v.z); });
+  const dg = new THREE.BufferGeometry();
+  dg.setAttribute('position', new THREE.Float32BufferAttribute(dots, 3));
+  globe.add(new THREE.Points(dg, new THREE.PointsMaterial({
+    color: 0x5b7f9e, size: 1.5, sizeAttenuation: true, transparent: true, opacity: 0.95 })));
+
+  const seg = [];
+  land.rings.forEach(flat => {
+    for (let i = 0; i + 3 < flat.length; i += 2) {
+      const a = geo(flat[i + 1], flat[i], R + 0.5), b = geo(flat[i + 3], flat[i + 2], R + 0.5);
+      seg.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    }
+  });
+  const cg = new THREE.BufferGeometry();
+  cg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+  globe.add(new THREE.LineSegments(cg, new THREE.LineBasicMaterial({
+    color: 0x7fa6c4, transparent: true, opacity: 0.35 })));
+}).catch(e => console.warn('land data unavailable', e));
+
+// stars
+{
+  const pts = [];
+  for (let i = 0; i < 1800; i++) {
+    const v = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
+    if (v.length() < 0.2) { i--; continue; }
+    v.normalize().multiplyScalar(700 + Math.random() * 500);
+    pts.push(v.x, v.y, v.z);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xaab4c8, size: 1.6, transparent: true, opacity: 0.75 })));
+}
 
 // ---------------------------------------------------------------- label sprites
 function labelSprite(text, { color = '#ffffff', size = 46, weight = 600, pad = 10, bg = null } = {}) {
@@ -103,6 +193,32 @@ function labelSprite(text, { color = '#ffffff', size = 46, weight = 600, pad = 1
   sp.userData.aspect = w / h;
   return sp;
 }
+// Labels live in world space but are sized and offset so they hold a constant screen
+// size and a constant screen-space offset above their anchor, at any zoom or angle.
+const LABELS = [];
+const LABEL_REF = 270;
+const _lp = new THREE.Vector3(), _up = new THREE.Vector3();
+function track(sprite, height, anchor, local, screenY) {
+  Object.assign(sprite.userData, { height, anchor, local, screenY });
+  scene.add(sprite);
+  LABELS.push(sprite);
+  return sprite;
+}
+function dropLabels(list) {
+  const dead = new Set(list);
+  list.forEach(l => scene.remove(l));
+  for (let i = LABELS.length - 1; i >= 0; i--) if (dead.has(LABELS[i])) LABELS.splice(i, 1);
+}
+function scaleLabels() {
+  _up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  for (const sp of LABELS) {
+    sp.userData.anchor.localToWorld(_lp.copy(sp.userData.local));
+    const k = THREE.MathUtils.clamp(camera.position.distanceTo(_lp) / LABEL_REF, 0.3, 1.5);
+    sp.position.copy(_lp).addScaledVector(_up, sp.userData.screenY * k);
+    const h = sp.userData.height * k;
+    sp.scale.set(sp.userData.aspect * h, h, 1);
+  }
+}
 function setSpriteText(sprite, text, opts) {
   if (sprite.userData.text === text) return;
   sprite.userData.text = text;
@@ -110,8 +226,7 @@ function setSpriteText(sprite, text, opts) {
   sprite.material.map.dispose();
   sprite.material.map = fresh.material.map;
   sprite.material.needsUpdate = true;
-  const s = sprite.userData.height || 1;
-  sprite.scale.set(fresh.userData.aspect * s, s, 1);
+  sprite.userData.aspect = fresh.userData.aspect;
   fresh.material.dispose();
 }
 function hexCss(n) { return '#' + n.toString(16).padStart(6, '0'); }
@@ -128,14 +243,14 @@ class Campus {
     this.site = site;
     this.color = SITE_COLOR[site];
     this.group = new THREE.Group();
-    this.group.position.copy(SITE_POS[site]);
+    standOn(this.group, SITE_POS[site]);
     scene.add(this.group);
 
     const pad = new THREE.Mesh(
-      new THREE.CylinderGeometry(PAD_R, PAD_R + 0.7, 0.9, 64),
+      new THREE.CylinderGeometry(PAD_R, PAD_R - 1.2, 2.6, 64),
       new THREE.MeshStandardMaterial({ color: 0x1d1d1b, roughness: 0.75, metalness: 0.25 })
     );
-    pad.position.y = 0.45; pad.receiveShadow = true;
+    pad.position.y = PAD_TOP - 1.3; pad.receiveShadow = true;
     pad.userData.site = site;
     this.group.add(pad);
     this.pad = pad;
@@ -144,7 +259,7 @@ class Campus {
       new THREE.TorusGeometry(PAD_R + 0.2, 0.11, 8, 96),
       new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 1.4, roughness: 0.4 })
     );
-    rim.rotation.x = Math.PI / 2; rim.position.y = 0.95;
+    rim.rotation.x = Math.PI / 2; rim.position.y = PAD_TOP + 0.05;
     this.group.add(rim);
 
     // tower grid
@@ -159,7 +274,7 @@ class Campus {
       const cz = (Math.floor(i / cols) - (cols - 1) / 2) * step;
       const mat = new THREE.MeshStandardMaterial({ color: 0x2a2a28, emissive: 0x000000, roughness: 0.45, metalness: 0.35 });
       const m = new THREE.Mesh(towerGeo, mat);
-      m.position.set(cx, 0.9, cz);
+      m.position.set(cx, PAD_TOP, cz);
       m.scale.set(step * 0.52, 0.001, step * 0.52);
       m.castShadow = true; m.receiveShadow = true;
       m.visible = false;
@@ -177,7 +292,7 @@ class Campus {
     // floating reserved slabs
     const slab = (color, y, op) => {
       const mm = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 0.55, 7),
+        new THREE.BoxGeometry(1, 0.55, 6),
         new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5,
           transparent: true, opacity: op, roughness: 0.3 })
       );
@@ -185,19 +300,19 @@ class Campus {
       this.group.add(mm);
       return mm;
     };
-    this.resSlab = slab(this.color, 15, 0.34);
-    this.optSlab = slab(STATUS.warning, 18.5, 0.40);
+    this.resSlab = slab(this.color, 7.5, 0.34);
+    this.optSlab = slab(STATUS.warning, 7.5, 0.40);
 
     // spot pillars
     this.spots = [];
     for (let i = 0; i < 6; i++) {
       const p = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.16, 9, 8, 1, true),
+        new THREE.CylinderGeometry(0.16, 0.16, 7, 8, 1, true),
         new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 1.1,
           transparent: true, opacity: 0.5, side: THREE.DoubleSide })
       );
       const a = -0.95 + i * 0.38;
-      p.position.set(Math.sin(a) * (PAD_R - 1.2), 5, Math.cos(a) * (PAD_R - 1.2));
+      p.position.set(Math.sin(a) * (PAD_R - 1.0), PAD_TOP + 3.5, Math.cos(a) * (PAD_R - 1.0));
       p.visible = false;
       this.group.add(p);
       this.spots.push(p);
@@ -206,7 +321,7 @@ class Campus {
     // substation: height = energised MW, ghost box = contracted but not yet live
     const sub = new THREE.Mesh(towerGeo, new THREE.MeshStandardMaterial({
       color: 0x35352f, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: 0.5 }));
-    sub.position.set(0, 0.9, -(PAD_R + 4.2));
+    sub.position.set(0, PAD_TOP, -(PAD_R + 2.6));
     sub.scale.set(2.8, 0.001, 2.8);
     sub.castShadow = true;
     this.group.add(sub);
@@ -221,7 +336,7 @@ class Campus {
 
     // ground bar: served | training | unserved, with a demand tick
     this.bar = new THREE.Group();
-    this.bar.position.set(0, 0.06, PAD_R + 2.6);
+    this.bar.position.set(0, PAD_TOP + 0.1, PAD_R + 2.0);
     this.group.add(this.bar);
     const seg = (color, op, emi) => {
       const g2 = new THREE.BoxGeometry(1, 0.4, 3.0);
@@ -243,18 +358,13 @@ class Campus {
 
     // labels
     const name = labelSprite(SITE_NAME[site], { color: hexCss(this.color), size: 64, weight: 700 });
-    name.userData.height = 2.6;
-    name.scale.set(name.userData.aspect * 2.6, 2.6, 1);
-    name.position.set(0, 23.5, 0);
-    this.group.add(name);
+    track(name, 5.5, this.group, new THREE.Vector3(0, 7, 0), 26);
     this.nameSprite = name;
 
     const stat = labelSprite('—', { color: '#c3c2b7', size: 40, weight: 500 });
-    stat.userData.height = 1.35;
-    stat.scale.set(stat.userData.aspect * 1.35, 1.35, 1);
-    stat.position.set(0, 21.6, 0);
-    this.group.add(stat);
+    track(stat, 3.0, this.group, new THREE.Vector3(0, 7, 0), 20);
     this.statSprite = stat;
+    this.labels = [name, stat];
 
     // event ring pool (broker delivered / cancelled)
     this.rings = [];
@@ -263,7 +373,7 @@ class Campus {
         new THREE.TorusGeometry(1, 0.22, 8, 64),
         new THREE.MeshBasicMaterial({ color: STATUS.good, transparent: true, opacity: 0 })
       );
-      r.rotation.x = Math.PI / 2; r.position.y = 1.2; r.visible = false;
+      r.rotation.x = Math.PI / 2; r.position.y = PAD_TOP + 0.3; r.visible = false;
       this.group.add(r);
       this.rings.push(r);
     }
@@ -299,13 +409,13 @@ class Campus {
       t.userData.crown.visible = gen === 'N';
     }
     // reserved / option slabs
-    const slabW = (kh) => Math.max(0.001, kh * 1.5);
+    const slabW = (kh) => Math.max(0.001, kh * 0.8);
     this.resSlab.visible = reserved > 0.01;
     this.resSlab.scale.x += (slabW(reserved) - this.resSlab.scale.x) * 0.15;
-    this.resSlab.position.y = 15 + Math.sin(time * 0.8) * 0.5;
+    this.resSlab.position.set(-(PAD_R + 2.5 + this.resSlab.scale.x / 2), 7.5 + Math.sin(time * 0.8) * 0.4, 0);
     this.optSlab.visible = option > 0.01;
     this.optSlab.scale.x += (slabW(option) - this.optSlab.scale.x) * 0.15;
-    this.optSlab.position.y = 18.5 + Math.sin(time * 0.8 + 1.2) * 0.5;
+    this.optSlab.position.set(PAD_R + 2.5 + this.optSlab.scale.x / 2, 7.5 + Math.sin(time * 0.8 + 1.2) * 0.4, 0);
     // spot pillars
     for (let i = 0; i < this.spots.length; i++) {
       const on = spot > i * 0.9;
@@ -349,32 +459,28 @@ const sources = {};
 function buildSources() {
   for (const k of Object.keys(SRC_POS)) {
     const g = new THREE.Group();
-    g.position.copy(SRC_POS[k]);
+    standOn(g, SRC_POS[k], 1.4);
     scene.add(g);
     const big = k === 'vendor';
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(big ? 26 : 14, big ? 7 : 5, big ? 11 : 8),
+      new THREE.BoxGeometry(big ? 17 : 10, big ? 6 : 4.5, big ? 9 : 7),
       new THREE.MeshStandardMaterial({ color: 0x232321, roughness: 0.65, metalness: 0.55 })
     );
-    body.position.y = big ? 3.5 : 2.5;
+    body.position.y = big ? 3.0 : 2.25;
     body.castShadow = true; body.receiveShadow = true;
     g.add(body);
     const strip = new THREE.Mesh(
-      new THREE.BoxGeometry(big ? 26.4 : 14.2, 0.5, big ? 11.4 : 8.2),
+      new THREE.BoxGeometry(big ? 17.4 : 10.2, 0.5, big ? 9.4 : 7.2),
       new THREE.MeshStandardMaterial({ color: STEEL, emissive: STEEL, emissiveIntensity: 0.8 })
     );
-    strip.position.y = big ? 7.1 : 5.1;
+    strip.position.y = big ? 6.1 : 4.6;
     g.add(strip);
     const name = labelSprite(SRC_LABEL[k], { color: '#ffffff', size: 54, weight: 700 });
-    name.userData.height = 2.4;
-    name.scale.set(name.userData.aspect * 2.4, 2.4, 1);
-    name.position.set(0, big ? 15 : 12, 0);
-    g.add(name);
+    track(name, 4.2, g, new THREE.Vector3(0, big ? 6 : 4.5, 0), 17);
+
     const sub = labelSprite(SRC_SUB[k], { color: '#898781', size: 36, weight: 500 });
-    sub.userData.height = 1.3;
-    sub.scale.set(sub.userData.aspect * 1.3, 1.3, 1);
-    sub.position.set(0, big ? 13.1 : 10.3, 0);
-    g.add(sub);
+    track(sub, 2.3, g, new THREE.Vector3(0, big ? 6 : 4.5, 0), 11.5);
+
     sources[k] = { group: g, strip, name, sub, body };
   }
 }
@@ -385,13 +491,9 @@ function buildRoutes() {
   for (const s of Object.keys(SRC_POS)) {
     routes[s] = {};
     for (const site of Object.keys(SITE_POS)) {
-      const a = SRC_POS[s].clone().setY(6);
-      const b = SITE_POS[site].clone().setY(3);
-      const mid = a.clone().add(b).multiplyScalar(0.5);
-      mid.y = 30 + (s === 'vendor' ? 5 : 0);
-      const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
+      const curve = greatArc(SRC_POS[s], SITE_POS[site], s === 'vendor' ? 4 : 0);
       const tube = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 48, 0.09, 6, false),
+        new THREE.TubeGeometry(curve, 96, 0.3, 6, false),
         new THREE.MeshBasicMaterial({ color: SITE_COLOR[site], transparent: true, opacity: 0.1 })
       );
       scene.add(tube);
@@ -418,10 +520,15 @@ const launchRing = new THREE.Mesh(
   new THREE.TorusGeometry(1, 0.4, 10, 80),
   new THREE.MeshBasicMaterial({ color: 0x9085e9, transparent: true, opacity: 0 })
 );
-launchRing.rotation.x = Math.PI / 2;
-launchRing.position.copy(SRC_POS.vendor).setY(2);
 launchRing.visible = false;
-scene.add(launchRing);
+{
+  const holder = new THREE.Group();
+  standOn(holder, SRC_POS.vendor, 0);
+  launchRing.rotation.x = Math.PI / 2;
+  launchRing.position.y = 1.5;
+  holder.add(launchRing);
+  scene.add(holder);
+}
 
 // ---------------------------------------------------------------- orbit controls
 class Orbit {
@@ -433,11 +540,12 @@ class Orbit {
     this.theta = Math.atan2(off.x, off.z);
     this.phi = Math.acos(THREE.MathUtils.clamp(off.y / this.r, -1, 1));
     this.vTheta = 0; this.vPhi = 0;
-    this.autoRotate = true; this.autoSpeed = 0.035;
+    this.autoRotate = true; this.autoSpeed = 0.05; this.goal = null;
     this.dragging = 0;
     this.last = { x: 0, y: 0 };
     dom.addEventListener('pointerdown', e => {
       this.dragging = e.button === 2 || e.shiftKey ? 2 : 1;
+      this.goal = null;
       this.last = { x: e.clientX, y: e.clientY };
       dom.setPointerCapture(e.pointerId);
       this.userMoved = false;
@@ -455,6 +563,7 @@ class Orbit {
         const panZ = new THREE.Vector3().crossVectors(cam.up, panX);
         const k = this.r * 0.0014;
         this.target.addScaledVector(panX, -dx * k).addScaledVector(panZ, dy * k);
+        if (this.target.length() > R * 0.45) this.target.setLength(R * 0.45);
       }
     });
     const end = () => { this.dragging = 0; };
@@ -463,14 +572,26 @@ class Orbit {
     dom.addEventListener('contextmenu', e => e.preventDefault());
     dom.addEventListener('wheel', e => {
       e.preventDefault();
-      this.r = THREE.MathUtils.clamp(this.r * (1 + Math.sign(e.deltaY) * 0.09), 34, 330);
+      this.r = THREE.MathUtils.clamp(this.r * (1 + Math.sign(e.deltaY) * 0.09), R * 1.55, R * 8);
     }, { passive: false });
   }
+  flyTo(lat, lon, r) {
+    this.goal = { theta: lon * D2R, phi: (90 - Math.min(72, Math.max(-72, lat))) * D2R, r };
+    this.target.set(0, 0, 0);
+  }
   update(dt) {
-    if (this.autoRotate && !this.dragging) this.theta += this.autoSpeed * dt;
+    if (this.goal) {
+      const k = 1 - Math.pow(0.004, dt);
+      let d = ((this.goal.theta - this.theta + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      this.theta += d * k;
+      this.phi += (this.goal.phi - this.phi) * k;
+      if (this.goal.r) this.r += (this.goal.r - this.r) * k;
+      if (Math.abs(d) < 0.004 && Math.abs(this.goal.phi - this.phi) < 0.004) this.goal = null;
+    }
+    if (this.autoRotate && !this.dragging && !this.goal) this.theta += this.autoSpeed * dt;
     this.theta += this.vTheta; this.phi += this.vPhi;
     this.vTheta *= 0.86; this.vPhi *= 0.86;
-    this.phi = THREE.MathUtils.clamp(this.phi, 0.16, Math.PI / 2 - 0.30);
+    this.phi = THREE.MathUtils.clamp(this.phi, 0.12, Math.PI - 0.12);
     const s = Math.sin(this.phi);
     this.cam.position.set(
       this.target.x + this.r * s * Math.sin(this.theta),
@@ -479,7 +600,7 @@ class Orbit {
     this.cam.lookAt(this.target);
   }
 }
-const controls = new Orbit(camera, renderer.domElement, new THREE.Vector3(0, 5, -8));
+const controls = new Orbit(camera, renderer.domElement, new THREE.Vector3(0, 0, 0));
 
 // ---------------------------------------------------------------- data
 const $ = id => document.getElementById(id);
@@ -530,7 +651,7 @@ async function loadRun(key) {
   RUN = doc; F = doc.frames; M = doc.frames.length;
   orders = buildOrderTable(F);
   // rebuild campuses sized to this run
-  for (const c of Object.values(campuses)) scene.remove(c.group);
+  for (const c of Object.values(campuses)) { scene.remove(c.group); dropLabels(c.labels); }
   campuses = {};
   for (const site of doc.sites) {
     let mx = 1;
@@ -587,14 +708,12 @@ function sceneUpdate(time) {
     const t = THREE.MathUtils.clamp((state.m - o.placed) / span, 0, 1);
     const route = routes[o.src] && routes[o.src][o.site];
     const curve = route ? route.curve
-      : new THREE.QuadraticBezierCurve3(SITE_POS[o.src].clone().setY(4),
-          SITE_POS[o.src].clone().add(SITE_POS[o.site]).multiplyScalar(0.5).setY(20),
-          SITE_POS[o.site].clone().setY(3));
+      : (o.curve || (o.curve = greatArc(SITE_POS[o.src] || SITE_POS[o.site], SITE_POS[o.site])));
     const qty = o.move ? o.qty : Math.max(0.15, leftAt(o, state.m));
     const mesh = packets[p++];
     mesh.visible = true;
     curve.getPointAt(t, mesh.position);
-    mesh.position.y += Math.sin(time * 2 + o.placed) * 0.5;
+    mesh.position.multiplyScalar(1 + 0.005 * Math.sin(time * 2 + o.placed));
     const s = 0.75 + Math.cbrt(Math.max(0.2, qty)) * 0.85;
     mesh.scale.setScalar(s);
     mesh.rotation.y = time * 0.9 + o.placed;
@@ -814,8 +933,8 @@ function onMonthEnter(i) {
   for (const site of RUN.sites) {
     const s = f.sites[site];
     setSpriteText(campuses[site].statSprite,
-      `${s.capacity.toFixed(1)} kH · ${trim(s.power_mw)} MW`,
-      { color: '#c3c2b7', size: 40, weight: 500 });
+      `${SITE_CITY[site]} · ${s.capacity.toFixed(1)} kH · ${trim(s.power_mw)} MW`,
+      { color: '#c3c2b7', size: 40, weight: 600 });
   }
   syncHud(i);
 }
@@ -862,6 +981,12 @@ $('step').addEventListener('click', () => {
   state.m = Math.min(M - 1, Math.floor(state.m) + 1);
 });
 $('speed').addEventListener('change', e => { state.speed = +e.target.value; });
+document.querySelectorAll('button[data-go]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.go;
+  if (k === 'world') controls.flyTo(30, -35, R * 3.65);
+  else if (SRC_GEO[k]) controls.flyTo(SRC_GEO[k][0] + 9, SRC_GEO[k][1], R * 1.95);
+  else controls.flyTo(SITE_GEO[k][0] + 9, SITE_GEO[k][1], R * 1.75);
+}));
 $('spin').addEventListener('click', e => {
   controls.autoRotate = !controls.autoRotate;
   e.currentTarget.setAttribute('aria-pressed', String(controls.autoRotate));
@@ -908,6 +1033,7 @@ function tick() {
     const tp = document.getElementById('tlplay');
     if (tp) tp.style.width = (state.m / (M - 1) * 100) + '%';
     sceneUpdate(time);
+    scaleLabels();
   }
   controls.update(dt);
   if (composer) composer.render(); else renderer.render(scene, camera);
@@ -930,6 +1056,8 @@ function tick() {
   if (qs.has('m')) state.m = THREE.MathUtils.clamp(+qs.get('m'), 0, M - 1);
   if (qs.get('spin') === '0') { controls.autoRotate = false; $('spin').setAttribute('aria-pressed', 'false'); }
   if (qs.get('truth') === '1') $('truth').click();
+  const go = qs.get('go');
+  if (go) { const b = document.querySelector(`button[data-go="${go}"]`); if (b) b.click(); }
   tick();
   const l = $('loading');
   l.style.opacity = 0;

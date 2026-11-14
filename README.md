@@ -85,10 +85,10 @@ python viz/export_run.py                    # export games as frames for the 3D 
 python3 -m http.server 8731 --directory viz # then open http://localhost:8731/
 ```
 
-[`viz/`](viz/README.md) replays a game as a 3D world you can orbit: the three campuses grow as GPUs arrive and get
-powered, orders travel the arcs from the vendor and the two brokers, and the balance, the training windows and the
-agent's own belief log track alongside. A Harbor trial is replayed exactly from its seed and action log, so you can
-watch Claude Fable 5's game and the reference's game on the same world.
+[`viz/`](viz/README.md) replays a game on a globe you can orbit: the three campuses (Ashburn, Frankfurt, Singapore)
+grow as GPUs arrive and get powered, orders travel the shipping lanes from the fab in Taiwan and the two brokers, and
+the balance, the training windows and the agent's own belief log track alongside. A Harbor trial is replayed exactly
+from its seed and action log, so you can watch Claude Fable 5's game and the reference's game on the same world.
 
 Each Harbor trial writes `verifier/reward.txt` and `verifier/details.json` (the world's seed, the reference and
 do-nothing scores for that world, the agent's belief notes and actions).

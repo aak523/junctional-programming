@@ -1,8 +1,19 @@
 # GPU World in 3D
 
-A replay of one 24-month game as a world you can orbit: three datacenter campuses that grow as GPUs
-arrive and get powered, the supply chain (vendor + two brokers) feeding them, the balance sheet, and
-what is still in transit.
+A replay of one 24-month game on a globe you can orbit: three datacentre campuses that grow as GPUs
+arrive and get powered, the shipping lanes from the fab and the two brokers that feed them, the
+balance sheet, and what is still in transit.
+
+The six places are real, and the distances between them are why the lanes look the way they do:
+
+| | where | what it is |
+|---|---|---|
+| `us` | Ashburn | 50% of inference demand, cheap-ish power, the biggest reservation cap |
+| `eu` | Frankfurt | 30% of demand, dearest power, a 1.10x price multiple |
+| `ap` | Singapore | 20% of demand, cheapest power, fastest to energise, no starting hardware |
+| vendor | Taiwan | list price, but you join one first-in-first-out allocation queue |
+| broker A | Dubai | 1.10x, confirms or cancels at the end of the next month |
+| broker B | Panama | 1.25x, same deal |
 
 ```
 python3 -m http.server 8731 --directory viz    # then open http://localhost:8731/
@@ -21,16 +32,20 @@ works offline.
 | Thin pillars at the pad rim | spot capacity actually filled this month |
 | Bar in front of the pad | inference served, then training, then any unserved demand in red; the white tick is demand |
 | Box behind the pad | energised power (MW); the amber wireframe is power contracted but not yet live |
-| Gems moving along the arcs | orders in transit, coloured by destination; they arrive the month the order clears |
+| Gems moving the arcs | orders in transit, coloured by destination; they arrive the month the order clears, so a vendor order stuck behind the queue visibly crawls |
 | Ring burst at a pad | a broker order confirmed (green) or cancelled (red) |
 
 The vendor hub turns red while export controls are in force, and relabels itself at the gen N launch.
 
-Controls: drag to orbit, scroll to zoom, right-drag to pan, hover a pad for its numbers, space to
-play/pause, arrow keys to step. **truth** reveals the state the player never sees — the supply regime,
+Controls: drag to spin the globe, scroll to zoom, right-drag to pan, **fly to** to drop onto a
+campus or the fab, hover a pad for its numbers, space to play/pause, arrow keys to step. **truth** reveals the state the player never sees — the supply regime,
 the launch month, export controls, the growth switch and each broker's true reliability.
 
-Deep links: `?run=fable5&m=12&truth=1&spin=0`.
+Deep links: `?run=fable5&m=12&truth=1&spin=0&go=ap`.
+
+The globe's land is a dot matrix plus coastlines, precomputed by `make_land.py` from Natural Earth
+110m land into `data/land.json` (the command is at the top of that file). It only needs rerunning if
+you want a different dot density.
 
 ## The data
 
