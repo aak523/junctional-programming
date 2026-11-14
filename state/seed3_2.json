@@ -1,0 +1,1 @@
+{"seed": 3, "actions": ["buy_gpus 8 H", "contract_power 25", "reserve 5 24", "end_month", "reserve 3 24", "end_month", "buy_gpus 6 H", "reserve 3 24", "end_month", "end_month", "buy_gpus 8 H", "contract_power 20", "end_month", "buy_gpus 6 H", "end_month", "end_month", "end_month", "end_month"]}

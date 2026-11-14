@@ -41,3 +41,9 @@ running anything else. We checked this with a probe agent: reading `../../world.
 | clairvoyant | the same planner given the true hidden path. A perfect-information heuristic, **not** an upper bound |
 
 Reference parameters were grid-tuned on seeds 100–139 only (`tune.py`); evaluation uses seeds 0–9.
+
+## Results (see [results/SUMMARY.md](results/SUMMARY.md))
+
+7 Opus runs on seeds 0–6: the reference wins 4/7, and Opus costs 10.6% more on average (1231 vs 1113 $M). Every baseline and
+exploit costs 1.7–4.0x the reference. Verdict: **no-go as is.** Opus reaches about 90% of the reference, and on the held-out seeds 4–6 it wins 2/3.
+Its consistent mistake is over-insuring early training windows for the final run. SUMMARY.md lists rework options.

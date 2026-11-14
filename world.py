@@ -337,7 +337,11 @@ class World:
         if name == "end_month":
             self.end_month()
             return self.render()
-        num = lambda i: float(args[i])  # noqa: E731
+        def num(i):
+            x = float(args[i])
+            if not math.isfinite(x):
+                raise ValueError("quantities must be finite numbers")
+            return x
         table = {
             "buy_gpus": lambda: self.buy_gpus(num(0), args[1].upper() if len(args) > 1 else None),
             "reserve": lambda: self.reserve(num(0), int(args[1])),
@@ -369,7 +373,10 @@ def calc(expr):
         if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
             return n.value
         if isinstance(n, ast.BinOp) and type(n.op) in _OPS:
-            return _OPS[type(n.op)](ev(n.left), ev(n.right))
+            a, b = ev(n.left), ev(n.right)
+            if isinstance(n.op, ast.Pow) and (abs(b) > 100 or abs(a) > 1e6):
+                raise ValueError("exponent too large")
+            return _OPS[type(n.op)](a, b)
         if isinstance(n, ast.UnaryOp) and type(n.op) in _OPS:
             return _OPS[type(n.op)](ev(n.operand))
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in ("min", "max", "round") and not n.keywords:
