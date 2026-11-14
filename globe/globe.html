@@ -72,6 +72,10 @@
   .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
   .pending li { cursor: pointer; }
+  [data-ent] { transition: background-color 0.2s; }
+  span.ent-hl { background: var(--hl); }
+  .ent-line.ent-hl { stroke-width: 3; }
+  .ent-band.ent-hl { fill-opacity: 0.32; }
   .pending li:hover { background: var(--hl); }
   .pending .left { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .pending .v { font-weight: 600; }
@@ -791,13 +795,14 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
       const col = `var(--site-${site})`;
       const from = k > 0 ? k - 1 : 0, lo = [], hi = [];
       for (let m = from; m < MONTHS; m++) { const [l, h] = band(k, site, m); lo.push(`${dx(m)},${dy(l)}`); hi.unshift(`${dx(m)},${dy(h)}`); }
-      svgEl("polygon", { points: [...lo, ...hi].join(" "), fill: col, "fill-opacity": 0.14 }, demandSvg);
+      svgEl("polygon", { points: [...lo, ...hi].join(" "), fill: col, "fill-opacity": 0.14, "data-ent": site, class: "ent-band" }, demandSvg);
       if (k === 0) continue;
       const past = RUN.months.slice(0, k).map((m) => m.settle[site]);
       const gap = past.some((x) => x.served < x.demand - 0.005);
       if (gap) svgEl("polygon", { points: [...past.map((x, m) => `${dx(m)},${dy(x.demand)}`), ...past.map((x, m) => `${dx(m)},${dy(x.served)}`).reverse()].join(" "),
         fill: col, "fill-opacity": 0.45 }, demandSvg);
-      svgEl("polyline", { points: past.map((x, m) => `${dx(m)},${dy(x.demand)}`).join(" "), fill: "none", stroke: col, "stroke-width": 1.5 }, demandSvg);
+      svgEl("polyline", { points: past.map((x, m) => `${dx(m)},${dy(x.demand)}`).join(" "), fill: "none", stroke: col, "stroke-width": 1.5,
+        "data-ent": site, class: "ent-line" }, demandSvg);
     }
   };
   const pos = new THREE.Vector3(), radial = new THREE.Vector3();
@@ -875,6 +880,12 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
   const pickIds = new Map([...Object.entries(anchors), ...Object.entries(supplierAnchors), ...Object.entries(cloudAnchors)].map(([id, a]) => [a, id]));
   const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
   let hoverGlobe = null, pointerIn = false, lastFrame = 0;
+  // Hovering a name in any pane (log, outstanding orders, demand chart) lights that entity everywhere.
+  let hoverPane = null, paneHl;
+  document.addEventListener("pointerover", (e) => {
+    const t = e.target.closest && e.target.closest("[data-ent]");
+    hoverPane = t ? t.dataset.ent : null;
+  });
   const hoverLevel = new Map(), HOVER_MS = 90;   // time constant of the hover fade
   renderer.domElement.addEventListener("pointermove", (e) => {
     const box = renderer.domElement.getBoundingClientRect();
@@ -949,6 +960,9 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
     const cls = j === 0 ? `v v-${kind}` : tok in SITES ? `t-${tok}` : SUPPLIER_TOKENS.has(tok) ? "t-sup"
       : tok === "H" ? "t-h" : tok === "N" ? "t-n" : "";
     if (cls) span.className = cls;
+    // Which globe entity a token names: rentals (reserve, set_spot) name the site's cloud provider.
+    if (j && tok in SITES) span.dataset.ent = kind === "rent" ? `cloud-${tok}` : tok;
+    else if (j && SUPPLIER_TOKENS.has(tok)) span.dataset.ent = tok;
     li.appendChild(span);
   });
   const logItems = [];   // [month][command index] -> li
@@ -1062,6 +1076,7 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
     showRent(k);
     showTraining(k);
     showDemand(k);
+    paneHl = undefined;   // panes were redrawn; re-apply the hover highlight
   };
   // Show month k now; the deliveries between the old and new month fly on top.
   const goTo = (k, dur) => { const from = month; setMonth(k); spawnFlights(from, k, dur); if (from !== k) spawnPulses(k); };
@@ -1112,6 +1127,12 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
       }
     }
     stepFocus(now);
+    const hl = hoverGlobe || hoverFlow || hoverPane;
+    if (hl !== paneHl) {
+      paneHl = hl;
+      document.querySelectorAll(".ent-hl").forEach((el) => el.classList.remove("ent-hl"));
+      if (hl) document.querySelectorAll(`[data-ent="${hl}"]`).forEach((el) => el.classList.add("ent-hl"));
+    }
     // Parked moves stay hidden while move flights are in the air, so the blocks are never drawn twice.
     const moving = anims.some((a) => a.items.some((it) => it.move));
     parked.visible = !moving;
@@ -1120,7 +1141,7 @@ const RUN = {"policy":"reference","seed":9,"rules":{"demand_start":6.0,"growth":
     // Hover fades in and out rather than switching.
     const dt = Math.min(100, now - (lastFrame || now)); lastFrame = now;
     for (const id of pickIds.values()) {
-      const target = id === hoverGlobe || id === hoverFlow ? 1 : 0, h = hoverLevel.get(id) || 0;
+      const target = id === hoverGlobe || id === hoverFlow || id === hoverPane ? 1 : 0, h = hoverLevel.get(id) || 0;
       const v = h + (target - h) * Math.min(1, dt / HOVER_MS);
       hoverLevel.set(id, v);
       if (v > 0.001) { level.set(anchorOf(id), Math.max(level.get(anchorOf(id)) || 0, v)); idLevel.set(id, Math.max(idLevel.get(id) || 0, v)); }
