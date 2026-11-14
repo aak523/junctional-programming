@@ -73,6 +73,8 @@
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
   .pending li { cursor: pointer; }
   [data-ent] { transition: background-color 0.2s; }
+  .pane svg text, [data-ent] { cursor: default; }
+  .pending li [data-ent] { cursor: pointer; }   /* the whole order row is clickable */
   span.ent-hl { background: var(--hl); }
   .ent-line.ent-hl { stroke-width: 3; }
   .ent-band.ent-hl { fill-opacity: 0.32; }
