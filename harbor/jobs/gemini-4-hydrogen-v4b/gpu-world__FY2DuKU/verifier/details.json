@@ -1,0 +1,197 @@
+{
+ "reward": 0.8252,
+ "seed": 75709589767700,
+ "net_cost": 883.48,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1187.09,
+  "mark_to_market": 356.65,
+  "obligations": 53.04,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 883.48,
+  "costs": {
+   "capex": 740.0,
+   "power": 144.96,
+   "contracts": 364.4,
+   "spot": 8.96,
+   "unserved": 3.53,
+   "resale": -81.45,
+   "interest": 0.27,
+   "moves": 1.43,
+   "options": 5.0
+  }
+ },
+ "scale": {
+  "oracle": 729.08,
+  "reference": 850.78,
+  "do_nothing": 3679.59,
+  "reference_reward": 0.857,
+  "do_nothing_reward": 0.1981
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "m0: supply=loose (3/3 ap reserve filled despite high 2.07x spot price"
+  },
+  {
+   "month": 1,
+   "text": "m1: supply=loose (contract index -5% to 1.52, spot 1.24x, headline=loose, 4k H shipped), genN_launch=11 EXACT (m0 rumour 13 and m1 rumour 9 intersect at 11), brokers=unknown, inf_growth=unknown (m0=6.01), plan=cancel ap spot now that 3k reserve active, wait for ap power m4 and observe inf growth"
+  },
+  {
+   "month": 2,
+   "text": "m2: supply=uncertain (headline=loose, index +2.6% to 1.56, spot 3.11x with rival buying -> maybe switched tight or noise, will know m3 from vendor ship), genN_launch=11, brokers=unknown, inf_growth=unknown (m0=6.01, m1=5.90), plan=wait for m3 vendor shipments and inf observations"
+  },
+  {
+   "month": 3,
+   "text": "m3: supply=likely loose (7.17k shipped in m2, index -3.7% to 1.502, spot 1.28x, though headline=tight 25% false alarm or just switched), genN_launch=11 EXACT, brokers=unknown, inf_growth=uncertain (6.01, 5.90, 7.04), plan=wait for ap 14MW power energisation in m4 and move 2.85k H us->ap in m4"
+  },
+  {
+   "month": 4,
+   "text": "m4: supply=uncertain (index +10.8% to 1.665 suggests tight, spot 1.36x and headline=loose suggest loose), genN_launch=11 EXACT, brokers=unknown, inf_growth=7% likely (6.01, 5.90, 7.04, 7.95), plan=moved 2.85k excess H from us to ap for m5, ordered 2k H to ap (m7) + 6MW ap power (m9) to cover Run2 7% growth"
+  },
+  {
+   "month": 5,
+   "text": "m5: supply=loose (index -6.2% to 1.562, spot 1.38x, headline=loose), genN_launch=11 EXACT (rumour m10 confirms 11), brokers=unknown, inf_growth=7% likely (6.01,5.90,7.04,7.95,7.33), plan=Run1 finishes this month, hold cash and watch inf growth before signing GenN power around m8-m10"
+  },
+  {
+   "month": 6,
+   "text": "m6: supply=maybe switched tight (index -5.2% to 1.48 but spot 2.43x and headline=tight), genN_launch=11 EXACT, brokers=unknown, inf_growth=7% confirmed (6.01,5.90,7.04,7.95,7.33,8.41 matches 6*1.07^5=8.415), plan=Run1 complete (72.14/60), hold cash and watch supply/export controls before GenN power in m8-m9"
+  },
+  {
+   "month": 7,
+   "text": "m7: supply=loose (spot 0.855x at 1.291M, headline=loose), genN_launch=11 EXACT (rumour m12 still consistent with 11), brokers=unknown, inf_growth=7% (8.93 matches 6*1.07^6=9.00), export_controls=rumoured, plan=Run1 done (90.2/60), start Run2 m8 and wait m8-m9 to check inf growth switch before signing GenN power"
+  },
+  {
+   "month": 8,
+   "text": "m8: supply=loose (spot 0.99x at 1.509M, headline=loose), genN_launch=11 EXACT, brokers=unknown, inf_growth=7% (m7=9.43 vs 6*1.07^7=9.63), export_controls=active m8..13, plan=Run1 met (107.77/60), signed 16MW ap power (energises m12) to host 12k GenN in ap"
+  },
+  {
+   "month": 9,
+   "text": "m9: supply=loose (index -5.1% to 1.446, spot 1.37x, though headline=tight), genN_launch=11 EXACT, brokers=unknown, inf_growth=7% (m8=10.62 vs 6*1.07^8=10.31), export_controls=active m8..13, plan=signed 8MW us power (energises m12) for 5k GenN in us, prepare to order GenN and cloud reserves in m11"
+  },
+  {
+   "month": 10,
+   "text": "m10: supply=loose (index -8% to 1.33, spot 1.08x despite rival buying), genN_launch=11 CONFIRMED by vendor, brokers=unknown, inf_growth=7% (m9=12.20 vs 11.03 trend), export_controls=active m8..13, plan=set 0.5 eu spot safety for m10, next month m11 order cloud reserves after 25% drop plus 8k GenN in ap/us without debt interest"
+  },
+  {
+   "month": 11,
+   "text": "m11: supply=loose CONFIRMED (all 4+3+3=10 kH reserves filled at max caps, spot 1.15x), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m10=13.75), export_controls=active m8..13, plan=reserved 10 kH 12m m12..23 after 25% drop, ordered 5k GenN us + 3k GenN ap (m14+), set m11 spot safety us/eu (cancel m12)"
+  },
+  {
+   "month": 12,
+   "text": "m12: supply=loose (index -0.7% to 1.066, spot 1.66x noisy), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m11=13.64 vs 12.63 trend), export_controls=active m8..13, plan=cancel us/eu spot now that 10kH m12..23 reserves active, order 3k GenN to ap using existing ap power without debt"
+  },
+  {
+   "month": 13,
+   "text": "m13: supply=loose (index +2.8% to 1.096, spot 1.91x, headline=loose), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% or switched to 3% recently (m10=13.75, m11=13.64, m12=13.63), export_controls=active m8..13, plan=wait for m14 GenN shipments and cash accumulation before ordering next GenN batch to ap"
+  },
+  {
+   "month": 14,
+   "text": "m14: supply=loose CONFIRMED (5.02k GenN shipped, index -4.2% to 1.05, spot 1.14x, 3+4 reserves filled), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m13=14.80), export_controls=expired after m13, plan=reserved 3 ap and 4 us 6m m15..20 for Run3 capacity without debt, will reserve eu/ap 6m in m15..17"
+  },
+  {
+   "month": 15,
+   "text": "m15: supply=loose (spot 0.96x at 0.994M, headline=loose), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m14=15.73), export_controls=expired, plan=Run2 met (142.53/140), reserved 3 6 ap (m16..21 at 1.136M) for Run3, will reserve eu 6m in m16..17 for m20..23 power expiry"
+  },
+  {
+   "month": 16,
+   "text": "m16: supply=tight CONFIRMED (only 1 of 3 eu reserve filled, index +8.2% to 1.125, spot 1.76x), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m15=17.02), plan=reserved 1 eu + 1 ap + 1 us 6m (m17..22) and bought 5 kH options to exercise in eu/ap in m17 for m18..23 to cover Run3 and m20..23 power expiry"
+  },
+  {
+   "month": 17,
+   "text": "m17: supply=tight CONFIRMED (1/3 eu and 1/2 us reserves filled, index +5.4% to 1.186, spot 2.41x, headline=loose false alarm), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% CONFIRMED (m16=18.20), plan=exercised all 5 options in eu (m18..23) plus 1 eu and 1 us 6m reserves to cover Run3 (+25.6 kH-mo buffer) and m20..23 power expiry"
+  },
+  {
+   "month": 18,
+   "text": "m18: supply=tight (index +2.8% to 1.219, spot 2.17x), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m17=20.15), plan=Run3 on track (100.64/320 with +20 kH-mo buffer), wait until m20 to resell idle us/eu GenH after 10MW/6MW power expires at end of m19"
+  },
+  {
+   "month": 19,
+   "text": "m19: supply=tight (index +6.4% to 1.297, spot 1.57x), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m18=22.71), plan=Run3 155.93/320 on track (+55 in m19), next month m20 begin reselling idle us/eu GenH (3k/mo cap) after 10MW/6MW power contracts expire"
+  },
+  {
+   "month": 20,
+   "text": "m20: supply=tight (index +4.4% to 1.354, headline=tight, rival buying), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m19=22.64), plan=Run3 211.28/320 on track (+21 kH-mo cushion), resell 3k idle H from eu at 75% of 10.01M before further depreciation"
+  },
+  {
+   "month": 21,
+   "text": "m21: supply=tight (index +4% to 1.339, spot 1.92x, headline=tight), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m20 spiked to 29.16 vs 23.22 trend), plan=resell 3k idle H from us, set 1 kH spot in us for m21 Run3 and spike protection (248.97/320 done)"
+  },
+  {
+   "month": 22,
+   "text": "m22: supply=loose maybe (spot 1.27x at 1.713M, headline=loose), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m21=26.51), plan=Run3 283.31/320 easily clears in m22..23, cancel us spot for m22 and resell 3k idle H from us, check m23 us/eu inference safety next month"
+  },
+  {
+   "month": 23,
+   "text": "m23: supply=uncertain (index +7.4% to 1.454, headline=loose, rival buying), genN_launch=11 LAUNCHED, brokers=unknown, inf_growth=7% (m22=28.05), plan=Run3 completes easily (312.11/320), resell final 2.15k idle H in us/eu, zero spot per critical fractile"
+  }
+ ],
+ "actions": [
+  "set_spot 1.2 ap",
+  "reserve 3 12 ap",
+  "contract_power 14 ap",
+  "buy_gpus 10 H vendor ap",
+  "contract_power 4 ap",
+  "end_month",
+  "set_spot 0 ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "move_gpus 2.85 H us ap",
+  "buy_gpus 2 H vendor ap",
+  "contract_power 6 ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 16 ap",
+  "end_month",
+  "contract_power 8 us",
+  "end_month",
+  "set_spot 0.5 eu",
+  "end_month",
+  "set_spot 0.6 us",
+  "set_spot 0.8 eu",
+  "reserve 4 12 us",
+  "reserve 3 12 eu",
+  "reserve 3 12 ap",
+  "buy_gpus 5 N vendor us",
+  "buy_gpus 3 N vendor ap",
+  "end_month",
+  "set_spot 0 us",
+  "set_spot 0 eu",
+  "buy_gpus 3 N vendor ap",
+  "end_month",
+  "end_month",
+  "reserve 3 6 ap",
+  "reserve 4 6 us",
+  "end_month",
+  "reserve 3 6 ap",
+  "end_month",
+  "reserve 3 6 eu",
+  "reserve 1 6 ap",
+  "reserve 1 6 us",
+  "buy_option 5",
+  "end_month",
+  "reserve 3 6 eu",
+  "reserve 2 6 us",
+  "exercise_option 5 eu",
+  "end_month",
+  "end_month",
+  "end_month",
+  "resell_gpus 3 H eu",
+  "end_month",
+  "resell_gpus 3 H us",
+  "set_spot 1 us",
+  "end_month",
+  "set_spot 0 us",
+  "resell_gpus 3 H us",
+  "end_month",
+  "resell_gpus 1.15 H us",
+  "resell_gpus 1 H eu",
+  "end_month"
+ ]
+}

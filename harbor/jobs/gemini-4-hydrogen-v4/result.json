@@ -1,0 +1,45 @@
+{
+    "schema_version": 1,
+    "id": "5c32605c-beca-4399-9d7e-de71b13c7b57",
+    "started_at": "2026-11-14T17:50:25.483216",
+    "updated_at": "2026-11-14T18:18:48.444286",
+    "finished_at": "2026-11-14T18:18:48.444286",
+    "n_total_trials": 3,
+    "stats": {
+        "n_completed_trials": 3,
+        "n_errored_trials": 2,
+        "n_running_trials": 0,
+        "n_pending_trials": 0,
+        "n_cancelled_trials": 0,
+        "n_retries": 0,
+        "evals": {
+            "opencode__gemini-4-hydrogen__adhoc": {
+                "n_trials": 1,
+                "n_errors": 2,
+                "metrics": [
+                    {
+                        "mean": 0.899
+                    }
+                ],
+                "pass_at_k": {},
+                "reward_stats": {
+                    "reward": {
+                        "0.899": [
+                            "gpu-world__CyGATtE"
+                        ]
+                    }
+                },
+                "exception_stats": {
+                    "RuntimeError": [
+                        "gpu-world__Ek9NbGt",
+                        "gpu-world__d3w9ifZ"
+                    ]
+                }
+            }
+        },
+        "n_input_tokens": 3335128,
+        "n_cache_tokens": 3180073,
+        "n_output_tokens": 10582,
+        "cost_usd": 1.0529679749999998
+    }
+}

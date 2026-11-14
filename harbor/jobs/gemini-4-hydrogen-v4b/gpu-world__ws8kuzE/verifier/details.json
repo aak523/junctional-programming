@@ -1,0 +1,194 @@
+{
+ "reward": 0.7397,
+ "seed": 159943567820862,
+ "net_cost": 845.79,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 920.32,
+  "mark_to_market": 153.72,
+  "obligations": 79.19,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 845.79,
+  "costs": {
+   "capex": 760.0,
+   "power": 151.2,
+   "contracts": 279.14,
+   "spot": 5.14,
+   "unserved": 0.0,
+   "resale": -275.22,
+   "interest": 0.06,
+   "moves": 0.0,
+   "options": 0.0
+  }
+ },
+ "scale": {
+  "oracle": 625.61,
+  "reference": 714.83,
+  "do_nothing": 3450.29,
+  "reference_reward": 0.8752,
+  "do_nothing_reward": 0.1813
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0: Supply likely loose (~90%, positive CoWoS news + spot/index=1.13x). Gen N launch ~12 (range 11..14). Brokers untested (50/50 each). Inference growth unknown (50/50 3% vs 7%). Plan: ordered 4k H to ap + 6MW ap power (ready m3) + 4MW us power (ready m5) + 2kH 6m ap reserve + 3kH ap spot for m0 inference & Run 1."
+  },
+  {
+   "month": 1,
+   "text": "M1: Supply confirmed loose in M0 (4k shipped, 3k ap spot filled) and M1 (index down 3.9%, spot/index=1.44 w/ rival). Gen N launch narrowed to 11..13 (rumor 11). Brokers untested. Inference M0=5.71 (growth rate 3% vs 7% still uncertain). Plan: cancelled ap spot (rival buying), ordered 8k H to ap + 11MW ap power (ready m7) to hit ~26k H base for Run 2."
+  },
+  {
+   "month": 2,
+   "text": "M2: Supply remains loose (positive CoWoS news, index -4.4% to .469, spot/index=1.07x). Gen N launch still ~11..13 (no new rumor). Brokers untested. Inference M0=5.71, M1=6.43 (still noisy, wait for more months). Plan: hold cash (58M -> 98M), await M3 delivery of 4k H to ap + 6MW ap power."
+  },
+  {
+   "month": 3,
+   "text": "M3: Supply uncertain/leaning tight (~60%, HBM disappointment headline, index +1.7% to .494, spot/index=1.24x). Gen N launch narrowed to 11..13 (rumor 12). Brokers untested. Inference M0=5.71, M1=6.43, M2=7.06 (~93% 7% growth). Plan: ordered 4k H to ap + 6MW ap power (ready m6) -> 30k H total by m8 for Run 2."
+  },
+  {
+   "month": 4,
+   "text": "M4: Supply likely flipped tight (~70%, lead-time headline + spot/index=1.73x, though index -2.0% to .464 and M3 shipped 4.35k loose). Gen N launch ~11..13. Brokers untested. Inference 5.71,6.43,7.06,7.66 (>99% 7% growth). Plan: hold cash (16.8M), observe M4 vendor shipment to confirm regime."
+  },
+  {
+   "month": 5,
+   "text": "M5: Supply confirmed loose (~90%, M4 shipped remaining 3.65k of #3, index plunged -11.3% to .299, spot/index=1.32x). Gen N launch ~11..13. Brokers untested. Inference 5.71,6.43,7.06,7.66,9.19 (7% growth). Plan: hold cash (45.9M), let #4 (4k H) ship at end of m5 and observe m5 demand."
+  },
+  {
+   "month": 6,
+   "text": "M6: Supply uncertain (~50/50, M5 shipped 4k loose and index fell -5.1% to .233, spot/index=1.36x, but lead-time headline appeared). Gen N launch ~11..13. Brokers untested. Inference 7% confirmed (M0..5: 5.71,6.43,7.06,7.66,9.19,8.60). Plan: Run 1 clears this month"
+  },
+  {
+   "month": 7,
+   "text": "M7: Supply tight (>95%, hyperscaler tight news, index jumped +8.2% to .334, spot/index=2.20x). Export control rumor appeared. Gen N launch ~11..13. Brokers untested. Inference 7% confirmed so far (watch m8..15 for possible switch). Plan: Run 1 clears this month, reserved 1kH 12m eu + 1kH 12m ap for Run 2 (m8..19), signed 13MW ap power (ready m11) for Gen N."
+  },
+  {
+   "month": 8,
+   "text": "M8: Supply tight (>98%, lead-time news, index +4.3% to .392, spot/index=3.33x). Export control rumor persists. Gen N launch ~11..13. Brokers untested. Inference 7% through M7 (9.77 kH, watch m8..15 for possible switch). Plan: hold cash (44.1M) for Gen N launch"
+  },
+  {
+   "month": 9,
+   "text": "M9: Supply tight (~85%, CoWoS booked news, index +5.7% to .471, spot/index=0.89x noisy). Export controls active m9..14 (all 30k H already delivered). Gen N launch ~11..13. Brokers untested. Inference 7% through M8 (11.12 kH). Plan: hold cash (75.3M) for Gen N launch and watch m9 demand for any growth switch."
+  },
+  {
+   "month": 10,
+   "text": "M10: Supply likely loose (~80%, index -2.4% to .435, spot/index=0.84x after 0.89x in M9). Export controls active m9..14. Gen N launch confirmed for Month 11. Brokers untested. Inference 7% through M9 (12.01 kH). Plan: hold 06.5M cash for Month 11 Gen N launch, order Gen N to ap (13MW ready m11) and us (10MW ready m14) plus post-launch cloud reservations."
+  },
+  {
+   "month": 11,
+   "text": "M11: Supply likely loose (~85%, spot/index=0.67x after 0.84x in M10 and 0.89x in M9). Export controls active m9..14. Gen N launched in M11. Brokers untested. Inference M10 dropped to 11.19 kH (watch m11..12 to see if switched 7%->3% or noise). Plan: ordered 8k Gen N to ap (20M, uses existing 13.6MW spare ap power, usable m14+)"
+  },
+  {
+   "month": 12,
+   "text": "M12: Supply confirmed loose (~90%, positive CoWoS news, index -2.0% to .106, all 2kH reservations filled without tight cap). Export controls active m9..14. Gen N launched m11. Brokers untested. Inference M11=12.28 kH (7% continues). Plan: ordered 1k Gen N to us + reserved 2kH 12m in eu, ap, us (m13..24) at cheap post-launch prices, will continue ordering Gen N to us up to 6k total as cash arrives."
+  },
+  {
+   "month": 13,
+   "text": "M13: Supply confirmed loose (>99%, positive CoWoS news, index -8.0% to .018, spot/index=0.63x, all 2kH reservations filled). Export controls active m9..14. Gen N #5 (8k ap) starts shipping end of m13. Brokers untested. Inference 7% through M12 (13.06 kH). Plan: reserved 2kH 12m in eu, ap, us (m14..25) at ultra-low loose prices, hold cash (7M) to avoid debt interest and observe m13 demand."
+  },
+  {
+   "month": 14,
+   "text": "M14: Supply likely loose (~70%, index -6.4% to /usr/bin/bash.953, spot/index=0.99x, M13 shipped 4.31k N loose, though hyperscaler tight news appeared). Export controls end after M14. Gen N #5 delivered 4.31k to ap. Brokers untested. Inference 7% through M13 (14.69 kH). Plan: Run 2 clears this month, reserved 1kH 12m eu (m15..26) for m20+ eu inference, will add 6m cloud in m15..18 for Run 3."
+  },
+  {
+   "month": 15,
+   "text": "M15: Supply likely loose (~75%, cloud cut news, M14 shipped 4.48k N loose, though spot/index noisy w/ rival). Export controls ended after M14. Brokers untested. Inference M14=14.46 (down slightly from 14.69, watch m15 demand for possible switch to 3% vs noise around 7%). Plan: Run 2 already met (161.8/140), hold cash and observe m15 demand before sizing final 6m cloud reservations for Run 3."
+  },
+  {
+   "month": 16,
+   "text": "M16: Supply confirmed loose (~90%, positive CoWoS news, spot/index=0.91 w/ rival, both 2kH reservations filled without tight cap). Export controls ended. Brokers untested. Inference M15=17.83 kH (confirmed 7% stayed all the way through m15). Plan: Run 2 met (206.6/140), reserved 2kH 6m eu + 2kH 6m ap (m17..22), will add final 6m reservations in M17 (m18..23) for Run 3 + m20..23 eu/us inference."
+  },
+  {
+   "month": 17,
+   "text": "M17: Supply loose (~85%, inventory buildup news, spot/index=0.97x). Brokers untested. Inference M16 dropped to 15.15 kH (possible late switch 7%->3% around m13..15 vs low noise, watch m17 demand). Plan: Run 3 at 47.9/320, reserved 2kH eu + 1kH us + 1kH ap for 6m (m18..23, zero wasted months) giving +24kH-mo safety buffer."
+  },
+  {
+   "month": 18,
+   "text": "M18: Supply likely loose (~85%, spot/index=0.84x in M18 after 0.97x in M17, neutral news). Brokers untested. Inference M16=15.15, M17=16.17 (confirmed growth switched 7%->3% around m13..15). Plan: Run 3 on track (~375/320), resold 3k idle-soon H in eu (3.5M) ahead of m20 power expiry to avoid depreciation."
+  },
+  {
+   "month": 19,
+   "text": "M19: Supply loose (~90%, cloud cut news, index -0.5% to .049, spot/index=1.26x). Brokers untested. Inference M18=18.23 kH (consistent w/ 3% post-switch around ~17.0 + noise, vs 20.3 if still 7%). Plan: Run 3 at 148.5/320, resold remaining 1k H in eu (.7M) before m20 power expiry, will resell ~1.14k idle us H in m20."
+  },
+  {
+   "month": 20,
+   "text": "M20: Supply loose (~95%, index -2.2% to .026, spot /usr/bin/bash.873 even w/ rival buying). Brokers untested. Inference M19=16.99 kH (100% confirmed 3% growth post-switch). Plan: Run 3 at 198.5/320, resold 1.14k unpowered H in us (.6M) after m20 power drop, coast smoothly through m23."
+  },
+  {
+   "month": 21,
+   "text": "M21: Supply loose (~95%, inventory buildup news, index -7.1% to /usr/bin/bash.953, spot/index=1.24x). Brokers untested. Inference M20=18.71 kH (3% post-switch continues). Plan: Run 3 at 243.6/320, resold 3k excess N in ap (3.5M) to avoid 3m depreciation while keeping +33kH-mo buffer for Run 3."
+  },
+  {
+   "month": 22,
+   "text": "M22: Supply loose (~95%, inventory buildup news, index -10.6% to /usr/bin/bash.852, spot/index=1.56x noisy). Brokers untested. Inference M21=19.74 kH (3% continues). Plan: Run 3 at 281.7/320, resold 3k N (2.1M) + 3k H (1.6M) in ap to save 2m depreciation while still leaving ~+14 kH-mo Run 3 buffer."
+  },
+  {
+   "month": 23,
+   "text": "M23: Supply loose (~95%, cloud cut news, index /usr/bin/bash.858, spot/index=1.27x). Brokers untested. Inference M22=20.20 kH (3% growth). Plan: Run 3 at 310.4/320 (only 9.6 left), resold 2k N + 3k H in ap to save final month depreciation while keeping ~+7.4 buffer over 320 and full inference coverage."
+  }
+ ],
+ "actions": [
+  "contract_power 4 us",
+  "contract_power 6 ap",
+  "buy_gpus 4 H vendor ap",
+  "reserve 2 6 ap",
+  "set_spot 3 ap",
+  "end_month",
+  "set_spot 0 ap",
+  "buy_gpus 8 H vendor ap",
+  "contract_power 11 ap",
+  "end_month",
+  "end_month",
+  "buy_gpus 4 H vendor ap",
+  "contract_power 6 ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 10 us",
+  "end_month",
+  "reserve 1 12 eu",
+  "reserve 1 12 ap",
+  "contract_power 13 ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "buy_gpus 8 N vendor ap",
+  "end_month",
+  "buy_gpus 1 N vendor us",
+  "reserve 2 12 eu",
+  "reserve 2 12 ap",
+  "reserve 2 12 us",
+  "end_month",
+  "reserve 2 12 eu",
+  "reserve 2 12 ap",
+  "reserve 2 12 us",
+  "end_month",
+  "reserve 1 12 eu",
+  "end_month",
+  "end_month",
+  "reserve 2 6 eu",
+  "reserve 2 6 ap",
+  "end_month",
+  "reserve 2 6 eu",
+  "reserve 1 6 us",
+  "reserve 1 6 ap",
+  "end_month",
+  "resell_gpus 3 H eu",
+  "end_month",
+  "resell_gpus 1 H eu",
+  "end_month",
+  "resell_gpus 1.14 H us",
+  "end_month",
+  "resell_gpus 3 N ap",
+  "end_month",
+  "resell_gpus 3 N ap",
+  "resell_gpus 3 H ap",
+  "end_month",
+  "resell_gpus 2 N ap",
+  "resell_gpus 3 H ap",
+  "end_month"
+ ]
+}

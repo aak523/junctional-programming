@@ -1,2 +1,5 @@
 __pycache__/
 state/
+.env
+.env.*
+harbor/*.log

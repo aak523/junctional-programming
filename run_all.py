@@ -17,7 +17,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import policies  # noqa: E402
 
-COLS = ["do_nothing", "stop_early", "spot_only", "exploiter", "heuristic", "reference", "oracle", "lp_bound"]
+COLS = ["do_nothing", "stop_early", "spot_only", "exploiter", "reference", "oracle", "lp_bound"]
 
 
 def run(job):
