@@ -1,0 +1,167 @@
+{
+ "run": "seed1_1",
+ "seed": 1,
+ "model": "claude-opus-5-5",
+ "months_played": 24,
+ "turns": 28,
+ "usd": 1.1037676000000003,
+ "harness_error": false,
+ "actions": [
+  "contract_power 25",
+  "buy_gpus 12 H",
+  "reserve 3 24",
+  "end_month",
+  "buy_gpus 2 H A",
+  "reserve 3 24",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 25",
+  "end_month",
+  "end_month",
+  "contract_power 20",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "buy_gpus 1 H A",
+  "buy_gpus 1 H B",
+  "end_month",
+  "end_month",
+  "buy_gpus 4 N B",
+  "buy_gpus 2 N A",
+  "buy_gpus 10 N",
+  "reserve 5 12",
+  "end_month",
+  "end_month",
+  "set_spot 10",
+  "end_month",
+  "set_spot 0",
+  "end_month",
+  "resell_gpus 3 H",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "resell_gpus 3 H",
+  "resell_gpus 3 N",
+  "end_month"
+ ],
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0: regime likely TIGHT (spot 2.2x index, lead-time news). Launch unknown, prior 11-18 uniform. Brokers untested (50/50). Growth unknown 3/7%. Plan: power is bottleneck (16MW powers 11.4k H), signed 25MW"
+  },
+  {
+   "month": 1,
+   "text": "M1: regime TIGHT (shipped 1.48k, spot 3.6x index, index +1pct, loosen headline likely wrong). Launch prior 11-18. Testing broker A with 2k. Growth unknown (inference 5.5). Power 16MW ends m19 - must replace. Plan lock cheap 24m reservations while index low, gen N for window 3"
+  },
+  {
+   "month": 2,
+   "text": "M2: TIGHT (ship 1.94k, index +19pct, tight news), spot 1.36x is noise. Launch no rumour yet. Broker A pending. Growth unclear (5.5 to 6.1). Window 1 on track. Hold this month"
+  },
+  {
+   "month": 3,
+   "text": "M3: TIGHT (CoWoS news, ship 1.74k). Launch rumour ~12 so true 11-14. Broker A 1/1 delivered (P reliable ~0.72). Growth looks 7pct (5.5 to 6.8 in 2 mo). 16MW power ends m19, need replacement signed by ~m10. Window 1 safe. Window 3 plan: gen N orders at launch plus brokers. Hold"
+  },
+  {
+   "month": 4,
+   "text": "M4: regime mixed - shipments tight (2.36k), spot below index and price-cut news suggest maybe switched loose. Launch 11-14. Broker A likely reliable. Growth 3 vs 7 unclear (6.41 noisy). Window 1 completes this month. Hold"
+  },
+  {
+   "month": 5,
+   "text": "M5: regime uncertain leaning tight (ship 1.75k) though index fell and inventory news says loose. Rival buying spot this month. Launch 11-14. Broker A ~0.72 reliable. Growth looks ~3pct so far (6.5). Window 1 done. Signing 25MW now since power cost is fixed per contract and earlier energisation only adds useful months - covers 16MW expiry m19 plus gen N. Plan buy gen N at launch"
+  },
+  {
+   "month": 6,
+   "text": "M6: TIGHT (ship 1.71k, HBM news, index +10pct). Launch rumour ~12 again, true likely 11-14. Broker A ~0.72. Growth ambiguous ~6pct trend (7.42), lean 7. Window 2 has surplus with H 28k + 6 reserved. Window 3 plan: gen N is far cheaper net of resale, so at launch order max N vendor + brokers A/B, reserve 12m after launch price drop, sign ~20MW more around m8-9"
+  },
+  {
+   "month": 7,
+   "text": "M7: TIGHT (ship 2.19k, spot 2.4x index). Launch 11-14 expected. Broker A ~0.72 (may decay 8-15, retest at launch with N). Growth ambiguous, 7.24 trend ~5-6pct. Signed 20MW for gen N power in window 3 (target ~71MW after m19 for 28k H + ~20k N)"
+  },
+  {
+   "month": 8,
+   "text": "M8: window 1 MET. Regime tight-ish (ship 1.75k) though CoWoS news says loosening. Launch 11-14. Broker A ~0.72 pre-decay. Growth now looks ~3pct (6.55, trend from 5.5). Window 2 projected ~200 vs 140 needed. Power 86MW from m10, 70MW after m19. Hold until launch"
+  },
+  {
+   "month": 9,
+   "text": "M9: TIGHT (HBM news, spot 1.8x index). Launch 11-14. Broker A ~0.72 pre-decay. Growth fit ~4.6pct over 8 mo (7.99), ambiguous. Window 2 on track (~25/mo). Hold cash for gen N"
+  },
+  {
+   "month": 10,
+   "text": "M10: TIGHT (no H shipments as queue empty, HBM news, spot 1.08x index noisy). Launch rumours ~12,~12,~15 -> intersection months 13-14. Broker A ~0.72 pre-decay. Growth ambiguous ~4pct (7.68). Power 86MW. Window 2 on track (51/140 after 2 mo). Plan: at launch order vendor N ~12k plus broker N A+B 4k each, reserve 3kH 12m monthly post-launch"
+  },
+  {
+   "month": 11,
+   "text": "M11: regime likely tight (index drifting up, spot 1.6x). No launch confirmation so launch likely 13-14. Broker A ~0.72 pre-decay. Growth now looks 7pct recently (6.55 to 8.93 in 3 mo), maybe switched up - plan window 3 for ~20kH inference by m23, need ~60kH capacity. Hold"
+  },
+  {
+   "month": 12,
+   "text": "M12: TIGHT (index +12pct, spot 1.5x). No launch confirmation for m13 so launch most likely m14 (rumours 12,12,15). Probing brokers with 1k each now to learn A decay and B reliability before ordering gen N via brokers at launch. Growth ~5pct fit, recent noisy (7.89). Window 2 will be met by m13"
+  },
+  {
+   "month": 13,
+   "text": "M13: TIGHT (index +5pct, spot 1.57x"
+  },
+  {
+   "month": 14,
+   "text": "M14: gen N LAUNCHED m14. Regime maybe switched LOOSE (index drift ex-launch ~-10pct, spot 1.27x, HBM loosens news). Broker A 1 deliver 1 cancel - likely decayed or unreliable (~0.42 delivery), B 1/1 (~0.73). Growth ~5pct (9.24), plan for 15-20kH inference by m23. Window 3 needs ~155 kH-months beyond H+reserved baseline: ordering B 4k N, A 2k N, vendor 10k N, reserving 5kH 12m"
+  },
+  {
+   "month": 15,
+   "text": "M15: regime LOOSE likely (5kH reservation accepted above tight cap 3, spot 0.74x index) though lead-time news says tight. Launch done m14. Brokers pending (B ~0.73, A ~0.42). Growth ~4-5pct (9.07). Window 3 projection 320-420 depending on regime and brokers - adequate. Debt -339, avoid more capex"
+  },
+  {
+   "month": 16,
+   "text": "M16: window 2 MET (209). Both broker N orders CANCELLED - A now 1/3, B 1/2, treat both as unreliable (~0.4), stop using brokers. Regime LOOSE likely (HBM news, 5kH reserve accepted). Growth ~3-4pct (9.03). Window 3 needs 40/mo, baseline 30.5 now, vendor 10k N ships from m17. Using spot (1.47) 10kH this month as top-up, will taper as N arrives"
+  },
+  {
+   "month": 17,
+   "text": "M17: LOOSE confirmed (4.02k N shipped vs 1.5 tight). Brokers unreliable, unused. Growth ~3-4pct (9.65). Window 3 projection without spot ~365 vs 320 - dropping spot to 0, will re-add if regime turns tight or inference jumps. Power 70MW after m19 covers H 29k + N 10k"
+  },
+  {
+   "month": 18,
+   "text": "M18: LOOSE (4.8k N shipped, inventory news"
+  },
+  {
+   "month": 19,
+   "text": "M19: regime maybe turning tight (hyperscaler news, spot 2.2x index). Brokers unused. Inference jumped to 10.91 - growth may have switched to 7pct. Window 3: 123/320, 5 months at ~43-45 -> ~340, buffer ~20, no more resales. Spot as fallback"
+  },
+  {
+   "month": 20,
+   "text": "M20: regime unclear (inventory news loose, spot 1.66x). Brokers unused. Growth ~5pct (10.51). Window 3: 170/320, need 37.6/mo, capacity gives ~45/mo, buffer ~28. Hold"
+  },
+  {
+   "month": 21,
+   "text": "M21: regime unclear (spot 0.63x loose vs lead-time tight news). Brokers unused. Growth ~5pct (11.59). Window 3: 215/320, need 35/mo for 3 mo, capacity gives ~44, buffer ~28. Hold"
+  },
+  {
+   "month": 22,
+   "text": "M22: regime unclear, spot 2.2x suggests tight. Brokers unused. Growth ~4pct (11.13). Window 3: 261/320, need 59 over 2 mo with ~45/mo capacity, safe. Resale gains negligible vs end mark, hold"
+  },
+  {
+   "month": 23,
+   "text": "M23: loose-leaning (inventory news, spot 1.27x). Window 3 needs 14 more vs ~45 available, so reselling 3k H and 3k N now (slightly above month-24 mark, capacity still ~36 training). Growth ended ~4pct overall"
+  }
+ ],
+ "spend": 1273.75,
+ "mark_to_market": 330.92,
+ "obligations": 114.63,
+ "milestones_met": 3,
+ "missed": [],
+ "penalties": 0.0,
+ "net_cost": 1057.46,
+ "costs": {
+  "capex": 849.35,
+  "power": 221.25,
+  "contracts": 283.88,
+  "spot": 14.71,
+  "unserved": 0.0,
+  "resale": -119.7,
+  "interest": 24.27
+ }
+}

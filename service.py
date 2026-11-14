@@ -1,7 +1,7 @@
-"""The world server the agent talks to through its run directory's gpu.py.
+"""The world service the agent talks to (locally through its run directory's gpu.py; in Harbor through server.py).
 
-State lives outside the agent's directory as {seed, actions}; every call rebuilds the
-world by replaying the action log, so the seed and hidden state never leave this side.
+State lives outside the agent's reach as {seed, actions}; the world is rebuilt by replaying the
+action log, so the seed and hidden state never leave this side.
 usage: python service.py <state.json> "<cmd>; <cmd>; ..."
 """
 import json
@@ -35,6 +35,13 @@ def load(state):
 
 def run(state, line):
     meta, w = load(state)
+    out = execute(meta, w, line)
+    state.write_text(json.dumps(meta))
+    return out
+
+
+def execute(meta, w, line):
+    """Apply a ';'-separated command line to world w, logging actions and notes into meta. Returns the reply text."""
     out = []
     for cmd in [c.strip() for c in line.split(";") if c.strip()]:
         name = cmd.split()[0]
@@ -46,8 +53,12 @@ def run(state, line):
             elif name == "history":
                 out.append("\n".join(json.dumps(h) for h in w.history) or "no finished months yet")
             elif name == "note":
-                meta.setdefault("notes", []).append({"month": w.t, "text": cmd[4:].strip()[:600]})
-                out.append(f"Noted for month {w.t}.")
+                notes = meta.setdefault("notes", [])
+                if sum(n["month"] == w.t for n in notes) >= 5:
+                    out.append("ERROR: at most 5 notes per month.")
+                else:
+                    notes.append({"month": w.t, "text": cmd[4:].strip()[:600]})
+                    out.append(f"Noted for month {w.t}.")
             elif name == "calc":
                 out.append(f"{cmd[4:].strip()} = {W.calc(cmd[4:].strip()):.6g}")
             elif w.t >= W.T:
@@ -59,7 +70,6 @@ def run(state, line):
                 out.append(f"> {cmd}\n{res}")
         except (ValueError, SyntaxError, ZeroDivisionError) as e:
             out.append(f"> {cmd}\nERROR: {e}")
-    state.write_text(json.dumps(meta))
     return "\n\n".join(out)
 
 

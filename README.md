@@ -1,49 +1,78 @@
 # GPU World
 
-The agent is compute procurement lead at an AI lab for 24 months. It must finish three training runs
-inside their windows and serve growing inference demand, at the lowest settled net cost. It does this
-by buying GPUs (long, allocated lead times), reserving cloud capacity, renting spot, signing power and
-reselling hardware. The full rules the agent gets are in [TASK.md](TASK.md).
+The agent is compute procurement lead at an AI lab for 24 months. It must finish three training runs inside
+their windows and serve growing inference demand, at the lowest settled net cost. It buys GPUs from a vendor
+(slow, allocated) or two brokers (fast, possibly unreliable), reserves cloud capacity, rents spot, signs power,
+resells hardware and manages cash on a credit line. The rules the agent gets are in [TASK.md](TASK.md).
 
-- **Seeded, no LLM inside the world.** `world.py` draws all exogenous randomness at construction, so every
-  policy faces the same world for a given seed.
-- **Hidden state:** the supply regime (loose/tight, switches 10%/month), the next-generation launch month
-  (11–18), export controls (50%, months 5–15), and inference growth (3% or 7%/month). The structure and
-  priors are all in TASK.md; only the realised values are hidden. Evidence comes from noisy headlines,
-  prices, and "costly interaction": what your queue actually ships and what reservations and spot you actually get.
-- **Time is operations:** at most 6 actions per month, then `end_month`.
-- **Settled ledger:** spend − resale − GPUs marked at 75% of used value + obligations past month 23 +
-  training-run penalties ($200M + $5M per kH-month short).
+## Why it is hard: where 2025–26 research says agents fail
+
+| Mechanic | Failure it targets | Evidence |
+|---|---|---|
+| Two brokers whose reliability is learned only by ordering; a reliable one can decay silently | exploration; judging suppliers on price; acting on stale beliefs | Krishnamurthy et al. 2024 (in-context exploration); RetailBench 2026 (supplier choice on surface signals) |
+| Inference growth switches silently mid-episode; the regime switches without notice | noticing silent change and acting on it (the knowing-doing gap) | STOCKTAKE 2026; WildGrid 2026 |
+| Long lead times, FIFO allocation, power lead times, windowed training runs | in-transit orders and long-horizon commitments | Beer Game LLM studies (AAMAS 2026, Long et al. 2026); AIM-Bench |
+| Cash plus a credit line at 2%/month | over-insurance (Opus's v2 failure mode) | our v2 runs; newsvendor bias studies |
+| Several attempts per world; score = 0.7 mean + 0.3 worst attempt | run-to-run reliability | τ-bench pass^k; Long et al. "agent bullwhip"; Vending-Bench |
+| Monthly `note` belief log | separates *knowing* from *doing* when explaining failures | STOCKTAKE |
+
+## Design
+
+- **Seeded, no LLM inside the world.** `world.py` draws all exogenous randomness at construction.
+- **Hidden state:**
+  - the supply regime;
+  - the gen N launch month;
+  - export controls;
+  - inference growth and its silent switch;
+  - broker reliability and its silent decay.
+
+  The structure and priors are all in TASK.md; only the realised values are hidden.
+- **Fair reference, true bound** (`lp.py`, `policies.py`):
+  - **reference:** a Bayesian filter over every hidden factor feeds a linear programme (LP). Each month it solves the LP over 12 futures sampled from the posterior, keeps decisions for the next 3 months common to all futures, and plays this month's. It sees exactly what the agent sees, and its few knobs were tuned on seeds 100+ only.
+  - **oracle:** the same LP on the true future, played in the real world.
+  - **lp_bound:** that LP solved once over the whole horizon, a relaxation of the world.
+  - **Value of hidden information** = reference − oracle.
+- **Isolation:** the agent's only tool is `python gpu.py "<cmd>; <cmd>"`. The world state lives outside its directory and is rebuilt by replaying the action log. A probe agent could not read the simulator or the seed.
+
+## Harbor task (`harbor/gpu-world/`)
+
+Generated from these sources by `python build_harbor.py` (seed 20261114; a fresh verifier token on each build).
+- `environment/`: the agent's container (`main`) gets only a `gpu` client. The `world` sidecar runs `server.py` with the
+  simulator, the secret seed and the episode state. The agent's network is restricted to its model provider.
+- `tests/`: settles the episode on the sidecar with a token the agent never sees, then writes
+  `reward = oracle net cost / agent net cost` (0..1) to `/logs/verifier/reward.txt` and details to `details.json`.
+- `solution/`: the reference policy, playing through the same server API.
+
+```
+harbor run -p harbor/gpu-world -a oracle                          # reference solution: reward 0.893 (log in harbor/jobs/oracle-3)
+harbor run -p harbor/gpu-world -a opencode -m openai/<model>      # needs OPENAI_API_KEY (or google/..., GEMINI_API_KEY)
+```
+
+Ladder on the task seed (reward): do_nothing 0.204, stop_early 0.305, spot_only 0.387, exploiter 0.490,
+heuristic 0.779, **reference 0.893**, oracle 1.000.
 
 ## Run it
 
 ```
-python ladder.py 0 10            # scripted ladder on evaluation seeds 0..9 (~2 s)
-python run_all.py 0,1,2,3 1      # one headless Claude Code attempt per seed, then results/table.md
-python run_all.py summary        # re-tabulate existing runs
-python trace.py reference 3      # month-by-month trajectory of one policy (shows hidden state)
+python ladder.py 0 10 results/ladder.json   # scripted ladder + LP bound on evaluation seeds 0..9 (~1 min)
+python run_all.py 0,1,2 2                   # 2 headless Claude Code attempts per seed, then results/table.md
+python run_all.py summary                   # re-score existing runs
+python trace.py heuristic 3                 # month-by-month trajectory of a ladder policy
 ```
 
-The agent runs as `claude -p` in `runs/<seed>_<attempt>/`. Its only tool is
-`python gpu.py "<cmd>; <cmd>"`, which forwards to `service.py`. The service keeps `{seed, action log}` in `state/`
-(outside the run dir) and rebuilds the world by replay on each call. Permission rules deny reading or
-running anything else. We checked this with a probe agent: reading `../../world.py`, `type` on the state file and `python -c open(...)` were all denied.
+## Ladder (mean net cost over evaluation seeds 0–9, $M; lower is better)
 
-## Policy ladder (`policies.py`)
+| do_nothing | stop_early | spot_only | exploiter | heuristic (v2 reference) | **reference** | oracle | LP bound |
+|---|---|---|---|---|---|---|---|
+| 3251 | 2344 | 2172 | 2211 | 1049 | **837** | 761 | 725 |
 
-| policy | what it does |
-|---|---|
-| do_nothing | no actions |
-| stop_early | the reference for months 0–2, then nothing (contracts and standing spot continue) |
-| spot_only | myopic: never buys hardware; rents the gap on spot or 6-month reservations |
-| exploiter | reference plus hacks: buy-and-flip GPUs, long contracts past the horizon, pile of undelivered orders at the end |
-| **reference** | Bayesian filter over regime (headlines, spot ratio, index drift, shipments) and launch month (rumours, confirmations); replans every month: buys GPUs at the latest safe month in tranches, starts reservations early enough under the monthly cap, keeps power ahead at the worst-case lead time, spot plus a 5% buffer |
-| clairvoyant | the same planner given the true hidden path. A perfect-information heuristic, **not** an upper bound |
+Every baseline and exploit costs at least 1.6× the reference on every seed. The exploits tried were buy-and-flip GPUs, long contracts past the horizon, a pile of undelivered orders at the end, and stopping after 3 months.
 
-Reference parameters were grid-tuned on seeds 100–139 only (`tune.py`); evaluation uses seeds 0–9.
+## Results: Opus 5.5 vs the reference ([results/SUMMARY.md](results/SUMMARY.md))
 
-## Results (see [results/SUMMARY.md](results/SUMMARY.md))
+The reference beats Opus in **6/6** runs (seeds 0–2, 2 attempts each). Score 0.65 vs 0.88; Opus's net cost is 26–41% higher.
+Opus consistently over-insures the early training windows (1.3–2.4× the compute they need, bought on credit), plans
+to keep buying in the same note that says it already has a big surplus, and in 4/6 runs never tries one of the brokers.
+`python compare.py` reproduces the breakdown.
 
-7 Opus runs on seeds 0–6: the reference wins 4/7, and Opus costs 10.6% more on average (1231 vs 1113 $M). Every baseline and
-exploit costs 1.7–4.0x the reference. Verdict: **no-go as is.** Opus reaches about 90% of the reference, and on the held-out seeds 4–6 it wins 2/3.
-Its consistent mistake is over-insuring early training windows for the final run. SUMMARY.md lists rework options.
+Earlier versions: `results/SUMMARY_v2.md`, `runs_v1/`, `runs_v2/`.

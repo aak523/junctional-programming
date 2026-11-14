@@ -7,8 +7,8 @@ import world as W
 name, seed = sys.argv[1], int(sys.argv[2])
 pol, stop = policies.LADDER[name]
 w = W.World(seed)
-p = pol(w) if pol is policies.Clairvoyant else pol()
-print("hidden: regime", "".join(r[0] for r in w.regime), "launch", w.launch, "export", w.export)
+p = pol(w) if getattr(pol, "needs_world", False) else pol()
+print("hidden: regime", "".join(r[0] for r in w.regime), "launch", w.launch, "export", w.export, "brokers reliable", w.broker_reliable, "decay", w.broker_decay, "growth switch", w.growth_switch)
 while w.t < W.T:
     acts = []
     if stop is None or w.t < stop:

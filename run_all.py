@@ -3,8 +3,8 @@
 usage: python run_all.py <seeds, e.g. 0,1,2> <attempts> [model]
        python run_all.py summary      (only re-score existing runs/*/result.json)
 
-Score per run: (C_do_nothing - C) / (C_do_nothing - C_oracle), so do-nothing = 0 and the perfect-information
-oracle = 1. Per seed (StoreBench-style reliability): 0.7 * mean + 0.3 * worst attempt.
+Score per run (same as the Harbor reward): C_oracle / C, the fraction of perfect-information efficiency achieved
+(oracle = LP-MPC on the true future; capped at 1). Per seed (StoreBench-style reliability): 0.7 * mean + 0.3 * worst attempt.
 """
 import json
 import statistics
@@ -44,7 +44,7 @@ def summary():
     lad = ladder_for(seeds)
 
     def score(s, c):
-        return (lad[s]["do_nothing"]["net_cost"] - c) / (lad[s]["do_nothing"]["net_cost"] - lad[s]["oracle"]["net_cost"])
+        return min(1.0, lad[s]["oracle"]["net_cost"] / c) if c > 0 else 1.0
 
     lines = ["| seed | " + " | ".join(COLS) + " | agent runs | agent score (0.7 mean + 0.3 worst) | reference score |",
              "|" + "---|" * (len(COLS) + 4)]
@@ -62,7 +62,7 @@ def summary():
         beat = sum(r["net_cost"] > lad[r["seed"]]["reference"]["net_cost"] for r in runs)
         lines.append(f"\nRuns: {len(runs)} valid" + (f" ({len(bad)} excluded for harness errors: {', '.join(bad)})" if bad else "") +
                      f". Reference beats the agent in {beat}/{len(runs)} runs. Mean agent score {statistics.mean(comp):.2f} "
-                     f"vs reference {statistics.mean(refs):.2f} (do-nothing 0, oracle 1). "
+                     f"vs reference {statistics.mean(refs):.2f} (oracle = 1). "
                      f"Belief notes per run: {[len(r.get('notes', [])) for r in runs]}.")
     out = "\n".join(lines)
     (HERE / "results" / "table.md").write_text(out + "\n")

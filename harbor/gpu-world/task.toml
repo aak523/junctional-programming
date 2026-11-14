@@ -1,0 +1,27 @@
+schema_version = "1.4"
+
+[task]
+name = "junctional/gpu-world"
+description = "Run compute procurement for an AI lab for 24 months under hidden, drifting supply conditions."
+keywords = ["planning", "supply-chain", "partial-observability", "long-horizon"]
+
+[metadata]
+category = "planning"
+difficulty_explanation = """The agent must hit three training-run windows and serve growing inference demand at the lowest settled
+net cost while the supply regime, next-gen launch, export controls, inference growth and broker reliability are hidden and
+can change silently. Rules and priors are fully documented; only realised values are hidden. Reward 0 = do-nothing,
+1 = a perfect-information LP oracle; a Bayesian LP reference that sees exactly what the agent sees scores about 0.9."""
+
+[verifier]
+timeout_sec = 600.0
+environment_mode = "shared"
+
+[agent]
+timeout_sec = 5400.0
+network_mode = "allowlist"
+allowed_hosts = []
+
+[environment]
+build_timeout_sec = 1200
+cpus = 2
+memory_mb = 4096
