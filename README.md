@@ -35,7 +35,7 @@ The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gi
 | Two brokers whose reliability is learned only by ordering; a reliable one can decay silently | exploration; judging suppliers on price | Krishnamurthy et al. 2024; RetailBench 2026 |
 | Inference growth switches silently; the regime switches without notice | acting on silent change (the knowing-doing gap) | STOCKTAKE 2026; WildGrid 2026 |
 | Long lead times, first-in-first-out allocation, power lead times, windowed training runs | in-transit orders and long commitments | Beer Game LLM studies (AAMAS 2026; Long et al. 2026); AIM-Bench |
-| Cash plus a credit line at 2%/month | over-insurance | our Gemini runs |
+| Cash earns 0.75%/month, debt costs 2%/month; GPUs lose 4% of their value a month and 50% at the next-gen launch | over-insurance: idle cash and idle hardware both cost money | our Gemini runs |
 | Monthly `note` belief log | separates knowing from doing when explaining failures | STOCKTAKE |
 
 ## Design
@@ -45,21 +45,25 @@ The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gi
   and broker reliability and its silent decay. The structure and priors are all in TASK.md; only the realised values are hidden.
 - **Reference, oracle and bound** (`policies.py`, `lp.py`):
   - **reference:** a Bayesian filter over every hidden factor feeds a linear programme. Each month it solves the LP
-    over 12 futures sampled from the posterior, keeps the next 3 months of decisions common to all of them, and plays
-    this month's. It sees exactly what the agent sees, and its knobs were tuned on seeds 100+ only.
+    over 24 futures sampled from the posterior, keeps the next 3 months of decisions common to all of them, and plays
+    this month's. A guard covers the cliff of a missed training run: in a window's last two months it tops up spot
+    and, if tight spot caps could not close the gap, exercises capacity options. It sees exactly what the agent sees,
+    and its knobs were tuned on seeds 100+ only.
   - **oracle:** the same LP given the true future, played in the real world. It is a strong benchmark, not a strict
     bound (the reference occasionally beats it).
   - **LP bound:** the LP solved once over the whole horizon, a relaxation of the world.
 - **Isolation (Harbor):** the agent's container has only a `gpu` client. The world runs in a sidecar container that draws
   a secret 48-bit seed per trial; the verifier settles the episode with a token the agent never sees.
 
-## Ladder (v4, mean net cost over evaluation seeds 0–9, $M; lower is better)
+## Ladder (v5, mean net cost over evaluation seeds 0–9, $M; lower is better)
 
 | do_nothing | stop_early | spot_only | exploiter | **reference** | oracle | LP bound |
 |---|---|---|---|---|---|---|
-| 3,296 | 2,613 | 2,331 | 1,685 | **818** | 751 | 701 |
+| 3,401 | 3,073 | 2,391 | 1,407 | **838** | 796 | 703 |
 
-Every baseline and exploit costs at least 1.7x the reference on every seed. The exploits tried were buy-and-flip GPUs,
+The reference meets all three training runs on every seed and scores 0.92 on average (0.83 at worst). Doing nothing
+scores 0.23 and stopping after 3 months 0.26. Every baseline costs at least 2.4x the reference on every seed, and the
+exploiter at least 1.39x (1.68x on average). The exploits tried were buy-and-flip GPUs,
 contracts past the horizon, options bought and never used, undelivered orders at the end, and stopping after 3 months.
 
 ## Run it
@@ -70,6 +74,10 @@ harbor run -p harbor/gpu-world -a oracle                                   # the
 harbor run -p harbor/gpu-world -a opencode -m gemini/gemini-4-hydrogen \
     --api-key-name GEMINI_API_KEY -k 3 -n 3                                   # GEMINI_API_KEY in the shell environment
 harbor run -p harbor/gpu-world -a opencode -m anthropic/<model> -k 3 -n 3  # ANTHROPIC_API_KEY
+
+# Paired comparison on fixed worlds (what the status table reports): one task per seed, then run them all
+for s in 1001 1002 1003 1004 1005; do python build_harbor.py --seed $s --out paired/v5-s$s; done
+harbor run -p paired -a opencode -m gemini/gemini-4-hydrogen --api-key-name GEMINI_API_KEY --env-file .env -k 1 -n 4
 
 # Local tools
 python ladder.py 0 10 results/ladder.json   # scripted ladder + LP bound on seeds 0..9 (a few minutes)

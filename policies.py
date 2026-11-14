@@ -288,9 +288,10 @@ class LPPolicy:
     policy. Broker reliability can only be learned by ordering, which the LP does not value, so both probe each
     broker once at the start. The spot request at each site is a high quantile of the per-path optimum (cheap
     insurance), and in a training window's last month at least the gap the LP's convex shortfall cost would leave
-    (`guard`: the fixed penalty of a missed run is a cliff the LP cannot see). Charging unserved inference above its
+    (`guard`: the fixed penalty of a missed run is a cliff the LP cannot see); a month earlier, the same guard exercises
+    capacity options when tight spot caps could not close the gap in time. Charging unserved inference above its
     true cost was tried against the LP's inference-for-training leak and over-insured instead; `unserved` stays true."""
-    P = {"paths": 24, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.06, "shared": 2,
+    P = {"paths": 24, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.03, "shared": 2,
          "unserved": W.UNSERVED_INFERENCE, "guard": True}
 
     def __init__(self, beliefs=None, seed=0, **params):
@@ -333,12 +334,13 @@ class LPPolicy:
         # the LP's convex shortfall cost cannot see the fixed penalty of a missed run: in a window's last month, if the
         # capacity already certain for this month leaves a gap under the highest-demand path, ask for it on spot (only
         # what is filled is paid for). Tight supply: ask every site, the caps are small. Loose: split it by the caps.
+        def sure(k):   # training capacity in month k already certain: powered GPUs and active contracts, net of peak demand
+            return sum(powered_compute(obs, s, k) - max(x["D"][s][k] for x in paths)
+                       + sum(c["qty"] for c in obs["contracts"] if c["site"] == s and c["start"] <= k < c["end"]) for s in SITES)
         floor = {s: 0.0 for s in SITES}
         for (a, d, target), done in zip(MILESTONES, obs["window_training"]):
             if d == t and p["guard"]:
-                sure = sum(powered_compute(obs, s, t) - max(x["D"][s][t] for x in paths)
-                           + sum(c["qty"] for c in obs["contracts"] if c["site"] == s and c["start"] <= t < c["end"]) for s in SITES)
-                need = target - done - sure + 0.5
+                need = target - done - sure(t) + 0.5
                 if need > 0:
                     loose = W.SPOT_CAP["loose"]
                     floor = {s: need if self.bel.p_tight() > 0.5 else 1.3 * need * loose[s] / sum(loose.values()) for s in SITES}
@@ -346,6 +348,24 @@ class LPPolicy:
             level = max(floor[s], sorted(x[s] for x in spot)[min(len(spot) - 1, int(p["spot_q"] * len(spot)))])
             if abs(level - obs["spot_level"][s]) > 0.05:
                 do(f"set_spot {max(0.0, level):.2f} {s}")
+            floor[s] = max(0.0, level)
+        # one month earlier, spot may not be able to close the gap (tight caps are small): if this month's certain
+        # capacity plus spot filled at tight caps and next month's certain capacity leave the run short, exercise options
+        # now (they start next month, outside the reservation caps), buying any that are missing. Insurance against an
+        # uncertain future, so the perfect-information oracle (which times its deliveries exactly) skips it.
+        for (a, d, target), done in zip(MILESTONES, obs["window_training"]):
+            if d == t + 1 and a <= t and p["guard"] and isinstance(self.bel, Bayes):
+                spot_now = sum(min(floor[s], W.SPOT_CAP["tight"][s]) for s in SITES)
+                need = target - done - max(0.0, sure(t) + spot_now) - sure(t + 1) + 0.5
+                if need > 0:
+                    held = obs["options"]
+                    if held < need:
+                        buy = min(W.OPTION_CAP, need - held)
+                        if do(f"buy_option {buy:.2f}"):
+                            held += round(buy, 2)
+                    if held > 0.05:
+                        do(f"exercise_option {min(need, held):.2f} us")
+                        obs = obs | {"options": held - min(need, held)}
         for s in SITES:
             if dec["buy", s] > 0.25:
                 do(f"buy_gpus {min(30.0, dec['buy', s]):.2f} {dec['gen']} {s}")

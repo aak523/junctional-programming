@@ -13,7 +13,7 @@ the remaining months run with no further actions (standing spot requests and con
 ## What you need each month
 - **Inference demand** (kH = thousand H-class-GPU equivalents) must be served **at each site from that site's
   capacity**: 50% of it is in `us`, 30% in `eu`, 20% in `ap`. Unserved inference costs $4M per kH-month. Total demand
-  starts near 6 kH and grows either about 3% or about 7% per month (you don't know which), with about 5% noise around
+  starts near 6 kH and grows either about 4% or about 8% per month (you don't know which), with about 5% noise around
   the trend. In half of the worlds the growth rate switches to the other value once, at some month between 8 and 15,
   without any announcement.
 - **Training runs** can use spare capacity at any site: everything left over after a site's inference is training
@@ -46,10 +46,10 @@ You also start with 4k gen H in the vendor queue for `us` and a 2 kH reservation
   either delivers the whole order (usable from 2 months after ordering) or cancels it and refunds 80%. Each broker is
   reliable (delivers 90% of orders) or unreliable (35%), each 50/50 a priori and independently; you only learn which
   by ordering. A reliable broker has a 40% chance of silently becoming unreliable at some month between 8 and 15.
-- **Next generation (gen N)** launches in an unknown month between 11 and 18 (each equally likely a priori).
+- **Next generation (gen N)** launches in an unknown month between 9 and 15 (each equally likely a priori).
   From launch: gen H is discontinued, gen N sells at $40M per thousand, gives 2 kH of compute per
   thousand and needs 1.6 MW per thousand. Gen N allocation: about 4k/month loose, 1.5k/month tight,
-  same queue rules. At launch, used gen H value drops 40% and cloud contract prices drop 25%.
+  same queue rules. At launch, used gen H value drops 50% and cloud contract prices drop 25%.
 - **Reserve cloud capacity** `reserve <kH> <6|12|24> <site>`: starts next month, priced at the contract index times the
   site's multiple times 1.15 (6 months), 1.00 (12) or 0.90 (24) per kH-month. You pay the whole term, including any
   months after month 23. New reservations are capped per site per month (table). The contract index drifts down about
@@ -68,14 +68,15 @@ You also start with 4k gen H in the vendor queue for `us` and a 2 kH reservation
 - **Move GPUs** `move_gpus <thousands> <H|N> <from> <to>`: $0.5M per thousand, at most 5k per month in total; they are
   out of service for the rest of this month and arrive for next month.
 - **Resell** `resell_gpus <thousands> <H|N> <site>`: sells delivered GPUs at 75% of the used-market value, at most
-  3k per generation per month (all sites together). Used-market value per thousand: gen H $25M x 0.98^month, 40% lower
-  from the launch on; gen N $40M x 0.98^(months since launch).
+  3k per generation per month (all sites together). Used-market value per thousand: gen H $25M x 0.96^month, 50% lower
+  from the launch on; gen N $40M x 0.96^(months since launch).
 
 ## Cash
 You start with $400M and receive $40M of funding at the end of each month. All payments come out of cash: GPU
 orders, moves and options when placed; power, contracts and spot each month; resales and broker refunds come back in.
 You may go negative down to a $500M credit line: interest of 2% per month is charged on any negative balance at month
-end (and counts as a cost). A purchase that would take you below -$500M is refused; monthly charges are always paid.
+end (and counts as a cost). A positive month-end balance earns 0.75% per month (the lab's cost of capital: idle cash
+is not free), which reduces your interest cost. A purchase that would take you below -$500M is refused; monthly charges are always paid.
 
 ## The hidden state
 - **Supply regime** (loose or tight, the same at every site) sets allocations, reservation and spot caps, spot
@@ -86,14 +87,14 @@ end (and counts as a cost). A purchase that would take you below -$500M is refus
 - **Gen N launch month**: supply-chain rumours give "around month X", where X is the true month plus
   or minus up to 2. The vendor usually (80%) confirms the launch the month before.
 - **Broker reliability** and its possible silent decay (above), learned only from your own broker orders.
-- **Inference growth** (3% or 7%) and its possible silent switch (above).
+- **Inference growth** (4% or 8%) and its possible silent switch (above).
 - **Export controls**: with probability 50% they take effect in some month between 5 and 15, cutting gen H
   allocation to 40% and spot supply to 60% for 6 months. Rumours usually precede them (false rumours also happen).
 
 ## Score
 At the end of month 23 the books are settled:
 net cost = everything spent (GPUs net of broker refunds, power, contracts, spot, moves, options, unserved inference,
-interest) - resale income - GPUs delivered, in transit or still queued, marked at 75% of their used-market value at
+interest charged net of interest earned) - resale income - GPUs delivered, in transit or still queued, marked at 75% of their used-market value at
 month 24 + remaining contract and power obligations + training-run penalties.
 Broker orders still unconfirmed at the end are cancelled with the usual refund.
 Lower net cost is better. Your result is read from the server's ledger, not from anything you write.

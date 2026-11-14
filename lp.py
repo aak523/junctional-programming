@@ -71,8 +71,8 @@ def state_of(obs):
 
 def mv(gen, k, L):
     if gen == "H":
-        return W.GPU_PRICE["H"] * 0.98 ** k * (W.LAUNCH_MV if k >= L else 1.0)
-    return W.GPU_PRICE["N"] * 0.98 ** max(0, k - L) if k >= L else W.GPU_PRICE["N"]
+        return W.GPU_PRICE["H"] * W.DEPR ** k * (W.LAUNCH_MV if k >= L else 1.0)
+    return W.GPU_PRICE["N"] * W.DEPR ** max(0, k - L) if k >= L else W.GPU_PRICE["N"]
 
 
 def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, shared=0, unserved=W.UNSERVED_INFERENCE):
@@ -120,7 +120,7 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
                 v["spot", s] = m.var(ub=p["scap"][s][k])
                 v["served", s] = m.var(ub=p["D"][s][k])
                 v["tr", s] = m.var()
-            v["cash"], v["debt"] = m.var(lb=None), m.var()
+            v["cash"], v["debt"], v["pos"] = m.var(lb=None), m.var(), m.var()
             V[k] = v
 
         def arrivals(g, s, j):
@@ -156,6 +156,7 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
                 for a, b in PAIRS:
                     m.c[v["mv", g, a, b]] += w * W.MOVE_COST
             m.c[v["debt"]] += w * W.RATE
+            m.c[v["pos"]] -= w * W.EARN
             # caps shared across sites
             for b in W.BROKERS:
                 m.le([(v["b", b, s], 1.0) for s in SITES], W.BROKER_CAP)
@@ -217,9 +218,11 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
             cash_in = [(v["cash"], 1.0)]
             m.ge(cash_in + [(x, -a) for x, a in capex] + resale, -W.CREDIT)
             end = cash_in + [(x, -a) for x, a in capex] + resale + [(x, -a) for x, a in charges] + refunds
-            m.ge([(v["debt"], 1.0)] + end, charges_const - refund_const)
+            # month-end balance = pos - debt (both >= 0; the LP never holds both, since RATE > EARN)
+            m.eq([(v["pos"], 1.0), (v["debt"], -1.0)] + [(x, -a) for x, a in end], refund_const - charges_const)
             if k + 1 < T:
-                m.eq([(V[k + 1]["cash"], 1.0), (v["debt"], W.RATE)] + [(x, -a) for x, a in end], W.FUNDING - charges_const + refund_const)
+                m.eq([(V[k + 1]["cash"], 1.0), (v["debt"], W.RATE), (v["pos"], -W.EARN)] + [(x, -a) for x, a in end],
+                     W.FUNDING - charges_const + refund_const)
             if k == t:
                 m.eq([(v["cash"], 1.0)], state["cash"])
                 spot_now.append({s: v["spot", s] for s in SITES})
