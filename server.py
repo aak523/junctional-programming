@@ -5,10 +5,12 @@ The agent's container reaches it only over the network:
   GET  /observe                          -> what a player can see, as JSON (used by the reference solution)
   POST /settle   body = {"token": ...}   -> plays out any remaining months, then scores (verifier only)
   GET  /health
-Env: WORLD_SEED, VERIFY_TOKEN, STATE_FILE (default /state/episode.json).
+Env: VERIFY_TOKEN, STATE_FILE (default /state/episode.json), WORLD_SEED (optional: by default a fresh random
+48-bit seed is drawn at startup, so the world exists only inside this container; it is revealed after settlement).
 """
 import json
 import os
+import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -16,15 +18,16 @@ from pathlib import Path
 import policies
 import service
 
-SEED = int(os.environ["WORLD_SEED"])
 TOKEN = os.environ["VERIFY_TOKEN"]
 STATE = Path(os.environ.get("STATE_FILE", "/state/episode.json"))
 LOCK = threading.Lock()
 
 STATE.parent.mkdir(parents=True, exist_ok=True)
-if not STATE.exists():
-    STATE.write_text(json.dumps({"seed": SEED, "actions": []}))
+if not STATE.exists():   # a restart keeps the episode (and its seed)
+    seed = int(os.environ.get("WORLD_SEED") or secrets.randbits(48))
+    STATE.write_text(json.dumps({"seed": seed, "actions": []}))
 META, WORLD = service.load(STATE)
+SEED = META["seed"]
 RESULT = None
 
 
@@ -43,7 +46,7 @@ def settle():
         oracle = policies.play(policies.OracleMPC, SEED)["net_cost"]
         reference = policies.play(policies.LPPolicy, SEED)["net_cost"]
         reward = score(s["net_cost"], oracle)
-        RESULT = {"reward": round(reward, 4), "net_cost": s["net_cost"], "months_played": months_played,
+        RESULT = {"reward": round(reward, 4), "seed": SEED, "net_cost": s["net_cost"], "months_played": months_played,
                   "milestones_met": s["milestones_met"], "settlement": s,
                   "scale": {"oracle": oracle, "reference": reference, "do_nothing": dn,
                             "reference_reward": round(score(reference, oracle), 4), "do_nothing_reward": round(score(dn, oracle), 4)},

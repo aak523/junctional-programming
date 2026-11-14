@@ -16,10 +16,11 @@ can change silently. Rules and priors are fully documented; only realised values
 timeout_sec = 600.0
 environment_mode = "shared"
 
+# The agent keeps public network access: Harbor's egress allowlist broke DNS for the model endpoint on Docker Desktop.
+# Nothing useful is reachable: the world runs in the sidecar, which draws a random 48-bit seed at startup, so even
+# with world.py from a public repo the hidden future cannot be reconstructed.
 [agent]
 timeout_sec = 5400.0
-network_mode = "allowlist"
-allowed_hosts = ["generativelanguage.googleapis.com"]   # Gemini via its OpenAI-compatible endpoint; standard provider hosts are allowed by Harbor
 
 [environment]
 build_timeout_sec = 1200

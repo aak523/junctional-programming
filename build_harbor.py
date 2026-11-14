@@ -1,8 +1,8 @@
 """Generate the Harbor task folder from the experiment sources (one source of truth).
 
 usage: python build_harbor.py [--seed N] [--out harbor/gpu-world]
-The seed and verifier token only appear in the sidecar's compose environment and in tests/,
-neither of which the agent can see while it plays.
+By default the sidecar draws a random world per trial. The verifier token only appears in the sidecar's
+compose environment and in tests/, neither of which the agent can see while it plays.
 """
 import argparse
 import secrets
@@ -31,10 +31,11 @@ can change silently. Rules and priors are fully documented; only realised values
 timeout_sec = 600.0
 environment_mode = "shared"
 
+# The agent keeps public network access: Harbor's egress allowlist broke DNS for the model endpoint on Docker Desktop.
+# Nothing useful is reachable: the world runs in the sidecar, which draws a random 48-bit seed at startup, so even
+# with world.py from a public repo the hidden future cannot be reconstructed.
 [agent]
 timeout_sec = 5400.0
-network_mode = "allowlist"
-allowed_hosts = ["generativelanguage.googleapis.com"]   # Gemini via its OpenAI-compatible endpoint; standard provider hosts are allowed by Harbor
 
 [environment]
 build_timeout_sec = 1200
@@ -72,8 +73,7 @@ COMPOSE = '''services:
   world:
     build:
       context: ./world
-    environment:
-      WORLD_SEED: "{seed}"
+    environment:{seed_line}
       VERIFY_TOKEN: "{token}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
@@ -179,7 +179,7 @@ def instruction():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seed", type=int, default=20261114)
+    ap.add_argument("--seed", type=int, default=None, help="fix the world (default: a fresh random world per trial)")
     ap.add_argument("--name", default="gpu-world")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
@@ -194,7 +194,8 @@ def main():
     write(out / "instruction.md", instruction())
     write(out / "environment" / "Dockerfile", MAIN_DOCKERFILE)
     write(out / "environment" / "gpu", GPU_CLIENT)
-    write(out / "environment" / "docker-compose.yaml", COMPOSE.format(seed=a.seed, token=token))
+    seed_line = "" if a.seed is None else f'\n      WORLD_SEED: "{a.seed}"'
+    write(out / "environment" / "docker-compose.yaml", COMPOSE.format(seed_line=seed_line, token=token))
     write(out / "environment" / "world" / "Dockerfile", WORLD_DOCKERFILE)
     for f in SIM + ["server.py"]:
         shutil.copy(HERE / f, out / "environment" / "world" / f)
@@ -204,7 +205,7 @@ def main():
     write(out / "solution" / "solve.py", SOLVE_PY)
     write(out / "tests" / "test.sh", TEST_SH)
     write(out / "tests" / "verify.py", VERIFY_PY.format(token=token))
-    print(f"wrote {out} (seed {a.seed})")
+    print(f"wrote {out} ({'random world per trial' if a.seed is None else f'fixed seed {a.seed}'})")
 
 
 if __name__ == "__main__":

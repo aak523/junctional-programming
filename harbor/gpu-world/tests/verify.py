@@ -12,7 +12,7 @@ def server():
     raise SystemExit("GPU World server unreachable")
 
 
-req = urllib.request.Request(server() + "/settle", data=json.dumps({"token": "c1a67c437a5fae6bef90d9f013f9d2c6935ee247c7625f04"}).encode(), method="POST")
+req = urllib.request.Request(server() + "/settle", data=json.dumps({"token": "d1876aeb6e0a39f7f5d06195604881fbbab4c531e94d9d4e"}).encode(), method="POST")
 res = json.loads(urllib.request.urlopen(req, timeout=500).read().decode())
 open("/logs/verifier/details.json", "w").write(json.dumps(res, indent=1))
 open("/logs/verifier/reward.txt", "w").write(f"{res['reward']:.4f}\n")
