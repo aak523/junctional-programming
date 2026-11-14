@@ -3,7 +3,7 @@
 exec > /var/log/gpu-world-setup.log 2>&1
 set -x
 export HOME=/root PATH=/root/.local/bin:$PATH
-apt-get update -q && apt-get install -y -q git tmux
+apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q git tmux python3.12-dev build-essential   # Triton compiles against Python.h
 curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone -b train https://github.com/aak523/junctional-programming.git /root/jp
 uv venv --python 3.12 /root/venv
