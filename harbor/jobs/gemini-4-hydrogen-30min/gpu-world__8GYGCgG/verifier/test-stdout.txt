@@ -1,0 +1,13 @@
+{
+ "reward": 0.8592,
+ "net_cost": 874.03,
+ "months_played": 24,
+ "milestones_met": 3,
+ "scale": {
+  "oracle": 750.95,
+  "reference": 817.61,
+  "do_nothing": 3132.94,
+  "reference_reward": 0.9185,
+  "do_nothing_reward": 0.2397
+ }
+}

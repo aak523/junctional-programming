@@ -1,0 +1,176 @@
+{
+ "reward": 0.7449,
+ "seed": 205877127066884,
+ "net_cost": 1013.76,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1200.27,
+  "mark_to_market": 297.82,
+  "obligations": 111.32,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 1013.76,
+  "costs": {
+   "capex": 722.25,
+   "power": 183.9,
+   "contracts": 383.65,
+   "spot": 0.0,
+   "unserved": 0.0,
+   "resale": -93.27,
+   "interest": 3.74
+  }
+ },
+ "scale": {
+  "oracle": 755.1,
+  "reference": 833.13,
+  "do_nothing": 3296.87,
+  "reference_reward": 0.9063,
+  "do_nothing_reward": 0.229
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0: supply=TIGHT (spot 2.25x index, res cap 3kH)"
+  },
+  {
+   "month": 1,
+   "text": "M1: supply=TIGHT (CoWoS headline, index +7.5% to 1.72M, spot 1.84x ex-rival), launch=11 or 12 (rumour ~10 -> 10+2=12, min 11), brokers=A 1k pending end M1, inf=6.25 at M0 (growth unclear). Plan: hold cash/queue (10k H backlog) and wait for M1 broker A outcome and inf reading before ordering more H or cloud."
+  },
+  {
+   "month": 2,
+   "text": "M2: supply=TIGHT (spot 2.05x index 1.764M, HBM loosening headline likely 25% noise), launch=11 or 12, brokers=A delivered 1k (72% reliable), inf=7.58 at M1 (likely 7% growth). Plan: buy 4k H vendor to fill 38MW power (27k H total) for Run 2 and Run 3, hold cloud until M6/7."
+  },
+  {
+   "month": 3,
+   "text": "M3: supply=TIGHT (index +6.0% to 1.869M, hyperscaler headline, 1.77k shipped), launch=11 or 12 (M1 ~10 and M3 ~13 -> 11..12), brokers=A delivered 1k (72% reliable), inf=7.30 at M2 (7% growth). Plan: hold cash, wait for M5-6 to sign Gen N power and M6-7 for Run 2 cloud."
+  },
+  {
+   "month": 4,
+   "text": "M4: supply=TIGHT (CoWoS headline, spot 1.58x index 1.801M despite noisy -3.6% index), launch=11 or 12 (rumour ~11), brokers=A 72% reliable, inf=6.68 at M3 (3% vs 7% still uncertain), ec_rumour=drafting again. Plan: hold queue (8.49k H) and cash (93.9M), sign Gen N power starting M5-6 and cloud starting M6-7."
+  },
+  {
+   "month": 5,
+   "text": "M5: supply=TIGHT (~80%, index +2.4% to 1.844M, lead times headline, 1.55k shipped, though spot 1.19x low), launch=11 or 12, brokers=A 72% reliable, inf=8.10 at M4 (7% growth likely), ec_rumour=drafting. Plan: signed 16MW power (energises M11) for future Gen N, wait for M7 to start 12m cloud for Run 2."
+  },
+  {
+   "month": 6,
+   "text": "M6: supply=TIGHT (~75%, spot 1.58x index 1.859M, 2.23k shipped, CoWoS loose headline likely noise), launch=11 or 12, brokers=A 72% reliable, inf=9.36 at M5 (7% confirmed), ec=ACTIVE for 6 mos (M6..11). Plan: Run 1 finishes this month, wait for M7 to start 12m cloud reservations for Run 2 and watch EC shipment rate."
+  },
+  {
+   "month": 7,
+   "text": "M7: supply=TIGHT (res cap 3kH, index +9% to 2.026M, spot 2.05x, 0.75k shipped), launch=12 (intersection of rumours ~10,~13,~11,~14 -> exact M12), brokers=A 72% reliable, inf=9.35 at M6 (7% so far, watch M8..15 switch), ec=active M6..11. Plan: reserved 3kH 12m (M8..19) for Run 2 and signed 12MW power (energises M11, 66MW total at M11) for Gen N."
+  },
+  {
+   "month": 8,
+   "text": "M8: supply=TIGHT (res cap 3kH, spot 2.31x index 2.046M, 0.97k shipped), launch=12 (M7 rumour ~14 confirms M12), brokers=A 72% reliable (watch M8..15 decay), inf=9.35 at M7 (watch M8..15 switch from 7% to 3%), ec=active M6..11. Plan: reserved 3kH 12m (M9..20) to insure Run 2 and build M16..20 capacity, plan to test broker A in M10 before Gen N launch at M12."
+  },
+  {
+   "month": 9,
+   "text": "M9: supply=UNCERTAIN 50-50 tight vs switched to loose (spot 1.10x index 2.109M and loose inventory headline, though M8 index +3.1% and 0.58k shipped), launch=12, brokers=A 72% reliable, inf=10.20 at M8 (7% holding), ec=active M6..11. Plan: watch M9 shipment and M10 index to confirm regime, if tight test broker A 1k H in M10 before Gen N launch at M12."
+  },
+  {
+   "month": 10,
+   "text": "M10: supply=TIGHT (index +3.7% to 2.188M, spot 3.54x, 0.86k shipped), launch=12 (rumour ~11, expect vendor confirmation M11), brokers=testing A 1k and B 1k for M12 Gen N launch, inf=10.29 at M9 (slowing, possible M8 switch to 3% vs 7% noise), ec=M6..11. Plan: wait for M12 launch 25% cloud drop and Gen N orders."
+  },
+  {
+   "month": 11,
+   "text": "M11: supply=TIGHT (spot 1.56x ex-rival, 0.67k shipped), launch=12 CONFIRMED by vendor, brokers=A 1k and B 1k resolve end of M11, inf=10.48 at M10 (M8..10 10.20-10.29-10.48 suggests possible switch to 3%), ec=last month M11. Plan: wait for M12 Gen N launch, 25% cloud drop, and broker results before buying Gen N and cloud."
+  },
+  {
+   "month": 12,
+   "text": "M12: supply=TIGHT (res cap 3kH, spot 1.52x post-drop index 1.765M), launch=12 HAPPENED, brokers=A and B both delivered 1k H at end M11 (A 2/2, B 1/1), inf=12.03 at M11 (7% holding or noisy switch), ec=ended. Plan: ordered 4k N vendor + 4k N broker A + 3kH 12m cloud (M13..24) + 16MW power (energises M15, 66MW in M20..23)."
+  },
+  {
+   "month": 13,
+   "text": "M13: supply=TIGHT (index +4.7% to 1.848M, spot 2.55x), launch=12 happened, brokers=A 4k N (#8) resolves end M13, inf=12.32 at M12 (M11..12 12.03-12.32 suggests possible switch to 3% or 7% noise). Plan: hold cash (.3M) to avoid early debt interest, check #8 outcome and M13 inference before ordering next Vendor N batch in M14 and 6m cloud starting M15."
+  },
+  {
+   "month": 14,
+   "text": "M14: supply=TIGHT (spot 1.90x index 1.805M despite -2.3% M13 drift), launch=12 happened, brokers=A delivered 4k N (#8, A now 3/3) and B 1/1, inf=12.32 at M13 (flat M11..13 12.03-12.32-12.32 strongly hints switch to 3%), Run 2 MET (144.4/140). Plan: hold cash (5.1M) to avoid debt interest, watch M14 inf and #7 N shipment, then start 6m cloud in M15..17 and/or small Vendor N order for Run 3."
+  },
+  {
+   "month": 15,
+   "text": "M15: supply=TIGHT (res cap 3kH, spot 2.32x index 1.731M, 1.53k N shipped, M14 index -4.1% noise), launch=12 happened, brokers=A 3/3 and B 1/1, inf=12.11 at M14 (M11..14 12.03-12.32-12.32-12.11 confirms switch to 3%). Plan: reserved 3kH 6m (M16..21) at 1.991M bringing M16..23 capacity to ~451 kH-mo vs ~437 needed, monitor inf in M16..20 and add 6m cloud or spot only if needed."
+  },
+  {
+   "month": 16,
+   "text": "M16: supply=TIGHT (spot 3.82x index 1.709M, lead times headline, 1.60k N shipped), launch=12 happened, brokers=A 3/3 and B 1/1, inf=13.40 at M15 (still likely 3% after M11 switch though jumped from 12.11, watch M16..17), Run 2 MET (219.95/140). Plan: reserved 2kH 6m (M17..22) at 1.965M for Run 3 +20 kH-mo buffer (463 kH-mo total), will add more in M17 only if inf rises at 7%."
+  },
+  {
+   "month": 17,
+   "text": "M17: supply=TIGHT (index +1.3% to 1.731M, spot 1.63x, lead times headline), launch=12 happened, brokers=A 3/3 and B 1/1, inf=13.72 at M16 (3% growth confirmed), Run 3=44.54/320. Plan: hold current 45kH owned + 17..6kH cloud which gives ~297 training vs 275.5 needed (+21 kH-mo buffer), monitor inf through M23."
+  },
+  {
+   "month": 18,
+   "text": "M18: supply=TIGHT (spot 1.96x index 1.704M despite -1.6% noisy drift), launch=12 happened, brokers=A 3/3 and B 1/1, inf=14.46 at M17 (matches 3% from M11=12.03 -> 14.36), Run 3=92.08/320. Plan: hold current capacity (343 kH-mo left in M18..23 vs ~96 inf + 228 training = +19 kH-mo buffer), watch M18 inf."
+  },
+  {
+   "month": 19,
+   "text": "M19: supply=TIGHT (index +4.8% to 1.785M, spot 1.49x), launch=12 happened, brokers=A 3/3 and B 1/1, inf=13.22 at M18 (3% growth confirmed), Run 3=140.86/320. Plan: hold current capacity (281 kH-mo left in M19..23 vs ~78 inf + 179 training = +24 kH-mo buffer), power drops to 66MW at M20 (still >53.4MW needed)."
+  },
+  {
+   "month": 20,
+   "text": "M20: supply=TIGHT (index +4.9% to 1.873M, CoWoS headline, rival buying spot), launch=12 happened, brokers=A 3/3 and B 1/1, inf=14.84 at M19 (3% trend), Run 3=188.02/320. Plan: hold current capacity (219 kH-mo left in M20..23 vs ~64 inf + 132 training = +23 kH-mo buffer), check at M23 if Run 3 is met for optional excess GPU resale."
+  },
+  {
+   "month": 21,
+   "text": "M21: supply=TIGHT (index +11.1% to 2.081M, rival buying spot), launch=12 happened, brokers=A 3/3 and B 1/1, inf=16.11 at M20 (+5% noise above ~15.2 3% trend), Run 3=230.91/320. Plan: hold capacity (160 kH-mo left in M21..23 vs ~51 inf + 89.1 training = +20 kH-mo buffer), check at M23 for possible excess GPU resale."
+  },
+  {
+   "month": 22,
+   "text": "M22: supply=TIGHT (CoWoS headline, rival buying spot, index +1.0% to 2.102M), launch=12 happened, brokers=A 3/3 and B 1/1, inf=16.25 at M21 (3% growth), Run 3=270.66/320. Plan: hold 53kH in M22 leaving ~13 kH-mo needed in M23 out of 51kH, evaluate small excess GPU resale in M23."
+  },
+  {
+   "month": 23,
+   "text": "M23: supply=likely LOOSE (spot 0.81x index 2.211M after +5.2% M22 drift), launch=12 happened, brokers=A 3/3 and B 1/1, inf=16.27 at M22 (3% growth), Run 3=307.39/320 (need 12.61 + ~16.8 inf = ~29.4 out of 51kH). Plan: resell max 3k H and 3k N leaving 42kH to finish Run 3 safely while capturing M23 vs M24 residual."
+  }
+ ],
+ "actions": [
+  "buy_gpus 8 H vendor",
+  "buy_gpus 1 H A",
+  "reserve 4 24",
+  "contract_power 12",
+  "contract_power 10",
+  "end_month",
+  "end_month",
+  "buy_gpus 4 H vendor",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 16",
+  "end_month",
+  "end_month",
+  "reserve 4 12",
+  "contract_power 12",
+  "end_month",
+  "reserve 4 12",
+  "end_month",
+  "end_month",
+  "buy_gpus 1 H A",
+  "buy_gpus 1 H B",
+  "end_month",
+  "end_month",
+  "reserve 4 12",
+  "contract_power 16",
+  "buy_gpus 4 N vendor",
+  "buy_gpus 4 N A",
+  "end_month",
+  "end_month",
+  "end_month",
+  "reserve 4 6",
+  "end_month",
+  "reserve 2 6",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "resell_gpus 3 H",
+  "resell_gpus 3 N",
+  "end_month"
+ ]
+}

@@ -1,0 +1,153 @@
+{
+ "reward": 0.9317,
+ "seed": 271535743176129,
+ "net_cost": 674.76,
+ "months_played": 21,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1061.42,
+  "mark_to_market": 474.26,
+  "obligations": 87.6,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 674.76,
+  "costs": {
+   "capex": 782.75,
+   "power": 162.0,
+   "contracts": 102.16,
+   "spot": 14.51,
+   "unserved": 0.0,
+   "resale": 0.0,
+   "interest": 0.0
+  }
+ },
+ "scale": {
+  "oracle": 628.69,
+  "reference": 644.32,
+  "do_nothing": 2965.46,
+  "reference_reward": 0.9757,
+  "do_nothing_reward": 0.212
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "m0: supply likely loose (~75%, spot/index=1.22)"
+  },
+  {
+   "month": 1,
+   "text": "m1: m0 shipped 1.75k -> m0 100% tight, index +4.7% confirms tight, spot/idx=1.25 -> m1 ~78% tight. GenN ~m14 (12..16). Brokers untested. Inf m0=5.72kH (growth TBD). Export ctrl 50% m5..15. Plan: hold 14.25k vendor queue, keep spot=0, wait until m3 for possible Broker A test so delivery aligns with m5 40MW power."
+  },
+  {
+   "month": 2,
+   "text": "m2: m1 shipped 2.08k -> m1 100% tight, news tight headline, spot/idx=1.28 -> m2 ~95% tight. GenN ~m14 (12..16). Brokers untested. Inf m0=5.72 m1=6.47 (leans 7%, ~65/35). Export ctrl 50% m5..15. Plan: hold 12.17k queue, spot=0, at m3 evaluate small Broker A test order for m5 40MW energisation."
+  },
+  {
+   "month": 3,
+   "text": "m3: m2 shipped 1.95k -> m2 100% tight, index +3.2%, spot/idx=2.12 overrides loose news -> m3 ~98% tight. GenN rumours around 14 & around 12 -> true launch in 12..14 (~33% each). Inf m0=5.72 m1=6.47 m2=6.04 -> ~89% 3% growth. Broker A 0.5k test placed (outcome end of m4). Plan: hold 10.22k vendor queue, spot=0, await m4 power & broker info."
+  },
+  {
+   "month": 4,
+   "text": "m4: m3 shipped 1.75k -> m3 100% tight, CoWoS tight news & spot/idx=2.70 (1.80x ex-rival) -> m4 ~98% tight. GenN in 12..14. Inf m0..3=[5.72,6.47,6.04,6.94] -> ~89% 3% growth. Broker A 0.5k resolves end of m4. Plan: hold 8.47k vendor queue, spot=0, await m5 40MW energisation and Broker A result."
+  },
+  {
+   "month": 5,
+   "text": "m5: m4 shipped 2.27k -> m4 tight, index +4.8%, HBM tight news & spot/idx=1.52 -> m5 ~98% tight. GenN rumours (14,12,13) -> launch in 12..14 (mode 13). Broker A 0.5k cancelled (P(A rel)=13.3%), B untested. Inf m0..4=[5.72,6.47,6.04,6.94,6.73] -> 99.8% initial 3% growth (50% switch to 7% in m8..15). Plan: 40MW now active, hold 6.21k queue (reaches 26k H by m8), spot=0, no broker B test unless emergency."
+  },
+  {
+   "month": 6,
+   "text": "m6: m5 shipped 2.21k -> m5 tight, index +10.1% (.912), HBM tight news & spot/idx=1.54 -> m6 ~98% tight. GenN in 12..14 (mode 13). Broker A P(rel)=13.3%, B untested. Inf m0..5=[5.72,6.47,6.04,6.94,6.73,6.13] -> 3% initial growth. Plan: signed 16MW (energises m12 -> 56MW m12..19, 40MW m20..23), hold 4k queue (26k H by m8), spot=0."
+  },
+  {
+   "month": 7,
+   "text": "m7: W0 done (62.32/60). m6 shipped 2.47k -> m6 tight, index +2.6% (.961), spot/idx=1.34 -> m7 ~85% tight. GenN in 12..14. Brokers A 13.3% B untested. Inf m6=7.16 (matches 3% trend, watch m8..15 for 50% switch to 7%). Plan: hold 1.53k queue (reaches 26k H at m8), spot=0, await m8 and GenN launch."
+  },
+  {
+   "month": 8,
+   "text": "m8: W0 MET (79.28/60). Reached 26k H (queue empty). m7 index +5.1% -> m7 ~95% tight. m8 spot=.375M (spot/idx=0.67) -> m8 ~49% tight / 51% loose. GenN in 12..14. Inf m7=7.51 (3% so far, 64% prob of W1 deficit vs 208 kH-m). Plan: set_spot 6 at cheap .375M to cover W1 buffer and probe m8 supply, reassess at m9."
+  },
+  {
+   "month": 9,
+   "text": "m9: m8 spot filled 6/6 & index -2.0% (.019) -> m8 100% loose. m9 spot/idx=0.99 -> m9 ~93% loose. GenN in 12..14. Brokers A 13.3% B untested. Inf m8=8.49 (+13%, either +2.3sd noise on 3% or switched to 7% at m8). W1 at 23.51/140 (on track). Plan: set_spot 0 (avoid .00M spot), monitor m9 inf and m11 GenN confirmation."
+  },
+  {
+   "month": 10,
+   "text": "m10: m9 index -7.0% (.878) -> m9 100% loose. HBM loose news & spot/idx=1.08 -> m10 ~98% loose. GenN rumours (14,12,13,12) -> uniform over 12..14. Brokers A 13.3% B untested. Inf m9=8.24 -> P(stay 3%)=36%, P(already switched)=38%, P(later switch)=27%. W1 41.27/140 on track. Plan: hold 26k H, spot=0, await m11 GenN confirmation and m10 inf."
+  },
+  {
+   "month": 11,
+   "text": "m11: m10 index -1.8% (.844), HBM loose news, spot/idx=1.39 -> m11 ~92% loose. No GenN confirmation at m11 -> launch ~91% in m13..14 (9% m12). Brokers A 13.3% B untested. Inf m10=8.18 -> P(stay 3%)=51%, P(switched m8..10)=17%, P(later switch)=32%. W1 at 59.09/140 on track. Plan: hold 26k H, spot=0, await m12 16MW energisation and GenN launch/confirmation."
+  },
+  {
+   "month": 12,
+   "text": "m12: m11 index -0.5% (.835), m12 tight news vs spot/idx=1.19 -> m12 ~84% loose. No GenN confirmation at m12 -> ~83% L=14 (17% L=13). Brokers A 13.3% B untested. Inf m11=7.62 -> P(stay 3%)=65%, P(later switch m12..15)=33%. 56MW now active, W1 77.47/140. Plan: hold 26k H, spot=0, await m13 GenN confirmation or launch."
+  },
+  {
+   "month": 13,
+   "text": "m13: m12 index -1.0% (.817), m13 spot/idx=0.87 overrides tight HBM news -> m13 ~86% loose. Vendor confirmed GenN launch at m14 (100% certain). Brokers A 13.3% B untested. Inf m12=8.64 -> P(stay 3%)=67%, P(switch m13..15)=25%. W1 94.83/140 on track. Plan: signed 16MW (energises m17 -> 72MW m17..19, 56MW m20..23), spot=0, ready to order GenN at m14 launch."
+  },
+  {
+   "month": 14,
+   "text": "m14: m13 spot/idx=0.87 -> m13 loose. GenN LAUNCHED at m14, cloud dropped 25% (12m=.24, 6m=.426), spot/idx=1.19 & loose news -> m14 ~97% loose. Brokers A 13.3% B untested. Inf m13=8.21 -> 3% trend continues (~75% stay 3%, 25% switch m14..15). W1 112.62/140 (finishes m15). Plan: buy 12k GenN vendor (80M, leaves 8.2M cash, fits 55.6<=56MW m20..23, arrives m17 at 4k/mo), spot=0, reserve 6m cloud from m15 onward."
+  },
+  {
+   "month": 15,
+   "text": "m15: m14 index -4.8% (.18), HBM loose news & spot/idx=1.20 -> m15 ~97% loose. GenN launched m14 (12k ordered, 0 shipped in m14 so expect 4k/mo starting m15). Export ctrl rumour in m15 news. Brokers A 13.3% B untested. Inf m14=9.13 -> P(stay 3%)=81%. W1 129.49/140 (finishes m15). Plan: reserve 6 kH for 6m (m16..21 at .357M/kH-m, hedges export ctrl & covers W2 base gap), spot=0."
+  },
+  {
+   "month": 16,
+   "text": "m16: W1 MET (146.24/140). m15 6kH reserve accepted -> m15 100% loose. m16 CoWoS loose news vs spot/idx=1.80 -> m16 ~82% loose. 12k GenN eligible starting m16 (ships m16..18 if loose -> 144 kH-m in W2). Export ctrl rumour persists. Inf m15=9.25 -> P(stay 3%)=91%. Plan: reserve 4 kH for 6m (m17..22 at .387M/kH-m, brings W2 loose capacity to 412 kH-m vs ~406 need), spot=0, await m16 N shipment."
+  },
+  {
+   "month": 17,
+   "text": "m17: m16 shipped 5.1k GenN & cloud index -1.1% (.193) -> m16 100% loose. m17 loose news & spot/idx=1.05 (.251) -> m17 ~98% loose. 6.9k GenN left in queue (likely ships m17..18). Brokers A 13.3% B untested. Inf m16=8.89 -> P(stay 3%)=99.6%. W2 at 23.11/320, ~11kH-m baseline surplus but 3.2% shortfall tail if tight/noise. Plan: set_spot 5 at cheap .251M for W2 safety buffer, reset to 0 at m18 if N ships well."
+  },
+  {
+   "month": 18,
+   "text": "m18: m17 shipped 4.74k GenN & cloud index -2.3% (.166) -> m17 100% loose. m18 loose HBM news & spot/idx=1.40 -> m18 ~94% loose. 2.16k GenN left in queue (finishes m18 -> 12k N by m19). Inf m17=10.31 (3% trend, +4% noise). W2 at 64/320, ~17.6 kH-m surplus projected in m18..23 without spot. Plan: set_spot 0, let queue finish."
+  },
+  {
+   "month": 19,
+   "text": "m19: m18 shipped remaining 2.16k GenN & cloud index -5.1% (.107) -> m18 loose. m19 HBM loose news & spot/idx=1.14 -> m19 ~98% loose. All 12k GenN delivered (50kH owned, 55.6MW<=56MW through m23). Inf m18=10.14 (3% trend). W2 109.54/320, ~17.7kH-m surplus projected. Plan: hold fleet & contracts, spot=0."
+  },
+  {
+   "month": 20,
+   "text": "m20: m19 index -6.7% (.033) -> m19 100% loose. m20 spot/idx=1.88 (1.25x ex-rival) -> m20 ~93% loose. Power 56MW active (55.6MW used, 50kH all powered). Inf m19=10.54 (3% trend). W2 159/320, ~17.7kH-m surplus projected. Plan: hold fleet & contracts, spot=0."
+  }
+ ],
+ "actions": [
+  "contract_power 24",
+  "buy_gpus 12 H vendor",
+  "end_month",
+  "end_month",
+  "end_month",
+  "buy_gpus 0.5 H A",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 16",
+  "end_month",
+  "end_month",
+  "set_spot 6",
+  "end_month",
+  "set_spot 0",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "contract_power 16",
+  "end_month",
+  "buy_gpus 12 N vendor",
+  "end_month",
+  "reserve 6 6",
+  "end_month",
+  "reserve 4 6",
+  "end_month",
+  "set_spot 5",
+  "end_month",
+  "set_spot 0",
+  "end_month",
+  "end_month",
+  "end_month"
+ ]
+}
