@@ -47,11 +47,15 @@ def relabel_episode(recs):
             res = shadow.command(c)
             cmds.append(c)
             return res
-        pol(obs, act)
-        note = E.synth_note(bel, obs, cmds)
-        out.append({**{k: r[k] for k in ("seed", "sample", "month", "user", "episode")}, "policy": "dagger_expert",
-                    "system_sha": E.SYSTEM_SHA, "completion": E.completion_of(note, cmds), "executed": cmds,
-                    "errors": 0, "forced_end": False})
+        try:
+            pol(obs, act)
+        except RuntimeError:   # the expert's LP is infeasible here (e.g. debt beyond the credit line): no label
+            out.append(None)
+        else:
+            note = E.synth_note(bel, obs, cmds)
+            out.append({**{k: r[k] for k in ("seed", "sample", "month", "user", "episode")}, "policy": "dagger_expert",
+                        "system_sha": E.SYSTEM_SHA, "completion": E.completion_of(note, cmds), "executed": cmds,
+                        "errors": 0, "forced_end": False})
         # the student's month: its notes (they shape later prompts) and its accepted actions, in order
         for n in [s for s in E.parse(r["completion"])[0] if s.split()[0] == "note"]:
             ep.note(n[4:].strip())
@@ -90,21 +94,24 @@ def main():
         with ProcessPoolExecutor(a.procs) as ex:
             for recs, lab in zip(eps, ex.map(relabel_episode, eps)):
                 for r, x in zip(recs, lab):
-                    assert x["completion"] == r["completion"], (r["seed"], r["month"], x["completion"], r["completion"])
+                    assert x is not None and x["completion"] == r["completion"], (r["seed"], r["month"], x["completion"], r["completion"])
         print(f"relabel check passed: {len(eps)} episodes reproduce the reference exactly")
         return
     chosen = pick(episodes(load(a.samples)), a.per_seed, random.Random(0))
-    seen, n = set(), 0
+    seen, n, skipped = set(), 0, 0
     with ProcessPoolExecutor(a.procs) as ex, open(a.out, "w", encoding="utf-8") as f:
         for lab in ex.map(relabel_episode, chosen):
             for x in lab:
+                if x is None:
+                    skipped += 1
+                    continue
                 key = (x["seed"], hashlib.sha1(x["user"].encode()).hexdigest())
                 if key not in seen:
                     seen.add(key)
                     f.write(json.dumps(x) + "\n")
                     n += 1
             f.flush()
-    print(f"relabelled {len(chosen)} student episodes -> {n} unique states")
+    print(f"relabelled {len(chosen)} student episodes -> {n} unique states; {skipped} states had no feasible expert plan")
 
 
 if __name__ == "__main__":
