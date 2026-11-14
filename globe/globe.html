@@ -71,6 +71,8 @@
   .pending h2 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); }
   .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
+  .pending li { cursor: pointer; }
+  .pending li:hover { background: var(--hl); }
   .pending .left { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .pending .v { font-weight: 600; }
   .pending .v-buy { color: var(--cmd-buy); }
@@ -879,6 +881,14 @@ const RUN = {"policy":"reference","seed":9,"months":[{"month":0,"commands":[{"c"
       q.className = "left";
       q.textContent = fmtQ(left);
       li.append(cmd, q);
+      // Clicking an order scrolls the log to the command that placed it and lights that line for a moment.
+      li.addEventListener("click", () => {
+        const target = logItems[om] && logItems[om][oi];
+        if (!target) return;
+        log.scrollTo({ top: target.offsetTop - (log.clientHeight - target.offsetHeight) / 2, behavior: reduce ? "auto" : "smooth" });
+        lightOn(target);
+        setTimeout(() => lightOff(target), 1600);
+      });
       pendingList.appendChild(li);
     }
     pendingPane.hidden = !pendingList.children.length;
