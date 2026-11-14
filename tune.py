@@ -7,7 +7,7 @@ import time
 import policies
 
 seeds = range(100, 100 + int(sys.argv[1]) if len(sys.argv) > 1 else 130)
-grid = {"pess": [0.0, 0.25, 0.5], "m_tr": [0.05, 0.1], "launch_q": [0.5, 0.75, 1.0], "spot_share": [0.3, 0.6], "use_h": [6, 8]}
+grid = {"spot_buf": [0.0, 0.05, 0.1], "m_inf": [0.05, 0.08, 0.12], "m_tr": [0.03, 0.05], "queue_months": [2, 3], "pess": [0.0, 0.25]}
 t0 = time.time()
 res = []
 for vals in itertools.product(*grid.values()):

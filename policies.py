@@ -185,8 +185,8 @@ class Reference:
     then spot. Power is kept ahead of the projected fleet at the worst-case lead time.
     Before the launch it counts on gen N only from a late launch quantile.
     """
-    P = {"m_inf": 0.08, "m_tr": 0.05, "pess": 0.25, "alloc_q": 0.85, "use_h": 8, "use_n": 4,
-         "launch_q": 0.75, "n_share": 0.8, "spot_share": 0.3}
+    P = {"m_inf": 0.08, "m_tr": 0.05, "pess": 0.0, "alloc_q": 0.85, "use_h": 8, "use_n": 4,
+         "launch_q": 0.75, "n_share": 0.8, "spot_share": 0.3, "queue_months": 2, "spot_buf": 0.05}
 
     def __init__(self, beliefs=None, **params):
         self.bel = beliefs or Bayes()
@@ -267,7 +267,10 @@ class Reference:
                 arrive = now[k][gen] - proj[k][gen]              # what an order placed now delivers by month k
                 if later[k][gen] - proj[k][gen] < arrive - 1e-6:  # waiting a month would deliver less in time
                     q = max(q, arrive)
-            q = min(q, 30.0)
+            # tranches: a queue holding a few months of loose-regime allocation never wastes a shipment,
+            # and later orders can use what the coming months reveal
+            queued = sum(x["left"] for x in obs["queue"] if x["gen"] == gen)
+            q = min(q, 30.0, p["queue_months"] * W.ALLOC[gen]["loose"] - queued)
             if q > 0.25:
                 act(f"buy_gpus {q:.2f} {gen}")
                 add("queue", {"gen": gen, "left": q, "placed": t, "ordered": q, "id": -1})
@@ -303,7 +306,7 @@ class Reference:
                     add("contracts", {"qty": min(x, rc), "price": 0, "start": t + 1, "end": t + 1 + term})
         # 4. spot: whatever is still short this month
         gap_now = cap[t] - powered_compute(obs, t)[1] - self.reserved(obs, t)
-        act(f"set_spot {max(0.0, gap_now):.2f}")
+        act(f"set_spot {max(0.0, gap_now + p['spot_buf'] * cap[t]):.2f}")   # extra spot is cheap next to a missed run
         if isinstance(self.bel, Bayes):
             elig = {g: sum(q["left"] for q in obs["queue"] if q["gen"] == g and t >= q["placed"] + W.MIN_LEAD - 1) for g in ("H", "N")}
             self.bel.pending = (t, elig, self.bel.export_start is not None and self.bel.export_factor(t, t) < 1.0)
