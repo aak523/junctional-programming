@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU World — capacity formation</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+  body{overflow-y:auto}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 24px 80px}
+
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;
+       padding-bottom:18px;border-bottom:1px solid var(--ring);margin-bottom:34px}
+  .brand{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:0}
+  .brand b{font-weight:600}
+  .brand span{color:var(--muted)}
+  .tagline{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.02em;
+           margin:7px 0 0;max-width:62ch;line-height:1.6}
+  a{color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--ring)}
+  a:hover{color:var(--ink)}
+
+  section{margin-bottom:48px}
+  .sec{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec h2{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin:0}
+  .sec em{font-family:var(--mono);font-style:normal;font-size:10px;color:var(--muted);letter-spacing:.14em}
+  .sec .rule{flex:1;height:1px;background:var(--ring)}
+  .intro{font-size:12.5px;line-height:1.7;color:var(--ink-2);max-width:78ch;margin:0 0 20px}
+  .intro b{color:var(--ink);font-weight:500}
+
+  /* ---- the identity ---- */
+  .eq{font-family:var(--mono);font-size:13px;line-height:2.1;letter-spacing:-.01em;
+      padding:18px 20px;overflow-x:auto;white-space:nowrap}
+  .eq i{font-style:normal;color:var(--muted)}
+  .eq u{text-decoration:none;border-bottom:2px solid var(--s3);padding-bottom:2px}
+  .eq u.a{border-color:var(--s1)} .eq u.b{border-color:var(--s3)} .eq u.c{border-color:var(--s5)}
+  .terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(236px,1fr));gap:1px;
+         background:var(--ring);border:1px solid var(--ring);border-radius:3px;margin-top:14px}
+  .term{background:var(--surface-1);padding:11px 13px}
+  .term h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+           margin:0 0 6px;display:flex;align-items:center;gap:7px}
+  .term h4 b{width:9px;height:9px;flex:none;border-radius:0}
+  .term p{margin:0;font-size:11.5px;line-height:1.65;color:var(--ink-2)}
+
+  /* ---- tables ---- */
+  table{width:100%;border-collapse:collapse}
+  th{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+     color:var(--muted);text-align:left;font-weight:400;padding:0 10px 8px 0;border-bottom:1px solid var(--ring)}
+  td{padding:8px 10px 8px 0;border-bottom:1px solid var(--grid);font-size:11.5px;color:var(--ink-2);vertical-align:top}
+  td.k{color:var(--ink);font-weight:500;white-space:nowrap}
+  td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .lat{font-family:var(--mono);font-size:11px;color:var(--ink);white-space:nowrap}
+  .bar{display:inline-block;height:3px;background:var(--s3);vertical-align:middle;margin-left:8px;border-radius:0}
+  .bar.gate{background:var(--s5)}
+
+  /* ---- pipeline diagram ---- */
+  .diagram{padding:4px 2px 10px;overflow-x:auto}
+  .diagram svg{display:block;min-width:860px;width:100%;height:auto}
+  .d-track{stroke:var(--grid);stroke-width:1}
+  .d-span{stroke:var(--s3);stroke-width:2}
+  .d-span.wide{stroke:var(--s5);stroke-dasharray:3 3}
+  .d-node{fill:var(--plane);stroke:var(--ink);stroke-width:1.2}
+  .d-live{fill:var(--ink)}
+  .d-lab{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;fill:var(--ink-2)}
+  .d-lab.dim{fill:var(--muted)}
+  .d-lab.key{fill:var(--ink)}
+  .d-axis{font-family:var(--mono);font-size:8.5px;fill:var(--muted)}
+  .d-gate{stroke:var(--ink);stroke-width:1;fill:none}
+
+  /* ---- controls ---- */
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
+            background:var(--ring);border:1px solid var(--ring);border-radius:3px;margin-bottom:18px}
+  .ctl{background:var(--surface-1);padding:10px 13px 12px}
+  .ctl .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .ctl .k u{text-decoration:none;color:var(--ink);font-size:11px;letter-spacing:-.01em}
+  .ctl .seg{display:flex;margin-top:8px;border:1px solid var(--ring);border-radius:2px;overflow:hidden}
+  .ctl .seg button{flex:1;border:none;border-radius:0;padding:5px 4px;font-size:9px;letter-spacing:.1em}
+  .ctl .seg button + button{border-left:1px solid var(--ring)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;margin:6px 0 0;
+                    background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--grid)}
+  input[type=range]::-moz-range-track{height:2px;background:var(--grid)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:3px;height:14px;background:var(--ink);
+                                          margin-top:-6px;border-radius:0}
+  input[type=range]::-moz-range-thumb{width:3px;height:14px;background:var(--ink);border:none;border-radius:0}
+
+  /* ---- readout tiles ---- */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px;
+         background:var(--ring);border:1px solid var(--ring);border-radius:3px;margin-bottom:22px}
+  .tile{background:var(--surface-1);padding:10px 13px 12px}
+  .tile .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .tile .v{font-family:var(--mono);font-size:19px;font-weight:500;letter-spacing:-.02em;margin-top:5px;
+           font-variant-numeric:tabular-nums;line-height:1.1}
+  .tile .s{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:3px}
+  .tile .v.miss{color:var(--critical)} .tile .v.hit{color:var(--good)}
+
+  /* ---- charts ---- */
+  .chart{margin-bottom:26px}
+  .chart-hd{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:2px}
+  .chart-hd h3{font-size:12px;font-weight:500;letter-spacing:.02em;margin:0}
+  .chart-hd p{font-size:11px;color:var(--muted);margin:3px 0 0;line-height:1.6;max-width:70ch}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 4px}
+  .legend span{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;
+               letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+  .legend b{width:9px;height:9px;flex:none;border:1px solid var(--ring)}
+  .legend b.line{height:2px;border:none}
+  .plot{position:relative}
+  .plot svg{display:block;width:100%;height:auto;overflow:visible}
+  .ax{font-family:var(--mono);font-size:8.5px;fill:var(--muted)}
+  .ax-rule{stroke:var(--grid);stroke-width:1}
+  .ax-base{stroke:var(--axis);stroke-width:1}
+  .mark-lab{font-family:var(--mono);font-size:9px;fill:var(--ink-2)}
+  .crosshair{stroke:var(--ink);stroke-width:1;opacity:.35}
+  .tip{position:absolute;pointer-events:none;z-index:5;background:var(--surface-1);
+       border:1px solid var(--ring);border-radius:3px;padding:9px 11px;font-size:11px;line-height:1.55;
+       opacity:0;transition:opacity .1s;box-shadow:0 10px 36px rgba(0,0,0,.38);min-width:168px}
+  .tip b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+         color:var(--muted);font-weight:400;margin-bottom:6px}
+  .tip .r{display:flex;justify-content:space-between;gap:16px;color:var(--ink-2)}
+  .tip .r u{text-decoration:none;color:var(--ink);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .tip .r i{font-style:normal;display:flex;align-items:center;gap:6px}
+  .tip .r i b{display:inline-block;width:8px;height:8px;margin:0;border:1px solid var(--ring)}
+
+  details{margin-top:10px;border-top:1px solid var(--grid)}
+  summary{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--muted);cursor:pointer;padding:9px 0;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"+ ";color:var(--axis)}
+  details[open] summary:before{content:"− "}
+  summary:hover{color:var(--ink-2)}
+  details table{margin-bottom:12px}
+  details td,details th{font-family:var(--mono);font-size:10px;padding:5px 10px 5px 0}
+
+  .note{font-size:11.5px;line-height:1.7;color:var(--muted);max-width:76ch}
+  .note b{color:var(--ink-2);font-weight:500}
+  .note code{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
+  ul.ticks{margin:10px 0 0;padding:0;list-style:none}
+  ul.ticks li{position:relative;padding-left:14px;margin-bottom:5px;font-size:11.5px;line-height:1.6;color:var(--ink-2)}
+  ul.ticks li:before{content:"";position:absolute;left:1px;top:8px;width:5px;height:1px;background:var(--axis)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <p class="brand">GPU&nbsp;World <span>/ Capacity formation</span></p>
+      <p class="tagline">How a kH of compute comes into existence, and how long it takes.
+        The growth model behind the globe — ordering, queueing, energising, serving.</p>
+    </div>
+    <div class="row">
+      <a href="./index.html" style="border:none"><button type="button">◀ Globe</button></a>
+      <button id="theme" type="button" title="Switch key">Theme</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ 01 -->
+  <section>
+    <div class="sec"><em>01</em><h2>The identity</h2><div class="rule"></div></div>
+    <p class="intro">Capacity is not a stock you buy — it is an intersection. Compute counts in a month only
+      where <b>silicon, power and a site</b> coincide. Everything else in the model is a different way of
+      paying to make that intersection happen sooner.</p>
+
+    <div class="panel eq">
+      capacity<i>(site, month)</i> =
+      <u class="a">Σ<i>gen</i> powered<i>(gen)</i> × compute<i>(gen)</i></u>
+      + <u class="b">Σ active reservations</u>
+      + <u class="c">min<i>(</i>spot request<i>,</i> spot cap<i>)</i></u><br>
+      <i>where</i> powered<i>(N)</i> = min<i>(</i> owned<i>(N)</i>, MW ÷ 1.6 <i>)</i>
+      <i>and</i> powered<i>(H)</i> = min<i>(</i> owned<i>(H)</i>, <i>(</i>MW − powered<i>(N)</i>×1.6<i>)</i> ÷ 1.4 <i>)</i>
+    </div>
+
+    <div class="terms">
+      <div class="term">
+        <h4><b style="background:var(--s1)"></b>Owned, powered</h4>
+        <p>Delivered GPUs at the site, capped by live megawatts. Gen N is powered first; gen H takes what
+          is left. 1 kH of H needs 1.4 MW, of N 1.6 MW — but N is worth 2 kH per thousand units.</p>
+      </div>
+      <div class="term">
+        <h4><b style="background:var(--s3)"></b>Reserved</h4>
+        <p>Cloud contracts active this month. No power of yours, no lead time past one month — and no way
+          out: the whole term is paid, including months past the horizon.</p>
+      </div>
+      <div class="term">
+        <h4><b style="background:var(--s5)"></b>Spot</h4>
+        <p>A standing request, filled at month end up to the site's supply. Instant, uncapped in price,
+          and the first thing to vanish when the regime turns tight.</p>
+      </div>
+      <div class="term">
+        <h4><b style="background:var(--axis)"></b>Megawatts</h4>
+        <p>Not a term in the sum — a ceiling on the first one. Signed months in advance, live for 24 months,
+          paid whether or not a GPU sits under it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 02 -->
+  <section>
+    <div class="sec"><em>02</em><h2>Time to compute</h2><div class="rule"></div></div>
+    <p class="intro">Every instrument buys the same thing — a kH-month — and they differ almost entirely in
+      <b>latency and reversibility</b>. The ones that arrive fastest are the ones you cannot keep;
+      the ones that compound are the ones you commit to half a year early.</p>
+
+    <div class="panel">
+      <table>
+        <thead><tr>
+          <th style="width:16%">Instrument</th><th style="width:19%">Decision → compute</th>
+          <th style="width:17%">Throughput cap</th><th style="width:16%">Price</th><th>What can go wrong</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="k">Spot</td>
+            <td><span class="lat">same month<span class="bar" style="width:4px"></span></span></td>
+            <td class="n">5 / 4 / 3 kH<br><span style="color:var(--muted)">1.5 / 1 / 0.5 tight</span></td>
+            <td class="n">1.1× index<br><span style="color:var(--muted)">1.8× tight</span></td>
+            <td>Fill is whatever is left after the market; halved again when a rival is buying. Price carries 30% noise.</td>
+          </tr>
+          <tr>
+            <td class="k">Reservation</td>
+            <td><span class="lat">1 month<span class="bar" style="width:14px"></span></span></td>
+            <td class="n">4 / 3 / 3 kH<br><span style="color:var(--muted)">1 / 1 / 1 tight</span></td>
+            <td class="n">index × site<br><span style="color:var(--muted)">×1.15 / 1.0 / 0.9</span></td>
+            <td>The term is paid in full past month 23. Caps collapse to 1 kH per site in a tight regime — exactly when you want them.</td>
+          </tr>
+          <tr>
+            <td class="k">Option exercise</td>
+            <td><span class="lat">1 month<span class="bar" style="width:14px"></span></span></td>
+            <td class="n">20 kH bought<br><span style="color:var(--muted)">per month</span></td>
+            <td class="n">1.0 + 1.6×6<br><span style="color:var(--muted)">$M per kH</span></td>
+            <td>Only if you bought the premium months earlier. Unexercised, it expires worthless — but it ignores the reservation caps.</td>
+          </tr>
+          <tr>
+            <td class="k">Broker GPUs</td>
+            <td><span class="lat">2 months<span class="bar" style="width:28px"></span></span></td>
+            <td class="n">4 kH each<br><span style="color:var(--muted)">per month</span></td>
+            <td class="n">1.10× / 1.25×<br><span style="color:var(--muted)">list price</span></td>
+            <td>A coin-flip counterparty: 90% reliable or 35%, learned only by ordering, and a reliable one can silently decay. Cancellation refunds 80%, two months late.</td>
+          </tr>
+          <tr>
+            <td class="k">Vendor GPUs</td>
+            <td><span class="lat">3 months, then the queue<span class="bar" style="width:42px"></span></span></td>
+            <td class="n">~6 kH/mo<br><span style="color:var(--muted)">~2 kH/mo tight</span></td>
+            <td class="n">$25M / kH<br><span style="color:var(--muted)">$40M gen N</span></td>
+            <td>One FIFO queue per generation across all sites, rationed by a monthly allocation that swings ±30% and falls to 40% under export controls.</td>
+          </tr>
+          <tr>
+            <td class="k">Power</td>
+            <td><span class="lat">3–8 / 4–9 / 2–6 months<span class="bar gate" style="width:64px"></span></span></td>
+            <td class="n">unbounded</td>
+            <td class="n">0.15 / 0.20 / 0.12<br><span style="color:var(--muted)">$M per MW-month</span></td>
+            <td>The gate on everything owned. Signed blind — you learn the energisation date at signing — and then billed for 24 months regardless.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="ticks">
+      <li>Caps read <b>us / eu / ap</b>. Everything priced off the contract index moves with the regime: it drifts −2.5%/month loose, +4%/month tight.</li>
+      <li>GPUs bought anywhere arrive <b>unpowered</b>. The only two instruments that dodge the power gate are the two you must keep renting.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ 03 -->
+  <section>
+    <div class="sec"><em>03</em><h2>The pipeline</h2><div class="rule"></div></div>
+    <p class="intro">The same picture on one axis: months from the decision to the first kH-month served.
+      Silicon and power are two independent clocks, and compute appears only where both have finished —
+      which is why a fleet can sit <b>delivered and dark</b> for a quarter.</p>
+
+    <div class="panel diagram">
+      <svg viewBox="0 0 1064 342" role="img" aria-label="Latency of each capacity instrument from decision to live compute">
+        <!-- month grid -->
+        <g class="d-axis">
+          <line class="d-track" x1="170" y1="26" x2="170" y2="300"/>
+          <line class="d-track" x1="260" y1="26" x2="260" y2="300"/>
+          <line class="d-track" x1="350" y1="26" x2="350" y2="300"/>
+          <line class="d-track" x1="440" y1="26" x2="440" y2="300"/>
+          <line class="d-track" x1="530" y1="26" x2="530" y2="300"/>
+          <line class="d-track" x1="620" y1="26" x2="620" y2="300"/>
+          <line class="d-track" x1="710" y1="26" x2="710" y2="300"/>
+          <line class="d-track" x1="800" y1="26" x2="800" y2="300"/>
+          <line class="d-track" x1="890" y1="26" x2="890" y2="300"/>
+          <text x="170" y="18" text-anchor="middle">M+0</text>
+          <text x="260" y="18" text-anchor="middle">+1</text>
+          <text x="350" y="18" text-anchor="middle">+2</text>
+          <text x="440" y="18" text-anchor="middle">+3</text>
+          <text x="530" y="18" text-anchor="middle">+4</text>
+          <text x="620" y="18" text-anchor="middle">+5</text>
+          <text x="710" y="18" text-anchor="middle">+6</text>
+          <text x="800" y="18" text-anchor="middle">+7</text>
+          <text x="890" y="18" text-anchor="middle">+8</text>
+        </g>
+
+        <!-- spot -->
+        <text class="d-lab key" x="0" y="52">Spot</text>
+        <circle class="d-node" cx="170" cy="48" r="4"/>
+        <circle class="d-live" cx="176" cy="48" r="3"/>
+        <text class="d-lab dim" x="192" y="52">filled at month end · up to the cap</text>
+
+        <!-- reservation -->
+        <text class="d-lab key" x="0" y="88">Reserve</text>
+        <circle class="d-node" cx="170" cy="84" r="4"/>
+        <line class="d-span" x1="174" y1="84" x2="256" y2="84"/>
+        <circle class="d-live" cx="260" cy="84" r="3"/>
+        <text class="d-lab dim" x="276" y="88">starts next month · term runs 6 / 12 / 24</text>
+
+        <!-- option -->
+        <text class="d-lab key" x="0" y="124">Option</text>
+        <circle class="d-node" cx="170" cy="120" r="4"/>
+        <line class="d-span wide" x1="174" y1="120" x2="256" y2="120"/>
+        <circle class="d-live" cx="260" cy="120" r="3"/>
+        <text class="d-lab dim" x="276" y="124">premium paid months earlier · 6-month strip at $1.6M</text>
+
+        <!-- broker -->
+        <text class="d-lab key" x="0" y="160">Broker</text>
+        <circle class="d-node" cx="170" cy="156" r="4"/>
+        <line class="d-span" x1="174" y1="156" x2="346" y2="156"/>
+        <rect class="d-node" x="344" y="150" width="12" height="12"/>
+        <text class="d-lab dim" x="366" y="160">delivered or cancelled — 90% or 35%</text>
+
+        <!-- vendor -->
+        <text class="d-lab key" x="0" y="196">Vendor</text>
+        <circle class="d-node" cx="170" cy="192" r="4"/>
+        <line class="d-span" x1="174" y1="192" x2="436" y2="192"/>
+        <rect class="d-node" x="434" y="186" width="12" height="12"/>
+        <line class="d-span wide" x1="448" y1="192" x2="800" y2="192"/>
+        <text class="d-lab dim" x="458" y="206">…then the FIFO queue, rationed ~6 kH/month loose, ~2 tight</text>
+
+        <!-- the power clock -->
+        <line class="d-track" x1="0" y1="224" x2="980" y2="224"/>
+        <text class="d-lab key" x="0" y="256">Power</text>
+        <circle class="d-node" cx="170" cy="252" r="4"/>
+        <line class="d-span gate" x1="174" y1="252" x2="436" y2="252" style="stroke:var(--s5)"/>
+        <line class="d-span wide" x1="436" y1="252" x2="800" y2="252"/>
+        <rect class="d-node" x="798" y="246" width="12" height="12"/>
+        <text class="d-lab dim" x="192" y="240">signed · energisation date told at signing</text>
+        <text class="d-lab dim" x="458" y="266">3–8 months (us) · 4–9 (eu) · 2–6 (ap), then live for 24</text>
+
+        <!-- the AND gate -->
+        <path class="d-gate" d="M864 192 h18 a14 14 0 0 1 14 14 v24 a14 14 0 0 1 -14 14 h-18"/>
+        <line class="d-gate" x1="810" y1="192" x2="864" y2="192"/>
+        <line class="d-gate" x1="812" y1="252" x2="864" y2="252"/>
+        <line class="d-gate" x1="896" y1="222" x2="938" y2="222"/>
+        <circle class="d-live" cx="944" cy="222" r="4"/>
+        <text class="d-lab key" x="879" y="226" text-anchor="middle">AND</text>
+        <text class="d-lab key" x="930" y="248">Live compute</text>
+        <text class="d-lab dim" x="532" y="318" text-anchor="middle">silicon and megawatts are independent clocks — the later one sets the date</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============================================================ 04 -->
+  <section>
+    <div class="sec"><em>04</em><h2>The model, live</h2><div class="rule"></div></div>
+    <p class="intro">The growth half of <code style="font-family:var(--mono);font-size:11px">world.py</code>,
+      re-run in the browser on a mean path — same queue, same allocation, same power ledger, noise set to its
+      expectation. Move a control and watch where the capacity actually lands.</p>
+
+    <div class="controls" id="controls"></div>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="chart" id="c-stack"></div>
+    <div class="chart" id="c-gate"></div>
+    <div class="chart" id="c-queue"></div>
+
+    <p class="note" id="assume"></p>
+  </section>
+
+  <!-- ============================================================ 05 -->
+  <section>
+    <div class="sec"><em>05</em><h2>Measured</h2><div class="rule"></div></div>
+    <p class="intro">The same decomposition, read off a finished game rather than the model — what the
+      player's orders actually turned into, month by month.</p>
+    <div class="row" style="margin-bottom:16px"><select id="run" aria-label="Which game to read"></select></div>
+    <div class="chart" id="m-stack"></div>
+    <div class="chart" id="m-gate"></div>
+  </section>
+
+</div>
+
+<script type="module" src="./growth.js"></script>
+</body>
+</html>

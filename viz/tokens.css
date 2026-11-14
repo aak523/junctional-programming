@@ -1,0 +1,46 @@
+/* The house style, shared by every page: two keys of one austere system.
+   Dark is a near-black instrument; light is bone paper. Monochrome throughout,
+   mono micro-caps for every label and numeral, hairline rules, 2-3px corners. */
+:root{
+  color-scheme: dark;
+  --surface-1:#0d0f12; --plane:#08090b;
+  --ink:#f2f1ec; --ink-2:#9a9a94; --muted:#5f5f5b;
+  --grid:#191c20; --axis:#2a2e34; --ring:rgba(242,241,236,.09);
+  --us:#f2f1ec; --eu:#b6b6af; --ap:#7c7c76;
+  --s1:#f2f1ec; --s2:#cfcec8; --s3:#a9a8a2; --s4:#84847e;
+  --s5:#63635e; --s6:#45454a; --s7:#2c2f34;
+  --good:#4f9d78; --warning:#c99a3c; --serious:#c2714c; --critical:#bf4b44;
+  --font: "Inter","SF Pro Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+}
+html[data-theme="light"]{
+  color-scheme: light;
+  --surface-1:#fbfaf7; --plane:#f7f6f2;
+  --ink:#121211; --ink-2:#56565a; --muted:#86868a;
+  --grid:#e6e5df; --axis:#c9c8c2; --ring:rgba(18,18,17,.13);
+  --us:#121211; --eu:#56565a; --ap:#8c8c90;
+  --s1:#121211; --s2:#3a3a3c; --s3:#5e5e61; --s4:#86868a;
+  --s5:#aeaeb0; --s6:#d2d1cc; --s7:#e6e5df;
+  --good:#2f7d5c; --warning:#9a7524; --serious:#a4573a; --critical:#9e3a34;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--plane);color:var(--ink);font-family:var(--font)}
+canvas{display:block}
+
+.panel{background:color-mix(in srgb,var(--surface-1) 90%,transparent);
+       border:1px solid var(--ring);border-radius:3px;padding:11px 12px}
+.lbl{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
+     color:var(--muted);margin:0 0 8px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+select,button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-2);background:transparent;border:1px solid var(--ring);border-radius:2px;
+  padding:5px 9px;cursor:pointer;transition:color .12s,border-color .12s,background .12s}
+button:hover,select:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--plane)}
+select{text-transform:none;letter-spacing:.02em;font-size:11px;max-width:100%}
+html[data-theme="light"] select,html[data-theme="light"] button{background:transparent}
+html[data-theme="light"] select:hover,html[data-theme="light"] button:hover{background:rgba(18,18,17,.05)}
+html[data-theme="light"] button[aria-pressed="true"]{background:var(--ink);color:var(--plane);border-color:var(--ink)}
