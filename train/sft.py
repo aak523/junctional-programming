@@ -55,6 +55,8 @@ def main():
     ap.add_argument("--max-steps", type=int, default=-1)
     ap.add_argument("--max-length", type=int, default=8192)
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--gc", action=argparse.BooleanOptionalAction, default=True, help="activation checkpointing")
+    ap.add_argument("--liger", action="store_true", help="Liger fused kernels (no full-vocab logits)")
     a = ap.parse_args()
 
     import torch
@@ -80,7 +82,7 @@ def main():
     cfg = SFTConfig(output_dir=a.out, max_length=a.max_length, completion_only_loss=True, per_device_train_batch_size=a.batch,
                     gradient_accumulation_steps=a.accum, learning_rate=a.lr, lr_scheduler_type="cosine",
                     warmup_steps=max(1, int(0.03 * steps)), num_train_epochs=a.epochs, max_steps=a.max_steps, bf16=cuda,
-                    gradient_checkpointing=True, logging_steps=5, save_strategy="steps", save_steps=100, save_total_limit=2,
+                    gradient_checkpointing=a.gc, use_liger_kernel=a.liger, logging_steps=5, save_strategy="steps", save_steps=100, save_total_limit=2,
                     report_to="none", dataset_num_proc=8 if cuda else None)
     trainer = SFTTrainer(model=model, args=cfg, train_dataset=ds, processing_class=tok, peft_config=peft_config)
     trainer.model.print_trainable_parameters()
