@@ -68,6 +68,7 @@
   .panes-right { left: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
   .pending { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
   .pending[hidden] { display: none; }
+  .pending h2 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); }
   .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
   .pending .left { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -123,6 +124,12 @@
     border: 1px solid var(--grid); border-radius: 50%; background: transparent; color: var(--fg); cursor: pointer; padding: 0;
   }
   .play:hover { border-color: var(--coast); }
+  .step { flex: none; width: 24px; height: 32px; display: grid; place-items: center; border: 0; background: transparent;
+    color: var(--muted); cursor: pointer; padding: 0; }
+  .step:hover { color: var(--fg); }
+  .step:disabled { opacity: 0.3; cursor: default; }
+  .step:focus-visible { outline: 2px solid var(--coast); outline-offset: 2px; }
+  .step svg { width: 10px; height: 10px; fill: currentColor; }
   .play:focus-visible { outline: 2px solid var(--coast); outline-offset: 2px; }
   .bar { user-select: none; -webkit-user-select: none; }
   .month:focus, .month:focus-visible { outline: none; }
@@ -150,12 +157,18 @@
   <aside class="pane flow" aria-label="Suppliers and datacentres"><svg id="flow" viewBox="0 0 300 140" role="img"></svg></aside>
 </div>
 <div class="panes panes-right">
-  <aside class="pane pending" id="pending" aria-label="Pending buy orders" hidden><ol></ol></aside>
+  <aside class="pane pending" id="pending" aria-labelledby="pending-h" hidden><h2 id="pending-h">outstanding orders</h2><ol></ol></aside>
 </div>
 <div class="bar">
+  <button class="step" id="prev" type="button" aria-label="Previous month">
+    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h1.6v8H1zM9 1L3 5l6 4z"/></svg>
+  </button>
   <button class="play" id="play" type="button" data-state="paused" aria-label="Play">
     <svg data-icon="play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>
     <svg data-icon="pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
+  </button>
+  <button class="step" id="next" type="button" aria-label="Next month">
+    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l6 4-6 4zM7.4 1H9v8H7.4z"/></svg>
   </button>
   <div class="timeline">
     <input class="month" id="month" type="range" min="0" max="23" step="1" value="0" aria-label="Month">
@@ -882,6 +895,8 @@ const RUN = __RUN__;
     slider.value = String(k);
     num.value = String(k); num.textContent = String(k);
     ticks.forEach((t, i) => t.classList.toggle("past", i <= k));
+    document.getElementById("prev").disabled = k === 0;
+    document.getElementById("next").disabled = k === LAST;
     showMonth(k);
     showLog(k);
     showParked(k);
@@ -898,6 +913,15 @@ const RUN = __RUN__;
     if (!playing && month >= LAST) { clearAnims(); pulses.forEach((pl) => pl.li && lightOff(pl.li)); pulses = []; setMonth(0); }
     setPlaying(!playing);
   });
+  const prevBtn = document.getElementById("prev"), nextBtn = document.getElementById("next");
+  const stepBy = (d) => {
+    const k = Math.max(0, Math.min(LAST, month + d));
+    if (k === month) return;
+    setPlaying(false);
+    goTo(k, FLIGHT_MS);
+  };
+  prevBtn.addEventListener("click", () => stepBy(-1));
+  nextBtn.addEventListener("click", () => stepBy(1));
   slider.addEventListener("input", () => {
     setPlaying(false);
     const k = Number(slider.value);
