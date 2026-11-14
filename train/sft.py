@@ -8,6 +8,7 @@ usage: python train/sft.py --data train/data/sft_ref.jsonl --out train/ckpt/sft 
 import argparse
 import json
 import math
+import random
 import sys
 from pathlib import Path
 
@@ -27,6 +28,8 @@ def dataset(paths, limit=None):
                 assert r["system_sha"] == E.SYSTEM_SHA, (p, "record built with a different system prompt")
                 rows.append({"prompt": [{"role": "system", "content": E.SYSTEM}, {"role": "user", "content": r["user"]}],
                              "completion": [{"role": "assistant", "content": r["completion"]}]})
+    if limit:   # a random subset across all episodes, not the first episodes in the file
+        random.Random(0).shuffle(rows)
     return Dataset.from_list(rows[:limit] if limit else rows)
 
 
@@ -50,12 +53,12 @@ def main():
     ap.add_argument("--merge-out")
     ap.add_argument("--epochs", type=float, default=1.0)
     ap.add_argument("--lr", type=float, default=2e-4)
-    ap.add_argument("--batch", type=int, default=4)
-    ap.add_argument("--accum", type=int, default=4)
+    ap.add_argument("--batch", type=int, default=1)
+    ap.add_argument("--accum", type=int, default=16)
     ap.add_argument("--max-steps", type=int, default=-1)
     ap.add_argument("--max-length", type=int, default=8192)
     ap.add_argument("--limit", type=int)
-    ap.add_argument("--gc", action=argparse.BooleanOptionalAction, default=True, help="activation checkpointing")
+    ap.add_argument("--gc", action=argparse.BooleanOptionalAction, default=False, help="activation checkpointing")
     ap.add_argument("--liger", action="store_true", help="Liger fused kernels (no full-vocab logits)")
     a = ap.parse_args()
 

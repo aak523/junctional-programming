@@ -9,6 +9,9 @@ export HF_HUB_ENABLE_HF_TRANSFER=1 TOKENIZERS_PARALLELISM=false
 BASE=Qwen/Qwen3-4B-Instruct-2507
 EVAL="--seeds 0 10 --seeds 20000 20020"
 P=$(( $(nproc) - 2 ))
+# A100 measurements: batch 1 x accum 16, no activation checkpointing, Liger fused loss = 6.1k tok/s (3.2x the defaults);
+# an example is ~5.2k tokens, so SFT uses a random 4,800 of the 9,600 teacher examples (~70 min)
+SFT_LIMIT=${SFT_LIMIT:-4800}
 mkdir -p train/logs train/data train/ckpt train/results
 stage=$1
 run() {
@@ -19,8 +22,8 @@ run() {
                   python train/eval_llm.py --model scripted:$m $EVAL --name $m --procs $P || return 1; done ;;
     base_smoke) python train/eval_llm.py --model $BASE --seeds 0 2 --name smoke_base ;;
     base)       python train/eval_llm.py --model $BASE $EVAL --name base ;;
-    mask)       python train/sft.py --data train/data/sft_ref.jsonl --limit 320 --max-steps 20 --out train/ckpt/mask ;;
-    sft)        python train/sft.py --data train/data/sft_ref.jsonl --out train/ckpt/sft --merge-out train/ckpt/sft-merged &&
+    mask)       python train/sft.py --data train/data/sft_ref.jsonl --limit 320 --max-steps 20 --liger --out train/ckpt/mask ;;
+    sft)        python train/sft.py --data train/data/sft_ref.jsonl --limit $SFT_LIMIT --liger --out train/ckpt/sft --merge-out train/ckpt/sft-merged &&
                 python train/eval_llm.py --model train/ckpt/sft-merged $EVAL --name sft ;;
     sample)     python train/rollout.py --model train/ckpt/sft-merged --seeds 11000 11100 --k 6 --temperature 0.8 \
                   --out train/data/dagger_samples.jsonl &&
@@ -30,7 +33,7 @@ run() {
                 python train/select_round2.py --samples train/data/dagger_samples.jsonl --greedy train/data/dagger_greedy.jsonl \
                   --relabel train/data/dagger_relabel.jsonl --sft train/data/sft_ref.jsonl --replay ${REPLAY:-0.2} \
                   --out train/data/round2.jsonl --stats train/results/round2_stats.json ;;
-    round2)     python train/sft.py --data train/data/round2.jsonl --init-adapter train/ckpt/sft --lr 5e-5 --out train/ckpt/dagger \
+    round2)     python train/sft.py --data train/data/round2.jsonl --init-adapter train/ckpt/sft --lr 5e-5 --liger --out train/ckpt/dagger \
                   --merge-out train/ckpt/dagger-merged &&
                 python train/eval_llm.py --model train/ckpt/dagger-merged $EVAL --name dagger ;;
     *)          echo "unknown stage $stage"; return 1 ;;
