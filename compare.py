@@ -1,9 +1,11 @@
-"""Where does an agent's money go? Replays every agent run against the reference on the same world.
+"""Where does an agent's money go? Replays every Harbor trial against the reference on the same world.
 
-usage: python compare.py            (all runs/*/result.json)
-Prints hidden state, cost breakdown, compute delivered per training window, broker orders and minimum cash.
+usage: python compare.py [jobs dir]      (default: harbor/jobs)
+Reads each trial's verifier/details.json (the world's seed and the agent's actions) and prints the hidden state,
+cost breakdown, compute delivered per training window, broker outcomes and minimum cash.
 """
 import json
+import sys
 from pathlib import Path
 
 import policies
@@ -38,18 +40,21 @@ def row(name, w):
     win = [round(w.window_training(a, d)) for a, d, _ in W.MILESTONES]
     brk = {b: [e["delivered"] for h in w.history for e in h["broker"] if e["src"] == b] for b in W.BROKERS}
     print(f"  {name:9} net {s['net_cost']:6.0f} | capex {c['capex']:4.0f} contracts {c['contracts']:4.0f} power {c['power']:4.0f} "
-          f"spot {c['spot']:3.0f} interest {c['interest']:3.0f} resale {c['resale']:5.0f} mark {s['mark_to_market']:4.0f} "
-          f"oblig {s['obligations']:4.0f} | windows {win} (need {[int(t) for *_, t in W.MILESTONES]}) | "
+          f"spot {c['spot']:3.0f} options {c['options']:3.0f} moves {c['moves']:3.0f} interest {c['interest']:3.0f} resale {c['resale']:5.0f} "
+          f"mark {s['mark_to_market']:4.0f} oblig {s['obligations']:4.0f} | windows {win} (need {[int(t) for *_, t in W.MILESTONES]}) | "
           f"broker outcomes {brk} | min cash {min(h['cash_end'] for h in w.history):.0f}")
 
 
 if __name__ == "__main__":
-    runs = [json.loads(f.read_text()) for f in sorted(HERE.glob("runs/*/result.json"))]
-    for seed in sorted({r["seed"] for r in runs}):
+    jobs = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "harbor" / "jobs"
+    for f in sorted(jobs.glob("*/*/verifier/details.json")):
+        d = json.loads(f.read_text())
+        if "seed" not in d:
+            continue
+        seed = d["seed"]
         ref = reference(seed)
-        print(f"=== seed {seed}: regime {''.join(x[0] for x in ref.regime)} launch {ref.launch} export {ref.export} "
+        print(f"=== {f.parts[-4]} / {f.parts[-3]}: reward {d['reward']} vs reference {d['scale']['reference_reward']} | "
+              f"regime {''.join(x[0] for x in ref.regime)} launch {ref.launch} export {ref.export} "
               f"brokers reliable {ref.broker_reliable} decay {ref.broker_decay} growth {ref.growth[0]} switch {ref.growth_switch}")
         row("reference", ref)
-        for r in runs:
-            if r["seed"] == seed and not r.get("harness_error"):
-                row(r["run"], replay(seed, r["actions"]))
+        row("agent", replay(seed, d["actions"]))

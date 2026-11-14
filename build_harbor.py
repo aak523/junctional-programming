@@ -45,7 +45,7 @@ memory_mb = 4096
 '''
 
 OPENCODE = "1.19.5"
-AGENT_MINUTES = 30   # judges run reference + 3 agent runs (in parallel) + baselines; the reference plays in about 70 s, Opus 5-8 min, Gemini ~40 s/step
+AGENT_MINUTES = 30   # judges run reference + 3 agent runs (in parallel) + baselines; the reference plays in about 70 s; Gemini 4 Carbon needs ~90 s/step
 
 # OpenCode is baked in: Harbor skips its own install when `opencode --version` works, and installing Node and
 # OpenCode at agent setup can exceed Harbor's 360 s setup timeout.

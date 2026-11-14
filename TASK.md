@@ -97,4 +97,3 @@ interest) - resale income - GPUs delivered, in transit or still queued, marked a
 month 24 + remaining contract and power obligations + training-run penalties.
 Broker orders still unconfirmed at the end are cancelled with the usual refund.
 Lower net cost is better. Your result is read from the server's ledger, not from anything you write.
-Each world is played several times; consistency across attempts counts, not just the average.
