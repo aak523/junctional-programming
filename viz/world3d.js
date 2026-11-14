@@ -9,7 +9,7 @@ import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
 // ---------------------------------------------------------------- theme
 // Two keys of the same design: ink-on-white, or light-on-black. Picked from the URL at
 // load time so every material is built once, in the right key.
-const THEME = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark';
+const THEME = new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light';
 document.documentElement.dataset.theme = THEME;
 const LIGHT = THEME === 'light';
 
