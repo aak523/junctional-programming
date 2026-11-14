@@ -30,24 +30,26 @@ Capacity in a month = owned GPUs that are delivered **and powered** + active res
 - **Reserve cloud capacity** `reserve <kH> <6|12|24>`: starts next month, priced at the contract index
   times 1.15 (6 months), 1.00 (12) or 0.90 (24) per kH-month. You pay the whole term, including any
   months after month 23. Providers accept at most 10 kH of new reservations per month when loose,
-  3 kH when tight. The contract index drifts down about 2.5%/month when loose and up about 4%/month when tight.
+  3 kH when tight. The contract index drifts down about 2.5%/month when loose and up about 4%/month when tight
+  (with about 5% noise per month; clamped to $0.8..4.0M).
 - **Spot** `set_spot <kH>`: a standing request, filled at month end up to the available spot supply
   (about 12 kH loose, 3 kH tight; halved in a month a rival lab is buying aggressively) at that month's
   spot price, which is shown in advance (about 1.1x the contract index when loose, 1.8x when tight,
-  1.5x more in a rival-buying month, with about 20% noise). Rival-buying months are announced in that month's news.
+  1.5x more in a rival-buying month, with about 30% noise). Rival-buying months are announced in that month's news.
 - **Power** `contract_power <MW>`: colocation power at $0.15M per MW-month for 24 months from energisation,
   which is 3 to 8 months after signing (the date is told to you at signing). Obligations past month 23
   are charged at settlement. Owned GPUs without power sit idle (gen N is powered first).
   Note when your existing power contracts end.
 - **Resell** `resell_gpus <thousands> [H|N]`: sells delivered GPUs at 75% of the used-market value, at most
-  3k per generation per month. Used-market value per thousand: gen H $25M x 0.98^month, 10% higher while
-  supply is tight, 40% lower after the launch; gen N $40M x 0.98^(months since launch).
+  3k per generation per month. Used-market value per thousand: gen H $25M x 0.98^month, 40% lower from the
+  launch on; gen N $40M x 0.98^(months since launch).
 
 ## The hidden state
 - **Supply regime** (loose or tight) sets allocations, reservation and spot caps, spot multiples and the
   contract-index drift. Each month it switches with probability 10%. You never see it directly.
   Evidence: supply headlines in the news (about 70% of months have one; each is right 75% of the time),
-  spot price relative to the contract index, and how much of your eligible queue actually ships.
+  spot price relative to the contract index, the contract index's monthly drift, how much of your eligible
+  queue actually ships, and how much reservation and spot capacity you actually get.
 - **Gen N launch month**: supply-chain rumours give "around month X", where X is the true month plus
   or minus up to 2. The vendor usually (80%) confirms the launch the month before.
 - **Export controls**: with probability 50% they take effect in some month between 5 and 15, cutting gen H

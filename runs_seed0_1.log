@@ -1,1 +1,0 @@
-{"run": "seed0_1", "seed": 0, "model": "claude-opus-5-5", "months_played": 24, "turns": 25, "usd": 1.0661818, "spend": 1321.86, "mark_to_market": 353.3, "obligations": 104.25, "milestones_met": 3, "missed": [], "penalties": 0.0, "net_cost": 1072.81, "costs": {"capex": 1000.0, "power": 217.35, "contracts": 63.32, "spot": 62.4, "unserved": 0.0, "resale": -21.21}}

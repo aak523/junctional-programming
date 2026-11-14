@@ -196,7 +196,7 @@ class Reference:
     Before the launch it counts on gen N only from a late launch quantile.
     """
     P = {"m_inf": 0.08, "m_tr": 0.05, "pess": 0.0, "alloc_q": 0.85, "use_h": 8, "use_n": 4,
-         "launch_q": 0.75, "n_share": 0.8, "spot_share": 0.3, "queue_months": 2, "spot_buf": 0.05}
+         "launch_q": 0.75, "n_share": 0.8, "spot_share": 0.6, "queue_months": 2, "spot_buf": 0.05, "rent_mult": 1.5}
 
     def __init__(self, beliefs=None, **params):
         self.bel = beliefs or Bayes()
@@ -245,6 +245,20 @@ class Reference:
         start = self.bel.launch_quantile(self.p["launch_q"]) + W.MIN_LEAD
         return self.p["n_share"] * W.COMPUTE["N"] * sum(self.alloc("N", j, t, 0.0) for j in range(start - 1, k))
 
+    def owning_pays(self, obs, gen, k):
+        """Expected cost per kH-month of owning from month k to the end vs renting (12-month contract) then."""
+        t = obs["month"]
+        u = T - k
+        mv_end = W.GPU_PRICE["H"] * 0.98 ** T * W.LAUNCH_MV if gen == "H" else             W.GPU_PRICE["N"] * 0.98 ** max(0, T - self.bel.launch_quantile(0.5))
+        own = ((W.GPU_PRICE[gen] - W.RESALE * mv_end) / u + W.POWER_MW[gen] * W.POWER_COST) / W.COMPUTE[gen]
+        rent = obs["prices"]["reserve"][12]
+        for j in range(t, k):
+            q = self.bel.p_tight(j, t)
+            rent *= W.DRIFT["tight"] * q + W.DRIFT["loose"] * (1 - q)
+        if not obs["launched"] and self.bel.launch_quantile(0.5) <= k:
+            rent *= W.LAUNCH_PRICE
+        return own < rent * self.p["rent_mult"]
+
     @staticmethod
     def reserved(obs, k):
         return sum(c["qty"] for c in obs["contracts"] if c["start"] <= k < c["end"])
@@ -270,7 +284,7 @@ class Reference:
             q = 0.0
             for k in range(t + W.MIN_LEAD, last + 1):
                 g = (cap[k] - self.compute(proj[k]) - self.reserved(obs, k) - self.planned_n(obs, k)) / W.COMPUTE[gen]
-                if g <= q + 0.25:
+                if g <= q + 0.25 or not self.owning_pays(obs, gen, k):
                     continue
                 now = self.project(obs | {"queue": obs["queue"] + [{"gen": gen, "left": g, "placed": t}]}, pess=p["pess"])
                 later = self.project(obs | {"queue": obs["queue"] + [{"gen": gen, "left": g, "placed": t + 1}]}, pess=p["pess"])
@@ -307,10 +321,9 @@ class Reference:
             if x > 0.3:
                 far = max(k for k, v in need.items() if v > 0.3)
                 launch_soon = not obs["launched"] and self.bel.launch_quantile(0.5) <= t + 7
-                terms = [m for m in (6, 12) if t + 1 + m <= T]
-                long_ok = 12 in terms and not launch_soon and sum(resid.get(k, 0) > 0.3 for k in range(t + 1, t + 13)) >= 10
-                cover = [m for m in terms if t + 1 + m > far]
-                term = 12 if long_ok else (cover[0] if cover else (terms[-1] if terms else None))
+                # a term may run past month 23 (the tail is a priced obligation, cheaper than a missed run)
+                long_ok = t + 13 <= T and not launch_soon and sum(resid.get(k, 0) > 0.3 for k in range(t + 1, t + 13)) >= 10
+                term = 12 if long_ok or far >= t + 7 else 6
                 if term:
                     act(f"reserve {x:.2f} {term}")
                     add("contracts", {"qty": min(x, rc), "price": 0, "start": t + 1, "end": t + 1 + term})
