@@ -1,0 +1,22 @@
+{
+ "reward": 0.0,
+ "net_cost": 3127.29,
+ "months_played": 0,
+ "milestones_met": 0,
+ "scale": {
+  "oracle": 596.51,
+  "reference": 663.15,
+  "do_nothing": 3127.29,
+  "stop_early": 3023.36,
+  "reference_reward": 0.8995,
+  "do_nothing_reward": 0.0,
+  "stop_early_reward": 0.0
+ }
+}
+Mistake report (the agent's game vs the reference's on this world):
+- Missed training run 1 (months 0..7): 0.92x of the 60 kH-months it needed.
+- Missed training run 2 (months 8..15): 0.19x of the 140 kH-months it needed.
+- Missed training run 3 (months 16..23): 0.00x of the 320 kH-months it needed.
+- Left $475M of inference demand unserved (reference $3M).
+- Never ordered from broker A or B, so it never learned whether they are reliable (the reference probes each broker in month 0).
+- Net cost $3127M vs the reference's $663M ($M against the reference: penalties +2784, unserved inference +472, end-of-game mark +63; contracts -484, GPUs -182, obligations after month 23 -62).

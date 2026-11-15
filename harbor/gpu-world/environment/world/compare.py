@@ -1,6 +1,6 @@
 """Where does an agent's money go? The mistake report the verifier attaches to every game, and its CLI.
 
-usage: python compare.py [jobs dir]      (default: harbor/jobs)
+usage: python gpu_world/compare.py [jobs dir]      (default: harbor/jobs)
 Reads each trial's verifier/details.json (the world's seed, the agent's actions and belief notes), replays the game and
 the reference on the same world, and prints both summaries side by side with the findings. The replay uses the current
 rules, so only games played under them (v5) replay faithfully.
@@ -119,7 +119,7 @@ def table(dg):
 
 
 if __name__ == "__main__":
-    jobs = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "harbor" / "jobs"
+    jobs = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE.parent / "harbor" / "jobs"
     for f in sorted(jobs.glob("*/*/verifier/details.json")) + sorted(jobs.glob("*/verifier/details.json")):
         d = json.loads(f.read_text())
         if "seed" not in d or not d.get("actions"):

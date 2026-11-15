@@ -1,0 +1,2309 @@
+<meta charset="utf-8">
+<title>GPU World Globe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Mono&family=Fira+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  /* Layout: one full-screen globe; a compact playback pill centred above it. */
+  :root {
+    --bg: #eef1f4;
+    --fg: #1b2530;
+    --muted: #5d6b79;
+    --grid: #9aa8b6;
+    --coast: #22313f;
+    --gen-h: #1f5fd6;
+    --gen-n: #0093b8;
+    --site-us: #c2185b;
+    --site-eu: #1b8a4b;
+    --site-ap: #6a3fd1;
+    --cmd-buy: #c8412f;
+    --hl: #d8e6f3;
+    --cmd-rent: #9a7d00;
+    --cmd-power: #5f8a00;
+    --cmd-option: #c25e00;
+    --cmd-stock: #0f8a82;
+    --alert: #d60000;
+    --font: "Fira Sans", "Helvetica Neue", Arial, sans-serif;
+    --font-cmd: "Fira Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #070b10; --fg: #d8e2ec; --muted: #7d8c9b; --grid: #1f3a4d; --coast: #6fd3ff;
+      --gen-h: #4f9dff; --gen-n: #2fe0ff;
+      --site-us: #ff5fa2; --site-eu: #5fe08a; --site-ap: #b28cff;
+      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9; --alert: #ff2e2e;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #070b10; --fg: #d8e2ec; --muted: #7d8c9b; --grid: #1f3a4d; --coast: #6fd3ff;
+    --gen-h: #4f9dff; --gen-n: #2fe0ff;
+    --site-us: #ff5fa2; --site-eu: #5fe08a; --site-ap: #b28cff;
+      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9; --alert: #ff2e2e;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); overflow: hidden; }
+  /* Command log on the left; the globe fills the rest. On narrow screens the log moves below the globe. */
+  #stage { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+  /* Floating panes: one column in the top-left corner, the log with the summary directly below it. */
+  .panes {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    left: max(16px, env(safe-area-inset-left, 0px));
+    width: 300px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pane { box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--grid); background: var(--bg); }
+  .flow svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .flow .name { font-size: 12px; font-weight: 600; }
+  .flow .qty { font-size: 12px; fill: var(--fg); font-variant-numeric: tabular-nums; }
+  .flow .box { fill: transparent; stroke: var(--grid); }
+  .flow .track { fill: none; stroke: var(--grid); }
+  .log {
+    height: 214px; flex: none; overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .log { position: relative; padding-left: 26px; }
+  .log .arrows { position: absolute; left: 0; top: 0; width: 26px; pointer-events: none; overflow: visible; }
+  .log .arrows path { fill: none; stroke-width: 1; stroke-opacity: 0.6; }
+  .panes-right { left: auto; right: max(16px, env(safe-area-inset-right, 0px));
+    max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .pending { height: 124px; flex: none; overflow-y: auto; overscroll-behavior: contain; }
+  .pane .empty { margin: 0; font-size: 11px; font-style: italic; color: var(--muted); }
+  .pane .empty[hidden] { display: none; }
+  .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
+  .pending li { cursor: pointer; }
+  .news { height: 136px; flex: none; overflow-y: auto; overscroll-behavior: contain; }   /* fixed heights: the column never jumps between steps */
+  .news ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .news li { font-size: 11px; line-height: 1.4; color: var(--fg); padding-left: 7px; border-left: 2px solid var(--grid); }
+  .news li.fresh { animation: news-in 0.6s ease-out; }
+  @keyframes news-in { from { opacity: 0; transform: translateX(-4px); } }
+  @media (prefers-reduced-motion: reduce) { .news li.fresh { animation: none; } }
+  .panes:not(.panes-right) { max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  [data-ent] { transition: background-color 0.2s; }
+  .pane svg text, [data-ent] { cursor: default; }
+  .pending li [data-ent] { cursor: pointer; }   /* the whole order row is clickable */
+  span.ent-hl { background: var(--hl); }
+  .ent-line.ent-hl { stroke-width: 3; }
+  .ent-band.ent-hl { fill-opacity: 0.32; }
+  .pending li:hover { background: var(--hl); }
+  .pending .left { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pending .v { font-weight: 600; }
+  .pending .v-buy { color: var(--cmd-buy); }
+  .pending .v-power { color: var(--cmd-power); }
+  .pending .t-us { color: var(--site-us); } .pending .t-eu { color: var(--site-eu); } .pending .t-ap { color: var(--site-ap); }
+  .pending .t-sup { color: var(--coast); } .pending .t-h { color: var(--gen-h); } .pending .t-n { color: var(--gen-n); }
+  /* The log's heading stays put while the commands scroll under it. */
+  /* Scrolling panes: the heading stays put, and a fade with a chevron at either edge says there is more that way. */
+  .pane.news > h2, .pane.pending > h2 { position: sticky; top: -10px; z-index: 1; margin: -10px -12px 0; padding: 10px 12px 6px; background: var(--bg); }
+  .more { position: sticky; z-index: 1; height: 18px; flex: none; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    display: flex; justify-content: center; font-size: 9px; line-height: 1; color: var(--muted); }
+  .more.on { opacity: 1; }
+  .more.top { margin-bottom: calc(-18px - var(--gap, 0px)); align-items: flex-start; background: linear-gradient(var(--bg) 30%, transparent); }
+  .more.bot { bottom: -10px; margin-top: calc(-18px - var(--gap, 0px)); margin-bottom: -10px; padding-bottom: 10px; box-sizing: content-box;
+    align-items: flex-end; background: linear-gradient(transparent, var(--bg) 60%); }
+  .more.top::before { content: "▲"; }
+  .more.bot::before { content: "▼"; }
+  .log { --gap: 10px; }
+  .pane.log > h2 { position: sticky; top: -10px; z-index: 1; margin: -10px -12px -4px -26px; padding: 10px 12px 6px 12px; background: var(--bg); }
+  .log section { display: flex; flex-direction: column; gap: 4px; }
+  .log section[hidden] { display: none; }
+  .log h2 { margin: 0; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .log section.now h2 { color: var(--fg); }
+  .log ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  .log li { font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+  /* Command colours: the verb by command type, site and supplier names in their globe colours, the rest muted. */
+  .log .v { font-weight: 600; }
+  .log .v-buy { color: var(--cmd-buy); }
+  .log .v-rent { color: var(--cmd-rent); }
+  .log .v-power { color: var(--cmd-power); }
+  .log .v-option { color: var(--cmd-option); }
+  .log .v-stock { color: var(--cmd-stock); }
+  .log .t-us { color: var(--site-us); }
+  .log .t-eu { color: var(--site-eu); }
+  .log .t-ap { color: var(--site-ap); }
+  .log .t-sup { color: var(--coast); }
+  .log .t-h { color: var(--gen-h); }
+  .log .t-n { color: var(--gen-n); }
+  .log li { transition: background-color 0.25s; }
+  .log li .cost { float: right; margin-left: 8px; font-variant-numeric: tabular-nums; }
+  .log li .cost.in { color: var(--cmd-power); }
+  .log li.lit { background: var(--hl); }
+  /* Belief-log preview: prose, not a command; one line, cut short. */
+  .log li.note { font-family: inherit; color: var(--fg); opacity: 0.7; background: var(--hl-soft, rgba(127,127,127,0.08));
+    padding: 1px 6px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+  /* Events, not commands: italic sans, indented behind a rule, faded. Same colours. */
+  .log li.evt { font-family: var(--font); font-style: italic; font-size: 11.5px; margin-left: 2px; padding-left: 8px; border-left: 2px solid var(--grid); opacity: 0.7; }
+  .log li.evt .v { font-weight: 400; }
+  /* A cancelled broker order: alert red, full strength, with a cross and the GPU count struck through. */
+  .log li.evt.cancelled { opacity: 1; color: var(--alert); border-left-color: var(--alert); }
+  .log li.evt.cancelled .v { color: var(--alert); font-weight: 600; }
+  .log li.evt.cancelled .q { text-decoration: line-through; }
+  .log li.evt.cancelled::before { content: "✕ "; font-style: normal; font-weight: 700; }
+  .log li.cmd { cursor: pointer; }
+  .log li.cmd:hover { background: var(--hl); }
+  /* Where a clicked command's outcome shows: an outline that fades out. */
+  .outcome-flash { fill: none; stroke: var(--coast); stroke-width: 1.5; pointer-events: none; animation: outcome 1.8s ease-out forwards; }
+  @keyframes outcome { 0%, 40% { stroke-opacity: 1; } 100% { stroke-opacity: 0; } }
+  .log li.refused, .log li.refused span { color: var(--muted); text-decoration: line-through; }
+  @media (max-width: 720px) {
+    .panes { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
+    .log { max-height: 30vh; }
+    .flow { display: none; }
+    .panes-right, .training { display: none; }
+  }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .center {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    width: min(320px, calc(100% - 32px));
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pane > h2 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  /* Info button beside each pane title; its explanation appears only on hover or focus. */
+  .info { flex: none; width: 14px; height: 14px; padding: 0; border: 0; background: none; color: var(--muted); cursor: help; display: grid; place-items: center; opacity: 0.6; }
+  .info:hover, .info:focus-visible { opacity: 1; color: var(--fg); outline: none; }
+  .info svg { width: 12px; height: 12px; }
+  .tip {
+    position: fixed; z-index: 10; max-width: 280px; box-sizing: border-box; padding: 10px 12px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--coast);
+    font-size: 12px; font-weight: 400; line-height: 1.5; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .tip.show { opacity: 1; }
+  .tip[hidden] { display: none; }
+  .tip p { margin: 0; }
+  .tip p + p { margin-top: 6px; }
+  .tip p.row { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
+  .tip p.row + p.row { margin-top: 2px; }
+  .tip p.row.total { border-top: 1px solid var(--grid); padding-top: 3px; }
+  .training svg, .demand svg, .power svg, .prices svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .pane h3.sub { margin: 0 0 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .pane svg + h3.sub { margin-top: 10px; }
+  /* A number that changed at the step flashes, then settles back to its own colour. */
+  @keyframes flash { from { fill: var(--coast); } }
+  svg text.flash { animation: flash 0.9s ease-out; }
+  .chart-text { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .chart-num { font-size: 11px; fill: var(--fg); font-variant-numeric: tabular-nums; }
+  .bar {
+    box-sizing: border-box;
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 14px 8px 8px;
+    background: var(--bg);
+    border: 1px solid var(--grid);
+  }
+  .play {
+    flex: none; width: 32px; height: 32px; display: grid; place-items: center;
+    border: 1px solid var(--grid); border-radius: 50%; background: transparent; color: var(--fg); cursor: pointer; padding: 0;
+  }
+  .play:hover { border-color: var(--coast); }
+  .step { flex: none; width: 24px; height: 32px; display: grid; place-items: center; border: 0; background: transparent;
+    color: var(--muted); cursor: pointer; padding: 0; }
+  .step:hover { color: var(--fg); }
+  .step:disabled { opacity: 0.3; cursor: default; }
+  .step:focus, .play:focus { outline: none; }
+  .step svg { width: 10px; height: 10px; fill: currentColor; }
+  .bar { user-select: none; -webkit-user-select: none; }
+  .month:focus, .month:focus-visible { outline: none; }
+  .play svg { width: 12px; height: 12px; fill: currentColor; }
+  .play [data-icon] { display: none; }
+  .play[data-state="paused"] [data-icon="play"], .play[data-state="playing"] [data-icon="pause"] { display: block; }
+  .month { width: 100%; margin: 0; display: block; accent-color: var(--coast); }
+  /* One tick per month under the slider, inset by half the thumb so each sits under a stop. */
+  .timeline { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ticks { display: flex; justify-content: space-between; padding: 0 8px; pointer-events: none; }
+  .ticks i { width: 1px; height: 5px; background: var(--grid); }
+  .ticks i.past { background: var(--coast); }
+  .num { flex: none; min-width: 2ch; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .panes, .center { z-index: 2; }
+  .money-pop { position: fixed; left: 0; top: 0; z-index: 1; pointer-events: none; font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--fg); }
+  .money-pop.out { color: var(--cmd-buy); }
+  .money-pop.in { color: var(--cmd-power); }
+  .site-label { z-index: 1;
+    position: fixed; left: 0; top: 0; pointer-events: none;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em; white-space: nowrap;
+  }
+  .site-label[hidden], .error[hidden] { display: none; }
+  .error { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; padding: 16px; text-align: center; }
+</style>
+
+<div id="stage"></div>
+<div class="panes">
+  <aside class="pane log" id="log" aria-labelledby="log-h"><h2><span id="log-h">log</span><button class="info" type="button" data-info="log" aria-label="About log" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2></aside>
+  <aside class="pane news" id="news" aria-labelledby="news-h"><h2><span id="news-h">news</span><button class="info" type="button" data-info="news" aria-label="About news" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ul></ul><p class="empty">no news this month</p></aside>
+  <aside class="pane pending" id="pending" aria-labelledby="pending-h"><h2><span id="pending-h">outstanding orders</span><button class="info" type="button" data-info="pending" aria-label="About outstanding orders" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ol></ol><p class="empty">no orders outstanding</p></aside>
+  <aside class="pane flow" aria-labelledby="flow-h"><h2><span id="flow-h">globe overview</span><button class="info" type="button" data-info="flow" aria-label="About globe overview" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="flow" viewBox="0 0 300 214" role="img"></svg></aside>
+</div>
+<div class="panes panes-right">
+  <aside class="pane demand" aria-labelledby="demand-h"><h2><span id="demand-h">compute</span><button class="info" type="button" data-info="compute" aria-label="About compute" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><h3 class="sub">inference</h3><svg id="compute" viewBox="0 0 274 76" role="img"></svg><svg id="demand" viewBox="0 0 274 62" role="img" style="margin-top:10px"></svg><h3 class="sub">training</h3><svg id="train" viewBox="0 0 274 11" role="img"></svg><svg id="compute-all" viewBox="0 0 274 30" role="img" style="margin-top:10px"></svg></aside>
+  <aside class="pane money" aria-labelledby="money-h"><h2><span id="money-h">money</span><button class="info" type="button" data-info="money" aria-label="About money" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="money" viewBox="0 0 274 176" role="img"></svg></aside>
+  <aside class="pane prices" aria-labelledby="prices-h"><h2><span id="prices-h">prices</span><button class="info" type="button" data-info="prices" aria-label="About prices" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><h3 class="sub">compute, $M per kH-month</h3><svg id="price-compute" viewBox="0 0 274 62" role="img"></svg><h3 class="sub">GPUs, $M per 1k</h3><svg id="price-gpu" viewBox="0 0 274 62" role="img"></svg></aside>
+</div>
+<div class="center">
+<div class="bar">
+  <button class="step" id="prev" type="button" aria-label="Previous month">
+    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1.5L3 5l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+  </button>
+  <button class="play" id="play" type="button" data-state="paused" aria-label="Play">
+    <svg data-icon="play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>
+    <svg data-icon="pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
+  </button>
+  <button class="step" id="next" type="button" aria-label="Next month">
+    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1.5L7 5 3.5 8.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+  </button>
+  <div class="timeline">
+    <input class="month" id="month" type="range" min="0" max="23" step="1" value="0" aria-label="Month">
+    <div class="ticks" id="ticks" aria-hidden="true"></div>
+  </div>
+  <output class="num" id="num" for="month">0</output>
+</div>
+<aside class="pane training" aria-labelledby="training-h"><h2><span id="training-h">status</span><button class="info" type="button" data-info="training" aria-label="About status" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="status" viewBox="0 0 294 50" role="img"></svg></aside>
+</div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="error" id="err" hidden>The 3D view could not start. This browser may not support WebGL.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/Line2.js"></script>
+<script>
+__OBJECTS__
+</script>
+<script>
+// Coastlines: Natural Earth 1:110m land outlines (public domain), as [lon, lat] polylines.
+const COAST = __COAST__;
+// One GPU World run: per month, per site, GPUs owned and powered (thousands, by generation).
+const RUN = __RUN__;
+
+(function () {
+  if (!window.THREE || !THREE.OrbitControls) { document.getElementById("err").hidden = false; return; }
+  const stage = document.getElementById("stage");
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { document.getElementById("err").hidden = false; return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
+  camera.position.set(0, 0.6, 3.6);
+
+  const R = 1;
+  const toVec = (lon, lat, r = R) => {
+    const phi = (90 - lat) * Math.PI / 180, th = (lon + 180) * Math.PI / 180;
+    return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(th), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(th));
+  };
+  const segments = (lines, r) => {
+    const pts = [];
+    for (const line of lines) for (let i = 0; i + 1 < line.length; i++) {
+      pts.push(toVec(line[i][0], line[i][1], r), toVec(line[i + 1][0], line[i + 1][1], r));
+    }
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  };
+
+  // ---------------------------------------------------------------- materials (coloured from CSS tokens)
+  // Semi-transparent: the far side of the globe shows through dimmed, so no activity is hidden.
+  const occluderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.72, depthWrite: false });
+  const gridMat = new THREE.LineBasicMaterial();
+  const coastMat = new THREE.LineBasicMaterial();
+  const edgeMat = new THREE.LineBasicMaterial();
+  const maskMat = new THREE.MeshBasicMaterial();   // background colour: hides coastline and grid under each footprint
+  // Coastline and grid are hairlines; everything else (footprints, order outlines, flight arcs) is drawn wider.
+  const FAT_PX = 2;
+  const fatRes = new THREE.Vector2(1, 1);   // shared by every wide-line material; set on resize
+  const fatMat = (opts = {}) => {
+    const m = new THREE.LineMaterial(Object.assign({ linewidth: FAT_PX }, opts));
+    m.uniforms.resolution.value = fatRes;
+    return m;
+  };
+  const fatSegments = (geo, mat) => {
+    const g = new THREE.LineSegmentsGeometry().setPositions(geo.attributes.position.array);
+    const l = new THREE.LineSegments2(g, mat);
+    l.raycast = () => {};   // not pickable; hover goes by footprint
+    return l;
+  };
+  // Marching dashes over a static arc, so its direction shows: short bright dashes travel from its start to its
+  // end, over the arc itself drawn faint. Each base material gets one dash material that follows its colour.
+  const flowPairs = [];   // [dash material, base material]
+  // Static arcs that show a tooltip on hover: points along each (globe-local) and a one-line summary, by layer.
+  const arcTips = { ghosts: [], parked: [], rentals: [], power: [] };
+  const tipArc = (layer, line, text, color) => { arcTips[layer].push({ pts: line.userData.pts, para: [text, color] }); return line; };
+  const flowFor = (base) => {
+    let pair = flowPairs.find(([, b]) => b === base);
+    if (!pair) {
+      const m = fatMat({ dashed: true, dashSize: 0.012, gapSize: 0.05, transparent: true, opacity: 0.85 });
+      m.defines.USE_DASH = "";   // r128 does not switch the dash shader on from `dashed` alone
+      pair = [m, base];
+      flowPairs.push(pair);
+    }
+    return pair[0];
+  };
+  const withFlow = (line) => {
+    line.computeLineDistances();
+    const f = new THREE.Line2(line.geometry, flowFor(line.material));
+    f.raycast = () => {};
+    return [line, f];
+  };
+  const hollowMat = { H: fatMat(), N: fatMat() };   // ordered, not yet delivered
+  const orderFillMat = { H: new THREE.MeshBasicMaterial(), N: new THREE.MeshBasicMaterial() };   // solid dark inside an order's outline
+  const blockMat = { H: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() },
+                     N: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() } };
+
+  // ---------------------------------------------------------------- globe
+  const grat = [];
+  for (let lon = -180; lon < 180; lon += 15) { const l = []; for (let lat = -90; lat <= 90; lat += 2) l.push([lon, lat]); grat.push(l); }
+  for (let lat = -75; lat <= 75; lat += 15) { const l = []; for (let lon = -180; lon <= 180; lon += 2) l.push([lon, lat]); grat.push(l); }
+
+  const globe = new THREE.Group();
+  const occluder = new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 64, 48), occluderMat);
+  globe.add(occluder);
+  globe.add(new THREE.LineSegments(segments(grat, R), gridMat));
+  // Coastline lifted off the surface, with a dim copy on the surface beneath it for depth.
+  const LIFT = 1.035;
+  globe.add(new THREE.LineSegments(segments(COAST, R * 1.001), gridMat));
+  globe.add(new THREE.LineSegments(segments(COAST, R * LIFT), coastMat));
+  globe.rotation.y = -0.6;
+  scene.add(globe);
+
+  // ---------------------------------------------------------------- datacentres
+  // Remote spots within each region, chosen about 120 degrees of longitude apart so the sites spread
+  // evenly around the globe: Sandhills near Mullen (Nebraska), Biebrza marshes (Poland), Birdsville (Queensland).
+  const SITES = { us: [-101.04, 42.04], eu: [22.6, 53.5], ap: [139.35, -25.9] };
+  const W = 0.04, H = 0.026, GAP = 0.008, COLS = 3;  // one block = 1k GPUs; 3x3 footprint, rising level by level
+  const boxGeo = new THREE.BoxGeometry(W, H, W);
+  boxGeo.translate(0, H / 2, 0);                       // base of the box at y = 0, so height scales upward
+  const boxEdges = new THREE.EdgesGeometry(boxGeo);
+  const pitch = W + GAP;
+  const slot = (i) => {
+    const level = Math.floor(i / (COLS * COLS)), j = i % (COLS * COLS);
+    return [((j % COLS) - (COLS - 1) / 2) * pitch, level * (H + GAP * 0.5), (Math.floor(j / COLS) - (COLS - 1) / 2) * pitch];
+  };
+  const padGeo = (() => {
+    const h = (COLS * pitch) / 2, y = 0.0005;
+    const p = [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]];
+    const pts = [];
+    for (let i = 0; i < 4; i++) pts.push(new THREE.Vector3(p[i][0], y, p[i][1]), new THREE.Vector3(p[i + 1][0], y, p[i + 1][1]));
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  })();
+
+  // Datacentres sit at the lifted coastline's height so they don't drift against it as the globe turns.
+  // Glow: a translucent fill over a footprint, lit while GPUs are leaving or arriving there.
+  const glowGeo = new THREE.PlaneGeometry(COLS * pitch * 1.8, COLS * pitch * 1.8);   // wider than the stack, so it shows around it
+  glowGeo.rotateX(-Math.PI / 2);
+  glowGeo.translate(0, 0.001, 0);
+  const maskGeo = new THREE.PlaneGeometry(COLS * pitch, COLS * pitch);
+  maskGeo.rotateX(-Math.PI / 2);
+  maskGeo.translate(0, 0.0002, 0);
+  const addMask = (anchor) => anchor.add(new THREE.Mesh(maskGeo, maskMat));
+  const glows = new Map();   // anchor -> { mat, colorFrom }
+  const addGlow = (anchor, colorFrom) => {
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    anchor.add(new THREE.Mesh(glowGeo, mat));
+    glows.set(anchor, { mat, colorFrom });
+  };
+
+  const sites = {}, anchors = {}, padMat = {};
+  const labelPoint = new THREE.Vector3((COLS * pitch) / 2 + 0.02, 0, 0);   // just past the footprint's edge
+  for (const [id, [lon, lat]] of Object.entries(SITES)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    padMat[id] = fatMat();
+    addMask(anchor);
+    anchor.add(fatSegments(padGeo, padMat[id]));   // footprint outline, visible even with no GPUs
+    addGlow(anchor, padMat[id]);
+    const blocks = new THREE.Group();
+    anchor.add(blocks);
+    globe.add(anchor);
+    sites[id] = blocks;
+    anchors[id] = anchor;
+  }
+
+  // Labels: HTML text pinned to each datacentre, hidden when it is on the far side of the globe.
+  const labelled = [];   // [anchor, element]; suppliers are added below
+  const addLabel = (anchor, text, color) => {
+    const el = document.createElement("div");
+    el.className = "site-label";
+    el.style.color = color;
+    el.textContent = text;
+    document.body.appendChild(el);
+    labelled.push([anchor, el]);
+  };
+  for (const id of Object.keys(SITES)) addLabel(anchors[id], id, `var(--site-${id})`);
+  const tmp = new THREE.Vector3(), centre = new THREE.Vector3(), toCam = new THREE.Vector3();
+  // Screen position of a point on the globe, and whether it faces the camera.
+  const screenAt = (world) => {
+    const w = stage.clientWidth, h = stage.clientHeight, box = stage.getBoundingClientRect();
+    const facing = world.dot(toCam.copy(camera.position).sub(world)) > 0;
+    tmp.copy(world).project(camera);
+    return { x: box.left + ((tmp.x + 1) / 2) * w, y: box.top + ((1 - tmp.y) / 2) * h, facing };
+  };
+  const moneyEl = (text, cls) => {
+    const el = document.createElement("div");
+    el.className = `money-pop ${cls}`;
+    el.textContent = text;
+    document.body.appendChild(el);
+    return el;
+  };
+  const placeLabels = () => {
+    const w = stage.clientWidth, h = stage.clientHeight, box = stage.getBoundingClientRect();
+    scene.updateMatrixWorld();
+    camera.updateMatrixWorld();
+    for (const [anchor, el] of labelled) {
+      anchor.getWorldPosition(centre);
+      toCam.copy(camera.position).sub(centre);
+      const facing = centre.dot(toCam) > 0;
+      // Far-side labels dim like what they mark, and vanish with it when the globe turns opaque.
+      el.style.opacity = facing ? "1" : String(0.35 * Math.max(0, (1 - occluderMat.opacity) / 0.28));
+      anchor.localToWorld(tmp.copy(labelPoint)).project(camera);
+      el.style.transform = `translate(${box.left + ((tmp.x + 1) / 2) * w}px, ${box.top + ((1 - tmp.y) / 2) * h}px) translateY(-50%)`;
+    }
+  };
+
+  // ---------------------------------------------------------------- suppliers
+  // The game gives suppliers no location; these are remote spots between the datacentres:
+  // vendor on the Greenland ice sheet, broker A on the Changtang plateau (Tibet), broker B in the Beni savanna (Bolivia).
+  const SUPPLIERS = { vendor: [-38.5, 72.6], A: [81.0, 34.5], B: [-65.0, -14.0] };
+  const suppliers = {}, supplierAnchors = {};
+  const supPadMat = fatMat(), vendorPadMat = fatMat();
+  for (const [id, [lon, lat]] of Object.entries(SUPPLIERS)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    addMask(anchor);
+    const mat = id === "vendor" ? vendorPadMat : supPadMat;   // the vendor takes the colour of the gen it sells
+    anchor.add(fatSegments(padGeo, mat));
+    addGlow(anchor, mat);
+    const blocks = new THREE.Group();
+    anchor.add(blocks);
+    globe.add(anchor);
+    suppliers[id] = blocks;
+    supplierAnchors[id] = anchor;
+    addLabel(anchor, id === "vendor" ? "vendor" : `broker ${id}`, "var(--coast)");
+  }
+
+  // ---------------------------------------------------------------- rented capacity
+  // Reserved contracts and spot compute come from outside providers. The game gives them no place; each
+  // datacentre gets one nearby: Sonoran Desert (Arizona), Jotunheimen (Norway), Great Sandy Desert (Western Australia).
+  const CLOUDS = { us: [-113.5, 31.8], eu: [8.3, 61.6], ap: [125.0, -20.5] };
+  const cloudAnchors = {};
+  const rentPadMat = fatMat(), rentLineMat = fatMat({ transparent: true, opacity: 0.7 });
+  for (const [site, [lon, lat]] of Object.entries(CLOUDS)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    addMask(anchor);
+    anchor.add(fatSegments(padGeo, rentPadMat));
+    addGlow(anchor, rentPadMat);
+    globe.add(anchor);
+    cloudAnchors[`cloud-${site}`] = anchor;
+    addLabel(anchor, `cloud ${site}`, "var(--cmd-rent)");
+  }
+
+  // ---------------------------------------------------------------- power stations
+  // Power comes from colocation contracts at each site; the game gives them no place, so each datacentre gets a
+  // small power station just beside it. A solid arc joins them while power is switched on there; a dashed arc
+  // while a signed contract is still to switch on.
+  const STATIONS = { us: [-101.0, 51.0], eu: [22.6, 44.5], ap: [139.4, -34.9] };   // clear of the cloud and the label
+  const stationAnchors = {};
+  const powerPadMat = fatMat(), powerLineMat = fatMat();
+  const powerDashMat = fatMat({ dashed: true, dashSize: 0.012, gapSize: 0.01 });
+  powerDashMat.defines.USE_DASH = "";   // r128 does not switch the dash shader on from `dashed` alone
+  const stationGeo = (() => {   // a low hall with a chimney at one end
+    const hall = new THREE.BoxGeometry(0.05, 0.016, 0.03); hall.translate(-0.006, 0.008, 0);
+    const stack = new THREE.BoxGeometry(0.011, 0.042, 0.011); stack.translate(0.026, 0.021, 0);
+    const pts = [];
+    for (const g of [hall, stack]) {
+      const e = new THREE.EdgesGeometry(g).attributes.position.array;
+      for (let i = 0; i < e.length; i++) pts.push(e[i]);
+    }
+    return new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  })();
+  for (const [site, [lon, lat]] of Object.entries(STATIONS)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    anchor.add(fatSegments(stationGeo, powerPadMat));
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.04), new THREE.MeshBasicMaterial({ visible: false }));
+    hit.position.set(0.004, 0.02, 0);   // an invisible box over the station, for hovering
+    anchor.add(hit);
+    globe.add(anchor);
+    stationAnchors[site] = anchor;
+  }
+  // A low arc between two points on the lifted surface, rising to `lift` above it at the middle and bowing `side`
+  // sideways, so a dashed arc stays apart from the solid one even seen from straight above.
+  const lowArc = (a, b, lift, side, mat) => {
+    const ua = a.clone().normalize(), ub = b.clone().normalize(), omega = Math.acos(Math.min(1, ua.dot(ub)));
+    const perp = ua.clone().cross(ub).normalize();
+    const pos = [];
+    for (let i = 0; i <= 24; i++) {
+      const t = i / 24, s0 = Math.sin((1 - t) * omega) / Math.sin(omega), s1 = Math.sin(t * omega) / Math.sin(omega);
+      const v = ua.clone().multiplyScalar(s0).add(ub.clone().multiplyScalar(s1)).normalize().multiplyScalar(R * LIFT + lift * Math.sin(Math.PI * t))
+        .addScaledVector(perp, side * Math.sin(Math.PI * t));
+      pos.push(v.x, v.y, v.z);
+    }
+    const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pos), mat);
+    line.userData.pts = [];
+    for (let i = 0; i < pos.length; i += 6) line.userData.pts.push(new THREE.Vector3(pos[i], pos[i + 1], pos[i + 2]));
+    if (mat.dashed) line.computeLineDistances();
+    line.userData.own = true;
+    line.raycast = () => {};
+    return line;
+  };
+  const powerArcs = new THREE.Group();
+  globe.add(powerArcs);
+  const showPowerGlobe = (k) => {
+    clearGroup(powerArcs);
+    arcTips.power = [];
+    const kk = Math.max(k, 0), list = M(k).power || [];
+    for (const site of Object.keys(STATIONS)) {
+      const a = stationAnchors[site].position, b = anchors[site].position;
+      const on = list.filter((p) => p.site === site && p.start <= kk && kk < p.end), soon = list.filter((p) => p.site === site && p.start > kk);
+      if (on.length) powerArcs.add(...withFlow(tipArc("power", lowArc(a, b, 0.03, 0, powerLineMat),
+        `Power to ${site}: ${on.reduce((t, p) => t + p.mw, 0)} MW on`, "var(--cmd-power)")));
+      if (soon.length) powerArcs.add(tipArc("power", lowArc(a, b, 0.03, 0.045, powerDashMat),
+        `Power signed for ${site}: ${soon.map((p) => `${p.mw} MW from month ${p.start}`).join(", ")}`, "var(--cmd-power)"));
+    }
+  };
+
+  // Fill a footprint with 1k-GPU blocks, bottom to top in the order given. A fractional thousand is a shorter last block.
+  const fillStack = (blocks, groups) => {
+    while (blocks.children.length) {
+      const c = blocks.children[0];
+      if (c.userData.own) c.geometry.dispose();
+      blocks.remove(c);
+    }
+    let i = 0;
+    for (const [mat, qty, hollow] of groups) {
+      let left = Math.round(qty * 1000) / 1000;
+      const box = new THREE.Box3();
+      while (left > 0.01) {
+        const f = Math.min(1, left);
+        const [x, y, z] = slot(i++);
+        left -= f;
+        if (hollow) {   // an order, not a GPU yet: no block of its own, only the outline around the whole group
+          box.expandByPoint(new THREE.Vector3(x - W / 2, y, z - W / 2)).expandByPoint(new THREE.Vector3(x + W / 2, y + H * f, z + W / 2));
+          continue;
+        }
+        const mesh = new THREE.Mesh(boxGeo, mat);
+        mesh.add(new THREE.LineSegments(boxEdges, edgeMat));
+        mesh.position.set(x, y, z);
+        mesh.scale.y = f;
+        blocks.add(mesh);
+      }
+      if (hollow && !box.isEmpty()) {
+        const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+        const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z));
+        const outline = fatSegments(edges, mat);
+        edges.dispose();
+        outline.position.copy(mid);
+        outline.userData.own = true;   // its geometry is made here, so it is disposed when the stack is refilled
+        blocks.add(outline);
+        const fill = new THREE.Mesh(new THREE.BoxGeometry(size.x * 0.995, size.y * 0.995, size.z * 0.995), hollow);
+        fill.position.copy(mid);
+        fill.userData.own = true;
+        blocks.add(fill);
+      }
+    }
+  };
+  // Datacentres: powered N, powered H, idle N, idle H. Suppliers: GPUs ordered and not yet delivered, N then H.
+  const showSites = (m) => {
+    for (const [id, blocks] of Object.entries(sites)) {
+      const s = m.sites[id];
+      fillStack(blocks, [
+        [blockMat.N.on, s.powered.N], [blockMat.H.on, s.powered.H],
+        [blockMat.N.off, Math.max(0, s.owned.N - s.powered.N)], [blockMat.H.off, Math.max(0, s.owned.H - s.powered.H)],
+      ]);
+    }
+  };
+  const showSuppliers = (waiting) => {
+    for (const [id, blocks] of Object.entries(suppliers)) {
+      fillStack(blocks, [[hollowMat.N, waiting[id].N, orderFillMat.N], [hollowMat.H, waiting[id].H, orderFillMat.H]]);
+    }
+  };
+  // Step k is month k after its commands; k = -1 is the start, before any command.
+  const START = { month: -1, commands: [], pending: [], deliveries: [], sites: RUN.start.sites, waiting: RUN.start.waiting,
+    cash: RUN.start.cash, costs: RUN.start.costs, if_stopped: RUN.start.if_stopped, power: RUN.start.power,
+    settle: Object.fromEntries(Object.entries(RUN.start.sites).map(([s, x]) => [s, { own: x.own, reserved: 0, spot_req: 0, spot: 0 }])) };
+  const M = (k) => (k < 0 ? START : RUN.months[k]);
+  // Money in $M: amounts, and signed changes to cash (− spent, + received).
+  const fmtUSD = (v) => `${v < 0 ? "−" : ""}$${Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  const fmtDelta = (v) => `${v < 0 ? "−" : "+"}$${Math.abs(v).toFixed(1)}M`;
+  // Gen N launch: the first month gen N is on sale.
+  document.title = `GPU World Globe: ${RUN.policy}, seed ${RUN.seed}, rules ${RUN.rules_version}`;
+  const LAUNCH = (() => { const i = RUN.months.findIndex((m) => m.prices && m.prices.gpu.N != null); return i < 0 ? Infinity : i; })();
+  let occBase = null, launchFx = null, launchedNow = false;
+  // ---------------------------------------------------------------- 3D objects (ported from viz/*3d.js)
+  // The vendor, both brokers and each site's power contracts as lit objects standing on their spots, in place
+  // of the outlines. Each is built in its own units and scaled down onto its anchor; all are rebuilt on a theme change.
+  const OBJ_GROW = 1.6;   // all objects together, against the globe
+  const OBJ_SCALE = Object.fromEntries(Object.entries({ campus: 0.0055, vendor: 0.0052, broker: 0.0068, power: 0.0026, cloud: 0.0045, sheet: 0.0042 })
+    .map(([k, v]) => [k, v * OBJ_GROW]));
+  const BROKER_MARKUP = { A: 1.10, B: 1.25 };
+  const objLights = { amb: new THREE.AmbientLight(0xffffff, 0.5), key: new THREE.DirectionalLight(0xffffff, 0.8) };
+  scene.add(objLights.amb, camera);
+  camera.add(objLights.key);   // lit from over the viewer's shoulder, wherever the globe is turned
+  objLights.key.position.set(1.2, 1.6, 0.6);
+  // Hide what the objects replace: datacentre stacks and outlines, supplier outlines and order stacks, and the
+  // power station outlines.
+  for (const id of Object.keys(SITES)) {
+    sites[id].visible = false;
+    for (const c of anchors[id].children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  }
+  for (const id of Object.keys(SUPPLIERS)) {
+    suppliers[id].visible = false;
+    for (const c of supplierAnchors[id].children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  }
+  for (const site of Object.keys(STATIONS)) for (const c of stationAnchors[site].children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  for (const a of Object.values(cloudAnchors)) for (const c of a.children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  let objs = null, objCur = null;
+  // Spot at a cloud, counted as blocks on its pad: one per kH that arrived this month, in the rented colour, a short
+  // last block for a fraction. Any part of the standing request that supply could not fill stands after them as
+  // dashed outlines in the alert colour.
+  class SpotBlocks {
+    constructor({ theme, color, alert }) {
+      this.group = new THREE.Group();
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(16, 0.5, 16), new THREE.MeshStandardMaterial({ color: theme.pad, roughness: 0.92 }));
+      pad.position.y = 0.25;
+      this.group.add(pad);
+      this.mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25 * theme.emissive, roughness: 0.6 });
+      this.edgeMat = new THREE.LineDashedMaterial({ color: alert, dashSize: 0.45, gapSize: 0.3 });
+      this.geo = new THREE.BoxGeometry(2.6, 2.6, 2.6);
+      this.geo.translate(0, 1.3, 0);
+      this.edges = new THREE.EdgesGeometry(this.geo);
+      this.items = new THREE.Group();
+      this.group.add(this.items);
+      this.key = null;
+    }
+    update(d) {
+      const level = d.level || 0, got = Math.min(level, d.cap || 0), key = `${level}|${got}`;
+      if (key === this.key) return;
+      this.key = key;
+      this.items.clear();
+      const pieces = [];
+      for (let left = Math.round(got * 100) / 100; left > 0.01; left -= 1) pieces.push([Math.min(1, left), true]);
+      for (let left = Math.round((level - got) * 100) / 100; left > 0.01; left -= 1) pieces.push([Math.min(1, left), false]);
+      const rows = Math.ceil(pieces.length / 3);
+      pieces.forEach(([f, solid], i) => {
+        const m = solid ? new THREE.Mesh(this.geo, this.mat) : new THREE.LineSegments(this.edges, this.edgeMat);
+        if (!solid) m.computeLineDistances();
+        m.position.set(((i % 3) - 1) * 3.4, 0.5, (Math.floor(i / 3) - (rows - 1) / 2) * 3.4);
+        m.scale.y = f;
+        this.items.add(m);
+      });
+    }
+  }
+  const buildObjects = () => {
+    if (objs) for (const o of [...objs.all, objs.vendor]) o.group.parent.remove(o.group);
+    const dark = new THREE.Color(css("--bg")).getHSL({}).l < 0.5;
+    const T = Object.assign({}, OBJ3D.theme.THEMES[dark ? "dark" : "light"]);
+    T.site = Object.fromEntries(Object.keys(SITES).map((s) => [s, new THREE.Color(css(`--site-${s}`)).getHex()]));
+    const metal = (v) => (dark ? v : v * 0.12);
+    objLights.amb.intensity = dark ? 0.55 : 0.95;
+    objLights.key.intensity = dark ? 0.85 : 0.45;
+    // Each object is built in its entity's colour, as the rest of the page codes it: walls in the colour, roofs and
+    // plant darker, the apron a faint wash of it. Datacentres take their site colour, the vendor the gen it sells,
+    // brokers the supplier colour, power stations the power colour.
+    const bgC = new THREE.Color(css("--bg"));
+    const tint = (token) => {
+      const c = new THREE.Color(css(token)), mix = (t) => c.clone().lerp(bgC, t).getHex();
+      return Object.assign({}, T, { shed: mix(dark ? 0.3 : 0.15), roof: mix(dark ? 0.6 : 0.4), steel: mix(dark ? 0.15 : 0.1),
+        trim: c.clone().lerp(new THREE.Color(0xffffff), dark ? 0.35 : 0).getHex(), pad: mix(dark ? 0.92 : 0.88), hub: mix(dark ? 0.75 : 0.6) });
+    };
+    const all = [];
+    const place = (obj, anchor, sc) => { obj.group.scale.setScalar(sc); anchor.add(obj.group); all.push(obj); return obj; };
+    const campuses = {};
+    for (const site of Object.keys(SITES)) campuses[site] = place(new OBJ3D.campus.Campus({ theme: tint(`--site-${site}`), color: T.site[site], metal }), anchors[site], OBJ_SCALE.campus);
+    // The vendor is rebuilt in gen N's colour at the launch.
+    const vendorFor = (launched) => {
+      const v = new OBJ3D.vendor.Vendor({ theme: tint(launched ? "--gen-n" : "--gen-h"), metal });
+      v.group.scale.setScalar(OBJ_SCALE.vendor);
+      supplierAnchors.vendor.add(v.group);
+      v.launched = launched;
+      return v;
+    };
+    const brokers = {};
+    for (const b of ["A", "B"]) brokers[b] = place(new OBJ3D.broker.Broker({ theme: tint("--coast"), metal, markup: BROKER_MARKUP[b] }), supplierAnchors[b], OBJ_SCALE.broker);
+    // Power: one tower per contract at the site's station, side by side; made as they are needed.
+    const power = {};
+    const tower = (site) => place(new OBJ3D.power.Power({ theme: tint("--cmd-power"), color: T.site[site], metal }), stationAnchors[site], OBJ_SCALE.power);
+    // Cloud: the spot tap over its bucket, and a floating sheet per reserved contract beside it, made as needed.
+    const spots = {}, contracts = {};
+    for (const site of Object.keys(SITES)) spots[site] = place(new SpotBlocks({ theme: tint("--cmd-rent"), color: new THREE.Color(css("--cmd-rent")).getHex(),
+      alert: new THREE.Color(css("--alert")).getHex() }),
+      cloudAnchors[`cloud-${site}`], OBJ_SCALE.cloud);
+    const sheet = (site) => place(new OBJ3D.contract.Contract({ theme: tint("--cmd-rent"), color: T.site[site] }), cloudAnchors[`cloud-${site}`], OBJ_SCALE.sheet);
+    objs = { campuses, vendor: vendorFor(launchedNow), vendorFor, brokers, power, tower, spots, contracts, sheet, all };
+  };
+  const buyOf = (om, oi) => {
+    const c = RUN.months[om] && RUN.months[om].commands[oi], t = c ? c.c.split(/\s+/) : [];
+    return t[0] === "buy_gpus" ? { qty: +t[1], gen: t[2], src: t[3], site: t[4] } : null;
+  };
+  // What each object shows at step k: orders outstanding (before this month's deliveries), what ships tonight,
+  // what the brokers stamped last month, and the power contracts not yet ended.
+  const objData = (k) => {
+    const m = M(k), kk = Math.max(k, 0), prev = k > 0 ? M(k - 1) : null;
+    const pend = (m.pending || []).map(([om, oi, left]) => { const b = buyOf(om, oi); return b && Object.assign(b, { left, placed: om }); }).filter(Boolean);
+    const budget = { H: 0, N: 0 };
+    for (const d of m.deliveries || []) if (d.src === "vendor") budget[d.gen] += d.qty;
+    const brokers = {};
+    for (const b of ["A", "B"]) brokers[b] = {
+      intake: pend.filter((o) => o.src === b && o.placed === k),
+      hold: pend.filter((o) => o.src === b && o.placed === k - 1),
+      resolved: (prev ? prev.deliveries : []).filter((d) => d.src === b).map((d) => ({ qty: d.qty, site: d.site, delivered: d.ok })),
+    };
+    // Campus: the fleet and its power, the month's demand served, training and unmet, spot taken, and
+    // the reserved, option and power figures it sizes its capacity by.
+    const campus = {};
+    for (const site of Object.keys(SITES)) {
+      const z = m.sites[site], x = (m.settle || {})[site] || {}, live = (m.power || []).filter((p) => p.site === site);
+      campus[site] = { ownedH: z.owned.H, ownedN: z.owned.N, poweredH: z.powered.H, poweredN: z.powered.N,
+        reserved: x.reserved || 0, option: 0, spot: x.spot || 0,
+        mw: live.filter((p) => p.start <= kk && kk < p.end).reduce((t, p) => t + p.mw, 0),
+        mwPending: live.filter((p) => p.start > kk).reduce((t, p) => t + p.mw, 0),
+        served: x.served || 0, training: x.training || 0, demand: x.demand || 0, unserved: Math.max(0, (x.demand || 0) - (x.served || 0)) };
+    }
+    // Cloud: the standing spot request and what it got, and every reservation (or exercised option) signed so far
+    // that has not ended. A contract runs from the month after it is signed; what the cap let through is not exported,
+    // so each is drawn at what was asked.
+    const cloud = {};
+    for (const site of Object.keys(SITES)) {
+      const x = (m.settle || {})[site] || {}, list = [];
+      for (let om = 0; om <= k; om++) for (const c of RUN.months[om].commands) {
+        const t = c.c.split(/\s+/);
+        if (!c.ok) continue;
+        if (t[0] === "reserve" && t[3] === site) list.push({ qty: +t[1], start: om + 1, end: om + 1 + +t[2] });
+        if (t[0] === "exercise_option" && t[2] === site) list.push({ qty: +t[1], start: om + 1, end: om + 7 });
+      }
+      cloud[site] = { spot: { site, level: x.spot_req || 0, cap: x.spot || 0 },
+        contracts: list.filter((c) => kk < c.end).map((c) => Object.assign(c, { site, month: kk })) };
+    }
+    const power = {};
+    for (const site of Object.keys(STATIONS)) {
+      const own = m.sites[site].owned;
+      power[site] = (m.power || []).filter((p) => p.site === site && kk < p.end).map((p) => ({ mw: p.mw, start: p.start, end: p.end, site, month: kk,
+        signed: p.ref ? p.ref[0] : p.start, ownedH: own.H, ownedN: own.N }));
+    }
+    return { campus, cloud, vendor: { month: kk, launched: k >= LAUNCH, exportActive: false, budget, queue: pend.filter((o) => o.src === "vendor") }, brokers, power };
+  };
+  const stepObjects = (now) => {
+    if (!objs || !objCur) return;
+    if (objs.vendor.launched !== objCur.vendor.launched) {
+      supplierAnchors.vendor.remove(objs.vendor.group);
+      objs.vendor = objs.vendorFor(objCur.vendor.launched);
+    }
+    const t = reduce ? 0 : now / 1000;
+    for (const site of Object.keys(SITES)) objs.campuses[site].update(objCur.campus[site], t);
+    objs.vendor.update(objCur.vendor, t);
+    for (const b of ["A", "B"]) objs.brokers[b].update(objCur.brokers[b], t);
+    const camQ = camera.getWorldQuaternion(new THREE.Quaternion()), parentQ = new THREE.Quaternion();
+    for (const site of Object.keys(SITES)) {
+      const c = objCur.cloud[site], pool = objs.contracts[site] || (objs.contracts[site] = []);
+      objs.spots[site].update(c.spot, t);
+      while (pool.length < c.contracts.length) pool.push(objs.sheet(site));
+      pool.forEach((o, i) => {   // two to a row, left of the tap (the label is on the right), rows stacked upward
+        o.group.visible = i < c.contracts.length;
+        if (!o.group.visible) return;
+        const sc = OBJ_SCALE.sheet;
+        o.group.position.set(-9.5 * OBJ_SCALE.cloud - (5 + (i % 2) * 10) * sc, Math.floor(i / 2) * 7.4 * sc, 0);
+        o.update(c.contracts[i], t);
+        // the sheet turns to face the camera: the camera's turn, taken out of the anchor's
+        o.card.quaternion.copy(o.group.getWorldQuaternion(parentQ).invert().multiply(camQ));
+      });
+    }
+    for (const site of Object.keys(STATIONS)) {
+      const list = objCur.power[site], pool = objs.power[site] || (objs.power[site] = []);
+      while (pool.length < list.length) pool.push(objs.tower(site));
+      const gap = 2 * OBJ3D.power.PAD_R;
+      pool.forEach((o, i) => {
+        o.group.visible = i < list.length;
+        if (!o.group.visible) return;
+        o.group.position.set((i - (list.length - 1) / 2) * gap * OBJ_SCALE.power, 0, 0);
+        o.update(list[i], t);
+      });
+    }
+  };
+  const showMonth = (k) => {
+    objCur = objData(k);
+    launchedNow = k >= LAUNCH;
+    vendorPadMat.color = new THREE.Color(css(launchedNow ? "--gen-n" : "--gen-h")); showSites(M(k)); showSuppliers(M(k).waiting); showFlow(M(k)); };
+
+  // ---------------------------------------------------------------- flow pane
+  // Suppliers in the top row, datacentres in the bottom row. Each node: name, total in thousands of GPUs,
+  // and a bar split like the globe's stacks. Flights in progress draw a curve with moving dots, and
+  // both ends light up, in step with the globe.
+  const NS = "http://www.w3.org/2000/svg";
+  const svgEl = (tag, attrs, parent) => {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (parent) parent.appendChild(el);
+    return el;
+  };
+  const flowSvg = document.getElementById("flow");
+  const NODE_W = 88, NODE_H = 46, XS = [6, 106, 206], SUP_Y = 10, DC_Y = 84, BAR_W = NODE_W - 50;   // bar on the second row, number to its right
+  const flowColor = (id) => (id in SITES ? `var(--site-${id})` : id.startsWith("cloud") ? "var(--cmd-rent)" : "var(--coast)");
+  const CL_Y = 158;   // third row: rented capacity under each datacentre
+  const flowGhostG = svgEl("g", {}, flowSvg);    // what moved at the step into this month
+  const flowRentG = svgEl("g", {}, flowSvg);     // rented capacity in use this month
+  const flowParkedG = svgEl("g", {}, flowSvg);   // moves under way this month
+  const flowLinks = svgEl("g", {}, flowSvg);   // curves under the nodes
+  const flowNodes = {};
+  let hoverFlow = null;   // node under the pointer in the summary pane
+  const sum = (o) => o.H + o.N;
+  const maxStock = Math.max(1, ...RUN.months.flatMap((m) => [
+    ...Object.values(m.sites).map((s) => sum(s.owned)), ...Object.values(m.waiting).map(sum)]));
+  const makeNode = (id, x, y, text) => {
+    const g = svgEl("g", { transform: `translate(${x},${y})` }, flowSvg);
+    const glow = svgEl("rect", { width: NODE_W, height: NODE_H, fill: flowColor(id), "fill-opacity": 0 }, g);
+    svgEl("rect", { class: "box", width: NODE_W, height: NODE_H, "stroke-opacity": 1 }, g);
+    const name = svgEl("text", { class: "name", x: 8, y: 17, fill: flowColor(id) }, g);
+    name.textContent = text;
+    const qty = svgEl("text", { class: "qty", x: NODE_W - 8, y: 36, "text-anchor": "end" }, g);
+    svgEl("rect", { class: "track", x: 8, y: 28, width: BAR_W, height: 8, rx: 2 }, g);
+    const bar = svgEl("g", { transform: "translate(8,28)" }, g);
+    flowNodes[id] = { g, glow, qty, bar, cx: x + NODE_W / 2, top: y, bottom: y + NODE_H };
+    g.addEventListener("pointerenter", () => { hoverFlow = id; });
+    g.addEventListener("pointerleave", () => { if (hoverFlow === id) hoverFlow = null; });
+    g.addEventListener("click", () => focusOn(id));
+    g.style.cursor = "pointer";
+  };
+  ["vendor", "A", "B"].forEach((id, i) => makeNode(id, XS[i], SUP_Y, id === "vendor" ? "vendor" : `broker ${id}`));
+  ["us", "eu", "ap"].forEach((id, i) => makeNode(id, XS[i], DC_Y, id));
+  ["us", "eu", "ap"].forEach((id, i) => makeNode(`cloud-${id}`, XS[i], CL_Y, `cloud ${id}`));
+  const fmtK = (v) => (v < 0.05 ? "0" : `${v.toFixed(1)}k`);
+  const setBar = (id, parts) => {   // parts: [colour var, opacity, qty, hollow, label for its tooltip]
+    const n = flowNodes[id];
+    while (n.bar.firstChild) n.bar.removeChild(n.bar.firstChild);
+    let x = 0, total = 0;
+    for (const [color, op, q, hollow, label] of parts) {
+      total += q;
+      const w = (q / maxStock) * BAR_W;
+      if (w > 0.2) svgEl("rect", hollow
+        ? { x: x + 0.5, y: 0.5, width: Math.max(0, w - 1), height: 7, fill: `color-mix(in srgb, ${color} 15%, var(--bg))`, stroke: color, "data-tip": `${label}: ${fmtK(q)}` }
+        : { x, y: 0, width: w, height: 8, fill: color, "fill-opacity": op, "data-tip": `${label}: ${fmtK(q)}` }, n.bar);
+      x += w;
+    }
+    n.qty.textContent = fmtK(total);
+  };
+  const showFlow = (m) => {
+    for (const id of ["us", "eu", "ap"]) {
+      const s = m.sites[id];
+      const offN = Math.max(0, s.owned.N - s.powered.N), offH = Math.max(0, s.owned.H - s.powered.H);
+      setBar(id, [["var(--gen-n)", 1, s.powered.N, false, "Gen N GPUs, powered"], ["var(--gen-h)", 1, s.powered.H, false, "Gen H GPUs, powered"],
+        ["var(--gen-n)", 0.3, offN, false, "Gen N GPUs, idle without power"], ["var(--gen-h)", 0.3, offH, false, "Gen H GPUs, idle without power"]]);
+    }
+    for (const id of ["vendor", "A", "B"]) setBar(id, [["var(--gen-n)", 1, m.waiting[id].N, true, "Gen N GPUs on order"],
+      ["var(--gen-h)", 1, m.waiting[id].H, true, "Gen H GPUs on order"]]);
+  };
+  // Every curve stays in the gap between the rows, so the pane's top and bottom padding match.
+  // Supplier to datacentre: down from one row to the other. Datacentre to datacentre (a move): a low arch rising into the gap.
+  const flowPath = (from, to) => {
+    const a = flowNodes[from], b = flowNodes[to];
+    if (from in SITES) {
+      const y = a.top, dip = y - 22;
+      return `M${a.cx},${y} C${a.cx},${dip} ${b.cx},${dip} ${b.cx},${y}`;
+    }
+    const mid = (a.bottom + b.top) / 2;
+    return `M${a.cx},${a.bottom} C${a.cx},${mid} ${b.cx},${mid} ${b.cx},${b.top}`;
+  };
+  const flowSpawn = (anim) => {
+    for (const it of anim.items) {
+      const path = svgEl("path", { d: flowPath(it.fromId, it.toId), fill: "none", stroke: flowColor(it.toId),
+        "stroke-width": 1.5, "stroke-opacity": 0 }, flowLinks);
+      const dots = it.blocks.map(() => svgEl("rect", { width: 7, height: 7, rx: 1.5, fill: `var(--gen-${it.gen.toLowerCase()})`, opacity: 0 }, flowLinks));
+      it.flow = { path, dots, len: path.getTotalLength() };
+    }
+  };
+  const flowRemove = (anim) => {
+    for (const it of anim.items) if (it.flow) { it.flow.path.remove(); it.flow.dots.forEach((d) => d.remove()); }
+  };
+  const flowStep = (now, idLevel) => {
+    for (const anim of anims) {
+      const p = Math.min(1, (now - anim.start) / anim.dur);
+      for (const it of anim.items) {
+        if (!it.flow) continue;
+        it.flow.path.setAttribute("stroke-opacity", (Math.min(1, p / 0.15, (1 - p) / 0.2) * 0.8).toFixed(3));
+        const n = it.blocks.length, span = 1 - (n - 1) * it.stagger;
+        it.flow.dots.forEach((dot, i) => {
+          const tf = Math.min(1, Math.max(0, (p - i * it.stagger) / span));
+          const t = it.t0 + (it.t1 - it.t0) * (anim.dir > 0 ? tf : 1 - tf);
+          let op = tf > 0 && tf < 1 ? 1 : 0;
+          if (!it.ok) op = anim.dir < 0 ? 0 : t < 0.5 ? op : Math.max(0, 1 - (t - 0.5) * 4);   // cancelled: fades out halfway
+          const pt = it.flow.path.getPointAtLength(it.flow.len * (it.ok ? t : Math.min(t, 0.5) + Math.max(0, t - 0.5) * 0.2));
+          dot.setAttribute("x", (pt.x - 3.5).toFixed(1));
+          dot.setAttribute("y", (pt.y - 3.5).toFixed(1));
+          dot.setAttribute("opacity", op.toFixed(2));
+        });
+      }
+    }
+    for (const [id, n] of Object.entries(flowNodes)) n.glow.setAttribute("fill-opacity", (0.28 * (idLevel.get(id) || 0)).toFixed(3));
+  };
+
+  // ---------------------------------------------------------------- deliveries
+  // At each month end, blocks fly along an arc from supplier to datacentre. A cancelled broker order
+  // breaks apart halfway along its arc.
+  const FLIGHT_MS = 1000;
+  const up = new THREE.Vector3(0, 1, 0);
+  const arcPoint = (a, b, omega, t, out) => {
+    const s = Math.sin(omega);
+    const wa = s < 1e-6 ? 1 - t : Math.sin((1 - t) * omega) / s, wb = s < 1e-6 ? t : Math.sin(t * omega) / s;
+    out.copy(a).multiplyScalar(wa).addScaledVector(b, wb).normalize();
+    return out.multiplyScalar(R * LIFT + (0.08 + 0.3 * omega / Math.PI) * Math.sin(Math.PI * t));
+  };
+  // Flights are decoration only: the globe's state changes instantly, and the flights for the months
+  // just crossed play on top. Several sets can be in the air at once (e.g. while dragging the slider).
+  const MAX_ITEMS = 60;
+  let anims = [];
+  const litCount = new Map();
+  const lightOn = (li) => { litCount.set(li, (litCount.get(li) || 0) + 1); li.classList.add("lit"); };
+  const lightOff = (li) => {
+    const n = (litCount.get(li) || 1) - 1;
+    if (n > 0) litCount.set(li, n); else { litCount.delete(li); li.classList.remove("lit"); }
+  };
+  const removeAnim = (anim) => {
+    flowRemove(anim);
+    for (const li of anim.lit || []) lightOff(li);
+    for (const it of anim.items) { globe.remove(it.group); it.line.geometry.dispose(); it.line.material.dispose(); if (it.price) it.price.remove(); }
+  };
+  const clearAnims = () => { anims.forEach(removeAnim); anims = []; };
+  // buy_gpus <qty> [H|N] [vendor|A|B] <site>: the supplier and destination light up in the month the order is placed.
+  let pulses = [];
+  const parseBuy = (cmd) => {
+    const t = cmd.split(/\s+/);
+    if (t[0] !== "buy_gpus") return null;
+    const src = t.find((x) => x === "vendor" || x === "A" || x === "B") || "vendor", site = t[t.length - 1];
+    return site in SITES ? { src, site } : null;
+  };
+  // move_gpus <qty> <gen> <from> <to>: both datacentres light up in the month the move is made.
+  const parseMove = (cmd) => {
+    const t = cmd.split(/\s+/);
+    return t[0] === "move_gpus" && t[3] in SITES && t[4] in SITES ? { src: t[3], site: t[4], move: true } : null;
+  };
+  const spawnPulses = (k) => {
+    if (reduce) return;
+    (M(k).commands || []).forEach((c, i) => {
+      const b = c.ok && (parseBuy(c.c) || parseMove(c.c));
+      if (!b) return;
+      const li = logItems[k] && logItems[k][i];
+      if (li) lightOn(li);
+      pulses.push({ start: performance.now(), dur: FLIGHT_MS, ids: [b.src, b.site], li,
+        anchors: [b.move ? anchors[b.src] : supplierAnchors[b.src], anchors[b.site]] });
+    });
+  };
+  // Deliveries of every month between `from` and `to`; played backward (site to supplier) when going back in time.
+  const spawnFlights = (from, to, dur) => {
+    if (reduce || from === to) return;
+    const dir = to > from ? 1 : -1;
+    const anim = { dir, dur, start: performance.now(), items: [] };
+    // Month-end deliveries of each month crossed (moves finish from the midpoint, where they were parked),
+    // plus moves made in each month entered, which fly out to the midpoint.
+    const legs = [];
+    for (let k = Math.min(from, to); k < Math.max(from, to); k++) {
+      for (const d of M(k).deliveries) legs.push([d, d.move ? 0.5 : 0, 1]);
+      for (const d of RUN.months[k + 1] ? RUN.months[k + 1].deliveries : []) if (d.move) legs.push([d, 0, 0.5]);
+    }
+    for (const [d, t0, t1] of legs) {
+    {
+      if (d.qty < 0.01) continue;
+      const fromA = d.move ? anchors[d.src] : supplierAnchors[d.src];   // moves go datacentre to datacentre
+      const a = fromA.position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
+      const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
+      const pts = [];
+      for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, i / 64, new THREE.Vector3()));
+      const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])),
+        fatMat({ color: padMat[d.site].color.clone(), transparent: true, opacity: 0 }));
+      line.raycast = () => {};
+      const group = new THREE.Group();
+      group.add(line);
+      const n = Math.min(9, Math.ceil(d.qty - 1e-9));
+      const blocks = [];
+      for (let i = 0; i < n; i++) {
+        const mesh = new THREE.Mesh(boxGeo, blockMat[d.gen].on);
+        mesh.add(new THREE.LineSegments(boxEdges, edgeMat));
+        mesh.visible = false;
+        group.add(mesh);
+        blocks.push({ mesh, shards: null });
+      }
+      globe.add(group);
+      // The flight carries its price: what the GPUs cost, the refund for a cancelled order, the shipping for a move.
+      const price = d.value ? moneyEl(d.ok ? (d.move ? fmtDelta(-d.value) : fmtUSD(d.value)) : fmtDelta(d.value), d.ok ? (d.move ? "out" : "") : "in") : null;
+      if (price) price.style.opacity = "0";
+      anim.items.push({ fromId: d.src, toId: d.site, fromA, toA: anchors[d.site], a, b, omega, ok: d.ok, gen: d.gen, line, group, blocks, price,
+        t0, t1, move: !!d.move, stagger: n > 1 ? Math.min(0.08, 0.4 / (n - 1)) : 0 });
+    }
+    }
+    if (!anim.items.length) return;
+    anim.lit = [];
+    for (let k = Math.min(from, to); k < Math.max(from, to); k++) {
+      for (const d of M(k).deliveries) for (const [om, oi] of d.orders || []) {
+        const li = logItems[om] && logItems[om][oi];
+        if (li) { lightOn(li); anim.lit.push(li); }
+      }
+    }
+    anims.push(anim);
+    flowSpawn(anim);
+    let total = anims.reduce((s, x) => s + x.items.length, 0);
+    while (total > MAX_ITEMS && anims.length > 1) { const old = anims.shift(); total -= old.items.length; removeAnim(old); }
+  };
+  const parked = new THREE.Group();
+  globe.add(parked);
+  const parkedLineMat = fatMat({ transparent: true, opacity: 0.35 });
+  const showParked = (k) => {
+    while (parked.children.length) {
+      const c = parked.children[0];
+      c.traverse((o) => { if (o.userData.own) o.geometry.dispose(); });
+      parked.remove(c);
+    }
+    flowParkedG.replaceChildren();
+    arcTips.parked = [];
+    for (const d of M(k).deliveries) {
+      if (!d.move || d.qty < 0.01) continue;
+      const a = anchors[d.src].position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
+      const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
+      const pts = [];
+      for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, i / 64, new THREE.Vector3()));
+      const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])), parkedLineMat);
+      line.userData.own = true;
+      line.userData.pts = pts.filter((_, i) => i % 4 === 0);
+      line.raycast = () => {};
+      tipArc("parked", line, `Moving ${fmtQ(d.qty)} gen ${d.gen}: ${d.src} → ${d.site}, arrives next month`, "var(--fg)");
+      const stack = new THREE.Group();
+      arcPoint(a, b, omega, 0.5, stack.position);
+      stack.quaternion.setFromUnitVectors(up, stack.position.clone().normalize());
+      fillStack(stack, [[blockMat[d.gen].on, d.qty]]);
+      parked.add(...withFlow(line), stack);
+      // Summary pane: the move's curve stays drawn, with the quantity on it.
+      const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: flowColor(d.site), "stroke-width": 1.5, "stroke-opacity": 0.45 }, flowParkedG);
+      const mid = path.getPointAtLength(path.getTotalLength() / 2);
+      const q = svgEl("text", { class: "qty", x: mid.x.toFixed(1), y: (mid.y - 4).toFixed(1), "text-anchor": "middle" }, flowParkedG);
+      q.textContent = fmtQ(d.qty);
+    }
+  };
+  // Static traces of the deliveries made at the step into this month, so the step can be read without replaying it.
+  const ghosts = new THREE.Group();
+  // Cancelled broker orders: the broken trace and a cross at the break, in alert red.
+  const alertLineMat = fatMat({ transparent: true, opacity: 0.9 }), alertCrossMat = fatMat({ linewidth: 3 });
+  const crossGeo = (() => {
+    const c = 0.03;
+    return new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-c, 0.002, -c), new THREE.Vector3(c, 0.002, c),
+      new THREE.Vector3(-c, 0.002, c), new THREE.Vector3(c, 0.002, -c)]);
+  })();
+  globe.add(ghosts);
+  const ghostMats = {};
+  const ghostMat = (site) => (ghostMats[site] = ghostMats[site] || fatMat({ transparent: true, opacity: 0.35 }));
+  const clearGroup = (g) => {
+    while (g.children.length) {
+      const c = g.children[0];
+      c.traverse((o) => { if (o.userData.own) o.geometry.dispose(); });
+      g.remove(c);
+    }
+  };
+  const arcLine = (a, b, omega, t1, mat) => {
+    const pts = [];
+    for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, (t1 * i) / 64, new THREE.Vector3()));
+    const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])), mat);
+    line.userData.own = true;
+    line.userData.pts = pts.filter((_, i) => i % 4 === 0);
+    line.raycast = () => {};
+    return line;
+  };
+  const showGhosts = (k) => {
+    clearGroup(ghosts);
+    arcTips.ghosts = [];
+    flowGhostG.replaceChildren();
+    if (k <= 0) return;
+    for (const d of RUN.months[k - 1].deliveries) {
+      if (d.qty < 0.01) continue;
+      const fromA = d.move ? anchors[d.src] : supplierAnchors[d.src];
+      const a = fromA.position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
+      const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
+      const mat = d.ok ? ghostMat(d.site) : alertLineMat;
+      if (d.ok) mat.color = padMat[d.site].color;
+      const from = d.move ? d.src : d.src === "vendor" ? "vendor" : `broker ${d.src}`, what = `${fmtQ(d.qty)} gen ${d.gen}`;
+      ghosts.add(...withFlow(tipArc("ghosts", arcLine(a, b, omega, d.ok ? 1 : 0.5, mat),   // a cancelled order's trace stops where it broke
+        !d.ok ? `Cancelled: ${what} from ${from} for ${d.site}, 80% refunded` : d.move ? `Moved ${what}: ${from} → ${d.site}` : `Delivered ${what}: ${from} → ${d.site}`,
+        d.ok ? `var(--site-${d.site})` : "var(--alert)")));
+      if (!d.ok) {   // and a red cross marks the break
+        const cross = new THREE.Group();
+        arcPoint(a, b, omega, 0.5, cross.position);
+        cross.quaternion.setFromUnitVectors(up, cross.position.clone().normalize());
+        cross.add(fatSegments(crossGeo, alertCrossMat));
+        ghosts.add(cross);
+      }
+      const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: d.ok ? flowColor(d.site) : "var(--alert)", "stroke-width": 1.5,
+        "stroke-opacity": d.ok ? 0.35 : 0.9 }, flowGhostG);
+      if (!d.ok) {
+        const len = path.getTotalLength(), mid = path.getPointAtLength(len / 2);
+        path.setAttribute("stroke-dasharray", `${len / 2} ${len}`);
+        const x = svgEl("text", { x: mid.x, y: mid.y + 4, "text-anchor": "middle", style: "fill:var(--alert);font-size:12px;font-weight:700" }, flowGhostG);
+        x.textContent = "✕";
+      }
+    }
+  };
+  // Rented capacity at each site this month: reserved contracts in force plus the spot filled (the standing request,
+  // capped by the site's spot supply).
+  const rentals = new THREE.Group();
+  globe.add(rentals);
+  const showRent = (k) => {
+    clearGroup(rentals);
+    flowRentG.replaceChildren();
+    for (const site of Object.keys(SITES)) {
+      const x = M(k).settle[site], id = `cloud-${site}`;
+      setBar(id, [["var(--cmd-rent)", 1, x.reserved, false, "Reserved cloud, kH"], ["var(--cmd-rent)", 1, x.spot, true, "Spot filled, kH"]]);
+      if (x.reserved + x.spot < 0.005) continue;
+      const a = cloudAnchors[id].position.clone().normalize(), b = anchors[site].position.clone().normalize();
+      rentals.add(...withFlow(tipArc("rentals", arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat),
+        `Cloud → ${site}: ${fmt1(x.reserved)} kH reserved, ${fmt1(x.spot)} kH spot filled (${fmt1(x.spot_req)} requested)`, "var(--cmd-rent)")));
+      const from = flowNodes[site], to = flowNodes[id];
+      svgEl("path", { d: `M${from.cx},${from.bottom} L${to.cx},${to.top}`, fill: "none", stroke: "var(--cmd-rent)", "stroke-width": 1.5, "stroke-opacity": 0.7 }, flowRentG);
+    }
+  };
+  // Training: one row per window, with what is done so far and what the last known month's spare capacity
+  // would add by the window's end, against the target.
+  const trainSvg = document.getElementById("train");
+  const showTraining = (k) => {
+    trainSvg.replaceChildren();
+    const known = k > 0 ? RUN.months[k - 1] : null;   // the agent learns a month's result when it ends
+    const rate = known ? Object.values(known.settle).reduce((s, x) => s + x.training, 0) : 0;
+    // Only the window the current month falls in.
+    RUN.rules.milestones.forEach(([a, d, target], i) => {
+      if (Math.max(k, 0) < a || Math.max(k, 0) > d) return;   // the start shows the first window
+      const y = 1, done = known ? known.window_training[i] : 0;
+      const decided = known && String(d) in known.met, met = decided && known.met[String(d)];
+      const label = svgEl("text", { class: "chart-text", x: 0, y: y + 8 }, trainSvg);
+      label.textContent = `${a}–${d}`;
+      const X0 = 34, BW = 110, scale = BW / Math.max(target, done);
+      svgEl("rect", { x: X0, y, width: target * scale, height: 9, fill: "transparent", stroke: "var(--grid)",
+        "data-tip": `Still to do: ${Math.max(0, Math.round(target - done))} kH-months` }, trainSvg);
+      const hit = done >= target - 1e-9;   // target reached, even before the window is decided
+      const col = decided ? (met ? "var(--cmd-power)" : "var(--cmd-buy)") : hit ? "var(--cmd-power)" : "var(--coast)";
+      svgEl("rect", { x: X0, y, width: Math.max(0, done * scale), height: 9, fill: col,
+        "data-tip": `Training done this window: ${Math.round(done)} kH-months` }, trainSvg);
+      // Last month's spare capacity, as one month's worth of training, right after what is done.
+      if (known && !decided && !hit && rate > 0) svgEl("rect", { x: X0 + done * scale, y, width: Math.min(rate, Math.max(0, target - done)) * scale,
+        height: 9, fill: col, "fill-opacity": 0.45, "data-tip": `Last month's spare capacity: ${rate.toFixed(1)} kH (one more month at that rate)` }, trainSvg);
+      svgEl("line", { x1: X0 + target * scale, x2: X0 + target * scale, y1: y - 2, y2: y + 11, stroke: "var(--fg)" }, trainSvg);
+      svgEl("line", { x1: X0 + target * scale, x2: X0 + target * scale, y1: y - 2, y2: y + 11, stroke: "transparent", "stroke-width": 6,
+        "data-tip": `Target: ${target} kH-months by the end of month ${d}` }, trainSvg);
+      const num = svgEl("text", { class: "chart-num", x: 274, y: y + 8.5, "text-anchor": "end" }, trainSvg);
+      // Spare capacity: last month's compute left over after inference, which all went to training.
+      num.textContent = `${Math.round(done)} / ${target}${known ? ` · spare ${rate.toFixed(1)} kH` : ""}`;
+    });
+  };
+  // Status: cash now and how it moved since the previous step, and the final score if the agent stopped here.
+  const statusSvg = document.getElementById("status");
+  const showStatus = (k) => {
+    statusSvg.replaceChildren();
+    const m = M(k);
+    const cl = svgEl("text", { class: "chart-text", x: 0, y: 9 }, statusSvg);
+    cl.textContent = "cash";
+    const cv = svgEl("text", { class: "chart-num", x: 294, y: 9.5, "text-anchor": "end" }, statusSvg);
+    cv.textContent = fmtUSD(m.cash);
+    if (k >= 0) {
+      const d = m.cash - M(k - 1).cash;
+      const dv = svgEl("tspan", { dx: 6, style: `fill:${d < 0 ? "var(--cmd-buy)" : "var(--cmd-power)"}` }, cv);
+      dv.textContent = fmtDelta(d);
+      // Hovering the change shows the month's cash flow: last month's charges, refunds and funding, then this month's commands.
+      const rows = [], prev = k > 0 ? RUN.months[k - 1] : null, dc = (key) => (m.costs[key] || 0) - (M(k - 1).costs[key] || 0);
+      if (prev) {
+        for (const [key, label] of [["power", "power"], ["contracts", "reserved"], ["spot", "spot"], ["interest", "interest"]])
+          rows.push([`${label} (month ${k - 1})`, -dc(key)]);
+        rows.push([`broker refunds (month ${k - 1})`, Object.values(prev.month_end.refunds).reduce((t, v) => t + v, 0)]);
+        rows.push([`funding (end of month ${k - 1})`, prev.month_end.funding]);
+      }
+      rows.push([`commands (month ${k})`, -m.commands.reduce((t, c) => t + (c.cost || 0), 0)]);
+      const rest = d - rows.reduce((t, [, v]) => t + v, 0);
+      if (Math.abs(rest) >= 0.05) rows.push(["other", rest]);
+      dv.setAttribute("data-tip", [
+        `Change in cash since ${k > 0 ? `month ${k - 1}` : "the start"}:`,
+        ...rows.filter(([, v]) => Math.abs(v) >= 0.05).map(([l, v]) => `${l}\t${fmtDelta(v)}`),
+        `total\t${fmtDelta(d)}`].join("\n"));
+    }
+    const st = m.if_stopped;
+    const sl = svgEl("text", { class: "chart-text", x: 0, y: 28 }, statusSvg);
+    sl.textContent = "score if stopped now";
+    const sv = svgEl("text", { class: "chart-num", x: 294, y: 28.5, "text-anchor": "end" }, statusSvg);
+    sv.textContent = `${st.score.toFixed(2)} · ${fmtUSD(st.net_cost)} net cost`;
+    const ol = svgEl("text", { class: "chart-text", x: 0, y: 47 }, statusSvg);
+    ol.textContent = "commands used";
+    const ov = svgEl("text", { class: "chart-num", x: 294, y: 47.5, "text-anchor": "end" }, statusSvg);
+    ov.textContent = k < 0 ? "–" : `${m.commands.filter((c) => c.ok).length} / ${RUN.rules.ops_per_month}`;
+    ov.setAttribute("data-tip", `Commands sent this month, out of ${RUN.rules.ops_per_month} a month`);
+    // Hovering the score shows how it is made, then the net cost's parts: spend − mark-to-market + obligations + penalties.
+    sv.setAttribute("data-tip", [
+      `score\t${st.score.toFixed(3)}`,
+      `= ${RUN.score_rule} (oracle ${fmtUSD(RUN.oracle)}, runs met ${st.milestones_met} of 3)`,
+      `run\t${RUN.policy}, seed ${RUN.seed}, rules ${RUN.rules_version}`,
+      `spend\t${fmtUSD(st.spend)}`,
+      `GPUs held, at 75% of value\t−${fmtUSD(st.mark_to_market)}`,
+      `contracts past month 23\t+${fmtUSD(st.obligations)}`,
+      `penalties (${3 - st.milestones_met} missed)\t+${fmtUSD(st.penalties)}`,
+      `total\t${fmtUSD(st.net_cost)}`].join("\n"));
+  };
+  // Inference demand per site: what the agent has seen (months before this one, demand line with any unserved
+  // part shaded) and its likely range from here on: growth between the two rates, and two standard deviations of the
+  // monthly noise either side (about 95% of outcomes; from a seen month the noise counts twice, since that month's
+  // demand carries its own noise around the trend).
+  const demandSvg = document.getElementById("demand");
+  const DW = 274, DH = 62, MONTHS = RUN.months.length;
+  const PL = 30, PB = 14, PT = 6;   // left gutter for the kH scale, bottom for month numbers
+  const band = (k, site, m) => {
+    const r = RUN.rules, share = r.share[site];
+    const b = k > 0 ? k - 1 : 0, v = k > 0 ? RUN.months[k - 1].settle[site].demand : r.demand_start * share;
+    const dm = m - b, z = dm === 0 && k > 0 ? 0 : 2 * r.noise * (k > 0 ? Math.SQRT2 : 1);
+    return [v * Math.exp(r.growth[0] * dm - z), v * Math.exp(r.growth[1] * dm + z)];
+  };
+  const demandMax = Math.max(...RUN.months.flatMap((m, k) => Object.keys(SITES).flatMap((s) => [m.settle[s].demand, band(k, s, MONTHS - 1)[1]])));
+  const yTop = Math.ceil(demandMax / 4) * 4;   // round the scale up to a multiple of 4 kH
+  const dx = (m) => PL + (m * (DW - PL - 2)) / (MONTHS - 1), dy = (v) => DH - PB - (v / yTop) * (DH - PB - PT);
+  // This month at a glance, per site: compute by source (owned GPUs with power, owned GPUs idle for want of
+  // power, reserved, spot filled this month) against the inference demand range the agent can expect. A thin
+  // power line under each bar shows the MW behind the owned GPUs, drawn on the same scale (MW turned into the
+  // compute it can run for that site's mix of GPUs): solid for contracts switched on, outlined for ones signed
+  // but not yet on. The total row adds the training rate still needed to meet the current window.
+  const computeSvg = document.getElementById("compute"), computeAllSvg = document.getElementById("compute-all");
+  const MW_PER = RUN.rules.power_mw, KH_PER = RUN.rules.compute;   // per thousand GPUs
+  const mwNeed = (o) => o.H * MW_PER.H + o.N * MW_PER.N;
+  const ownedKH = (o) => o.H * KH_PER.H + o.N * KH_PER.N;
+  const fmtMW = (v) => String(Math.round(v * 10) / 10);
+  const stepAt = (k) => (k < 0 ? START : RUN.months[k]);
+  // Everything one site (or all of them) has this month, in kH and MW.
+  const siteState = (k, sites) => {
+    const m = stepAt(k), kk = Math.max(k, 0);
+    const z = { own: 0, idle: 0, reserved: 0, spot: 0, spotReq: 0, need: 0, ownedC: 0, on: [], soon: [] };
+    for (const s of sites) {
+      const x = m.settle ? m.settle[s] : null, o = m.sites[s].owned;
+      const own = x ? x.own : m.sites[s].own;
+      z.own += own; z.ownedC += ownedKH(o); z.idle += Math.max(0, ownedKH(o) - own);
+      z.reserved += x ? x.reserved : 0; z.spot += x ? x.spot : 0; z.spotReq += x ? x.spot_req : 0; z.need += mwNeed(o);
+      for (const p of m.power || []) if (p.site === s) (p.start <= kk ? z.on : z.soon).push(p);
+    }
+    z.on = z.on.filter((p) => kk < p.end); z.soon.sort((a, b) => a.start - b.start);
+    z.khPerMW = z.need > 0 ? z.ownedC / z.need : 1 / MW_PER.H;   // no GPUs yet: as if gen H
+    z.mwOn = z.on.reduce((t, p) => t + p.mw, 0); z.mwSoon = z.soon.reduce((t, p) => t + p.mw, 0);
+    return z;
+  };
+  const siteCap = (z) => z.own + z.reserved + z.spot;
+  const reach = (z) => Math.max(z.own + z.idle + z.reserved + z.spot, (z.mwOn + z.mwSoon) * z.khPerMW);
+  const trainingNeed = (k) => {
+    const known = k > 0 ? RUN.months[k - 1] : null;
+    const i = RUN.rules.milestones.findIndex(([a, d]) => k >= a && k <= d);
+    if (i < 0) return 0;
+    const [, d, target] = RUN.rules.milestones[i];
+    return Math.max(0, target - (known ? known.window_training[i] : 0)) / (d - k + 1);
+  };
+  const ALL = Object.keys(SITES);
+  const siteMax = Math.max(...RUN.months.flatMap((m, k) => ALL.flatMap((s) => [reach(siteState(k, [s])), band(k, s, k)[1]])));
+  const totalMax = Math.max(...RUN.months.map((m, k) => Math.max(reach(siteState(k, ALL)),
+    ALL.reduce((t, s) => t + band(k, s, k)[1], 0) + trainingNeed(k))));
+  const fmt1 = (v) => (v < 0.05 ? "0" : v.toFixed(1));
+  const ROW_H = 26;   // bar, power line, MW text
+  const POWER_COST = RUN.rules.power_cost, UNSERVED = RUN.rules.unserved_cost;
+  const perMonth = (p) => `$${(p.mw * POWER_COST[p.site]).toFixed(1)}M a month`;
+  const computeRow = (svg, y, label, ent, labelColor, color, z, need, scale, needTip, opts = {}) => {
+    const X0 = 26, BW = 128, sx = (v) => X0 + (v / scale) * BW;
+    const t = svgEl("text", { class: "chart-text", x: 0, y: y + 9, fill: labelColor, style: `fill:${labelColor}` }, svg);
+    t.textContent = label;
+    if (ent) t.setAttribute("data-ent", ent);
+    svgEl("rect", { x: X0, y: y + 1, width: BW, height: 10, fill: "none", stroke: "var(--grid)" }, svg);
+    // Idle GPUs (no power) go last, hatched, so what is usable reads as one run from the left.
+    const hatch = `hatch-${label}`;
+    const pat = svgEl("pattern", { id: hatch, patternUnits: "userSpaceOnUse", width: 4, height: 4, patternTransform: "rotate(45)" },
+      svgEl("defs", {}, svg));
+    svgEl("line", { x1: 0, x2: 0, y1: 0, y2: 4, stroke: color, "stroke-width": 1.6 }, pat);
+    let x = X0, idleX = null;
+    for (const [q, c, style, tip] of [[z.own, color, "solid", "Owned GPUs with power"], [z.reserved, "var(--cmd-rent)", "solid", "Reserved cloud"],
+      [z.spot, "var(--cmd-rent)", "hollow", "Spot filled"], [z.idle, color, "hatch", "Owned GPUs idle, no power"]]) {
+      const w = sx(q) - X0, dt = `${tip}: ${fmt1(q)} kH` + (tip === "Spot filled" ? ` (${fmt1(z.spotReq)} kH requested)` : "");
+      if (style === "hatch") idleX = x;
+      if (w > 0.2) svgEl("rect", style === "hollow" ? { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: "transparent", stroke: c, "data-tip": dt }
+        : style === "hatch" ? { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: `url(#${hatch})`, stroke: c, "data-tip": dt }
+        : { x, y: y + 1, width: w, height: 10, fill: c, "data-tip": dt }, svg);
+      x += w;
+    }
+    // Power line: MW on (solid, one segment per contract) under the powered GPUs, then MW signed (outlined)
+    // under the idle GPUs it will switch on, on the bar's scale.
+    let px = X0;
+    z.on.forEach((p, j) => {
+      const w = sx(p.mw * z.khPerMW) - X0;
+      svgEl("rect", { x: px, y: y + 14, width: w, height: 3, fill: "var(--cmd-power)", "data-tip": `Power on: ${fmtMW(p.mw)} MW, until month ${p.end - 1} · ${perMonth(p)}` }, svg);
+      if (j > 0) svgEl("line", { x1: px, x2: px, y1: y + 14, y2: y + 17, stroke: "var(--bg)" }, svg);
+      px += w;
+    });
+    if (z.idle > 0.05 && idleX !== null) px = Math.max(px, idleX);
+    for (const p of z.soon) {
+      const w = sx(p.mw * z.khPerMW) - X0;
+      svgEl("rect", { x: px + 0.5, y: y + 14.5, width: Math.max(0, w - 1), height: 2, fill: "transparent", stroke: "var(--cmd-power)", "stroke-width": 0.8,
+        "data-tip": `Power signed: ${fmtMW(p.mw)} MW, on from month ${p.start} · ${perMonth(p)}` }, svg);
+      px += w;
+    }
+    // Shortfall (site rows): capacity below the expected demand leaves inference unserved, which the score charges.
+    // A dashed red outline, not a fill, from capacity up to the top of the range: it is demand, not capacity.
+    const [lo, hi] = need, cap = siteCap(z);
+    if (opts.shortfall && cap < hi - 0.05) {
+      const a = (lo - cap) * UNSERVED, b = (hi - cap) * UNSERVED;
+      svgEl("rect", { x: sx(cap), y: y + 0.5, width: sx(hi) - sx(cap), height: 11, fill: "transparent", stroke: "var(--alert)",
+        "stroke-dasharray": "2.5 1.5", "stroke-width": 1.2,
+        "data-tip": cap < lo ? `Short ${fmt1(lo - cap)}–${fmt1(hi - cap)} kH: unserved costs $${a.toFixed(1)}–${b.toFixed(1)}M`
+          : `May be short up to ${fmt1(hi - cap)} kH: unserved costs up to $${b.toFixed(1)}M` }, svg);
+    }
+    // Options held (all row): a thin outlined line under the power line, reserved capacity the agent can add any time.
+    if (opts.options > 0.05) {
+      svgEl("rect", { x: X0 + 0.5, y: y + 19.5, width: Math.max(0, sx(opts.options) - X0 - 1), height: 2.5, fill: "transparent", stroke: "var(--cmd-option)",
+        "stroke-width": 0.9, "data-tip": `Options held: ${fmt1(opts.options)} kH, each a ${RUN.rules.option.term}-month reservation at $${RUN.rules.option.strike}M per kH-month` }, svg);
+    }
+    // Need: a bracket over the expected range, with a wider invisible copy to hover.
+    const d = `M${sx(lo)},${y + 13} V${y - 1} H${sx(hi)} V${y + 13}`;
+    svgEl("path", { d, fill: "none", stroke: "var(--fg)", "stroke-width": 1.2 }, svg);
+    svgEl("path", { d, fill: "none", stroke: "transparent", "stroke-width": 5, "data-tip": `${needTip}: ${fmt1(lo)}–${fmt1(hi)} kH` }, svg);
+    const n = svgEl("text", { class: "chart-num", x: 274, y: y + 9.5, "text-anchor": "end" }, svg);
+    n.textContent = `${fmt1(siteCap(z))} / ${fmt1(lo)}–${fmt1(hi)}`;
+    const until = z.on.length ? Math.min(...z.on.map((p) => p.end)) - 1 : null;
+    const pw = svgEl("text", { class: "chart-text", x: 274, y: y + 19, "text-anchor": "end", style: "font-size:9px" }, svg);
+    pw.textContent = `${fmtMW(z.mwOn)} / ${fmtMW(z.need)} MW${until !== null ? ` · until ${until}` : ""}`;
+  };
+  const showCompute = (k) => {
+    computeSvg.replaceChildren();
+    let lo = 0, hi = 0;
+    ALL.forEach((site, i) => {
+      const [l, h] = band(Math.max(k, 0), site, Math.max(k, 0));
+      lo += l; hi += h;
+      computeRow(computeSvg, i * ROW_H + 2, site, site, `var(--site-${site})`, `var(--site-${site})`, siteState(k, [site]),
+        [l, h], siteMax, "Expected inference demand", { shortfall: true });
+    });
+    const tr = trainingNeed(Math.max(k, 0));
+    computeAllSvg.replaceChildren();
+    svgEl("line", { x1: 0, x2: 274, y1: 0.5, y2: 0.5, stroke: "var(--grid)" }, computeAllSvg);
+    computeRow(computeAllSvg, 6, "all", null, "var(--fg)", "var(--fg)", siteState(k, ALL),
+      [lo + tr, hi + tr], totalMax, "Expected inference demand plus training needed per month", { options: k < 0 ? 0 : RUN.months[k].options || 0 });
+  };
+  // Money: cash now (with its bar and history), credit left, then spending so far by category.
+  const moneySvg = document.getElementById("money");
+  const CREDIT = RUN.rules.credit;
+  const SPEND = [["capex", "GPUs", "var(--cmd-buy)"], ["power", "power", "var(--cmd-power)"], ["contracts", "reserved", "var(--cmd-rent)"],
+    ["spot", "spot", "var(--cmd-rent)"], ["moves", "moves", "var(--cmd-stock)"], ["options", "options", "var(--cmd-option)"],
+    ["interest", "interest", "var(--muted)"], ["unserved", "unserved", "var(--muted)"], ["resale", "resale", "var(--cmd-power)"]];
+  const SPEND_TIP = {
+    capex: "Spent on GPU orders, net of broker refunds",
+    power: "Spent on power",
+    contracts: "Spent on reserved cloud",
+    spot: "Spent on spot capacity",
+    moves: "Spent moving GPUs",
+    options: "Spent on capacity options",
+    interest: "Interest paid",
+    unserved: "Unserved inference penalty (score only, not paid from cash)",
+    resale: "Received from reselling GPUs",
+  };
+  const steps = [START, ...RUN.months];
+  const spendMax = Math.max(1, ...steps.flatMap((m) => SPEND.map(([key]) => Math.abs(m.costs[key] || 0))));
+  const cashMax = Math.max(...steps.map((m) => m.cash)), cashMin = -CREDIT;
+  // Prices the agent was quoted at the start of each month (the start step sees month 0's).
+  const SITE_PRICE = RUN.rules.site_price;
+  const priceAt = (k) => RUN.months[Math.max(0, k)].prices;
+  const perSite = (v) => Object.entries(SITE_PRICE).map(([s, f]) => `${s} $${(v * f).toFixed(2)}M`).join(", ");
+  const PX0 = 26, PX1 = 160, PH = 62, PB2 = 13, PT2 = 4, LX = 168;   // chart, then this month's values beside it
+  const priceTop = { compute: 2 * Math.ceil(0.5 *Math.max(...RUN.months.map((m) => Math.max(m.prices.spot, m.prices.reserve["6"])))),
+    gpu: 10 * Math.ceil(Math.max(...RUN.months.map((m) => Math.max(...Object.values(m.prices.broker)))) / 10) };
+  const priceChart = (svg, top, series, k) => {
+    svg.replaceChildren();
+    const x = (m) => PX0 + (m * (PX1 - PX0)) / (MONTHS - 1), y = (v) => PH - PB2 - (v / top) * (PH - PB2 - PT2);
+    for (const v of [0, top / 2, top]) {
+      svgEl("line", { x1: PX0, x2: PX1, y1: y(v), y2: y(v), stroke: "var(--grid)", "stroke-opacity": v ? 0.5 : 1 }, svg);
+      const t = svgEl("text", { class: "chart-text", x: PX0 - 4, y: y(v) + 3.5, "text-anchor": "end" }, svg);
+      t.textContent = String(v);
+    }
+    for (const m of [0, 8, 16, MONTHS - 1]) {
+      const t = svgEl("text", { class: "chart-text", x: x(m), y: PH - 1, "text-anchor": "middle" }, svg);
+      t.textContent = String(m);
+    }
+    svgEl("line", { x1: x(Math.max(0, k)), x2: x(Math.max(0, k)), y1: PT2, y2: PH - PB2, stroke: "var(--muted)", "stroke-dasharray": "2 2" }, svg);
+    for (const [get, color, opts, tip] of series) {
+      const pts = [];
+      for (let m = 0; m <= Math.max(0, k); m++) { const v = get(RUN.months[m].prices); if (v != null) pts.push([x(m), y(v)]); }
+      if (!pts.length) continue;
+      const d = "M" + pts.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join("L");
+      svgEl("path", { d, fill: "none", stroke: color, "stroke-width": opts.w || 1.2, "stroke-opacity": opts.op || 1, "stroke-dasharray": opts.dash || "" }, svg);
+      const [ex, ey] = pts[pts.length - 1];
+      svgEl("circle", { cx: ex, cy: ey, r: 2, fill: color, "fill-opacity": opts.op || 1 }, svg);
+      const t = tip(priceAt(k));
+      svgEl("path", { d, fill: "none", stroke: "transparent", "stroke-width": 7, "data-tip": t }, svg);
+      svgEl("circle", { cx: ex, cy: ey, r: 5, fill: "transparent", "data-tip": t }, svg);
+    }
+    // This month's values, highest first (the order the lines sit in), each with a sample of its line.
+    const now = priceAt(k);
+    series.map((sr) => [sr, sr[0](now)]).sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1)).forEach(([[, color, opts, tip, label], v], i) => {
+      const yy = PT2 + 3 + i * 11;
+      svgEl("line", { x1: LX, x2: LX + 10, y1: yy, y2: yy, stroke: color, "stroke-width": opts.w || 1.2, "stroke-opacity": opts.op || 1, "stroke-dasharray": opts.dash || "" }, svg);
+      const lt = svgEl("text", { class: "chart-text", x: LX + 14, y: yy + 3.5 }, svg);
+      lt.textContent = label;
+      const vt = svgEl("text", { class: "chart-num", x: 274, y: yy + 3.5, "text-anchor": "end", style: "font-size:10px" }, svg);
+      vt.textContent = v == null ? "–" : v.toFixed(v >= 10 ? 1 : 2);
+      svgEl("rect", { x: LX, y: yy - 5.5, width: 274 - LX, height: 11, fill: "transparent", "data-tip": tip(now) }, svg);
+    });
+  };
+  const showPrices = (k) => {
+    const rent = "var(--cmd-rent)", buy = "var(--cmd-buy)";
+    priceChart(document.getElementById("price-compute"), priceTop.compute, [
+      ...[["24", 0.4], ["12", 0.6], ["6", 0.8]].map(([t, op]) => [(p) => p.reserve[t], rent, { op, dash: "3 2" },
+        (p) => `Reserve ${t} months: ${perSite(p.reserve[t])}`, `reserve ${t}m`]),
+      [(p) => p.spot, rent, { w: 1.6 }, (p) => `Spot: ${perSite(p.spot)}`, "spot"],
+    ], k);
+    const gen = (p) => Object.keys(p.gpu)[0];
+    priceChart(document.getElementById("price-gpu"), priceTop.gpu, [
+      [(p) => p.market_value.H, "var(--gen-h)", {}, (p) => `Used gen H: $${p.market_value.H.toFixed(1)}M`, "used H"],
+      [(p) => p.market_value.N ?? null, "var(--gen-n)", {}, (p) => (p.market_value.N != null ? `Used gen N: $${p.market_value.N.toFixed(1)}M` : "Used gen N: not launched"), "used N"],
+      [(p) => p.broker.B, buy, { op: 0.5, dash: "3 2" }, (p) => `Broker B, gen ${gen(p)}: $${p.broker.B.toFixed(1)}M`, "broker B"],
+      [(p) => p.broker.A, buy, { op: 0.75, dash: "3 2" }, (p) => `Broker A, gen ${gen(p)}: $${p.broker.A.toFixed(1)}M`, "broker A"],
+      [(p) => Object.values(p.gpu)[0], buy, { w: 1.6 }, (p) => `Vendor, gen ${gen(p)}: $${Object.values(p.gpu)[0].toFixed(1)}M`, "vendor"],
+    ], k);
+  };
+  const showMoney = (k) => {
+    moneySvg.replaceChildren();
+    const m = M(k);
+    // Cash first and largest; credit left after it on the same row, quieter.
+    const t1 = svgEl("text", { class: "chart-text", x: 0, y: 13 }, moneySvg);
+    t1.textContent = "cash";
+    const v1 = svgEl("text", { class: "chart-num", x: 28, y: 14, style: "font-size:15px;font-weight:600;fill:var(--fg)" }, moneySvg);
+    v1.textContent = fmtUSD(m.cash);
+    const v2 = svgEl("text", { class: "chart-num", x: 274, y: 13.5, "text-anchor": "end", style: "fill:var(--muted)" }, moneySvg);
+    v2.textContent = `credit left ${fmtUSD(CREDIT - Math.max(0, -m.cash))}`;
+    // Cash bar: from the bottom of the credit line up to the run's highest balance, with a tick at $0.
+    const bx = (v) => ((v - cashMin) / (cashMax - cashMin)) * 274;
+    svgEl("rect", { x: 0, y: 20, width: 274, height: 8, fill: "transparent", stroke: "var(--grid)",
+      "data-tip": `Room up to this run's peak cash, ${fmtUSD(cashMax)}` }, moneySvg);
+    svgEl("rect", { x: 0, y: 20, width: Math.max(0, bx(m.cash)), height: 8, fill: "var(--fg)", "fill-opacity": 0.85,
+      "data-tip": `Cash: ${fmtUSD(m.cash)}, counted up from −${fmtUSD(CREDIT)} (credit line used up)` }, moneySvg);
+    svgEl("line", { x1: bx(0), x2: bx(0), y1: 17, y2: 31, stroke: "var(--muted)" }, moneySvg);
+    svgEl("line", { x1: bx(0), x2: bx(0), y1: 17, y2: 31, stroke: "transparent", "stroke-width": 6, "data-tip": "$0: left of here is borrowing" }, moneySvg);
+    // Spending so far, in two columns (five rows, then four); resale is money back.
+    const COL = 132, BW = 32;
+    SPEND.forEach(([key, label, color], i) => {
+      const cx = i < 5 ? 0 : 274 - COL, y = 114 + (i % 5) * 12, v = m.costs[key] || 0, X0 = cx + 44;
+      const t = svgEl("text", { class: "chart-text", x: cx, y: y + 8 }, moneySvg);
+      t.textContent = label;
+      svgEl("rect", { x: X0, y: y + 1, width: BW, height: 8, fill: "none", stroke: "var(--grid)" }, moneySvg);
+      const w = (Math.abs(v) / spendMax) * BW;
+      if (w > 0.2) svgEl("rect", { x: X0, y: y + 1, width: w, height: 8, fill: color, "fill-opacity": 0.85,
+        "data-tip": `${SPEND_TIP[key]}: ${key === "resale" ? fmtUSD(-v) : fmtUSD(v)}` }, moneySvg);
+      const n = svgEl("text", { class: "chart-num", x: cx + COL, y: y + 8.5, "text-anchor": "end", style: "font-size:10px" }, moneySvg);
+      n.textContent = Math.abs(v) < 0.05 ? "0" : key === "resale" ? `+${fmtUSD(-v)}` : fmtUSD(v);    });
+    // Cash over time, down to the bottom of the credit line.
+    const G0 = 42, GH = 50, GL = 44;
+    const gx = (mm) => GL + ((mm + 1) * (274 - GL - 2)) / RUN.months.length;   // the start sits just before month 0
+    const gy = (v) => G0 + ((cashMax - v) / (cashMax - cashMin)) * GH;
+    const axis = (v) => `${v < 0 ? "−" : ""}$${Math.abs(Math.round(v))}M`;
+    for (const [v, lab, dash] of [[cashMax, axis(cashMax), ""], [0, "$0", ""], [cashMin, axis(cashMin), "2 2"]]) {
+      svgEl("line", { x1: GL, x2: 274, y1: gy(v), y2: gy(v), stroke: "var(--grid)", "stroke-dasharray": dash }, moneySvg);
+      const t = svgEl("text", { class: "chart-text", x: GL - 4, y: gy(v) + 3.5, "text-anchor": "end" }, moneySvg);
+      t.textContent = lab;
+    }
+    const last = RUN.months.length - 1;
+    for (const mm of [0, 8, 16, last]) {
+      const t = svgEl("text", { class: "chart-text", x: mm === last ? 274 : gx(mm), y: 103, "text-anchor": mm === last ? "end" : "middle" }, moneySvg);
+      t.textContent = String(mm);
+    }
+    const mo = svgEl("text", { class: "chart-text", x: GL - 7, y: 103, "text-anchor": "end" }, moneySvg);
+    mo.textContent = "month";
+    const pts = steps.slice(0, k + 2).map((x, i) => `${gx(i - 1)},${gy(x.cash)}`);
+    svgEl("polyline", { points: pts.join(" "), fill: "none", stroke: "var(--fg)", "stroke-width": 1.5 }, moneySvg);
+    svgEl("line", { x1: gx(k), x2: gx(k), y1: G0, y2: G0 + GH, stroke: "var(--grid)", "stroke-dasharray": "2 2" }, moneySvg);
+  };
+  const showDemand = (k) => {
+    demandSvg.replaceChildren();
+    // Axes: kH of inference demand up the side (0, half, top), month along the bottom (window boundaries).
+    for (const v of [0, yTop / 2, yTop]) {
+      svgEl("line", { x1: PL, x2: DW, y1: dy(v), y2: dy(v), stroke: "var(--grid)", "stroke-opacity": v ? 0.5 : 1 }, demandSvg);
+      const t = svgEl("text", { class: "chart-text", x: PL - 4, y: dy(v) + 3.5, "text-anchor": "end" }, demandSvg);
+      t.textContent = v === yTop ? `${v} kH` : String(v);
+    }
+    for (const m of [0, 8, 16, MONTHS - 1]) {
+      const t = svgEl("text", { class: "chart-text", x: dx(m), y: DH - 2, "text-anchor": "middle" }, demandSvg);
+      t.textContent = String(m);
+    }
+    const mo = svgEl("text", { class: "chart-text", x: PL - 7, y: DH - 2, "text-anchor": "end" }, demandSvg);
+    mo.textContent = "month";
+    svgEl("line", { x1: dx(Math.max(k, 0)), x2: dx(Math.max(k, 0)), y1: PT, y2: DH - PB, stroke: "var(--grid)", "stroke-dasharray": "2 2" }, demandSvg);
+    for (const site of Object.keys(SITES)) {
+      const col = `var(--site-${site})`;
+      const from = k > 0 ? k - 1 : 0, lo = [], hi = [];
+      for (let m = from; m < MONTHS; m++) { const [l, h] = band(k, site, m); lo.push(`${dx(m)},${dy(l)}`); hi.unshift(`${dx(m)},${dy(h)}`); }
+      svgEl("polygon", { points: [...lo, ...hi].join(" "), fill: col, "fill-opacity": 0.14, "data-ent": site, class: "ent-band" }, demandSvg);
+      if (k <= 0) continue;
+      const past = RUN.months.slice(0, k).map((m) => m.settle[site]);
+      const gap = past.some((x) => x.served < x.demand - 0.005);
+      if (gap) svgEl("polygon", { points: [...past.map((x, m) => `${dx(m)},${dy(x.demand)}`), ...past.map((x, m) => `${dx(m)},${dy(x.served)}`).reverse()].join(" "),
+        fill: col, "fill-opacity": 0.45 }, demandSvg);
+      svgEl("polyline", { points: past.map((x, m) => `${dx(m)},${dy(x.demand)}`).join(" "), fill: "none", stroke: col, "stroke-width": 1.5,
+        "data-ent": site, class: "ent-line" }, demandSvg);
+    }
+  };
+  const pos = new THREE.Vector3(), radial = new THREE.Vector3();
+  const stepTransition = (anim, now) => {
+    const p = Math.min(1, (now - anim.start) / anim.dur);
+    for (const it of anim.items) {
+      it.line.material.opacity = Math.min(1, p / 0.15, (1 - p) / 0.2) * 0.8;
+      if (it.price) {   // the price rides with the first block
+        const tf0 = Math.min(1, p / (1 - (it.blocks.length - 1) * it.stagger));
+        let t = it.t0 + (it.t1 - it.t0) * (anim.dir > 0 ? tf0 : 1 - tf0);
+        if (!it.ok) t = Math.min(t, 0.5);
+        globe.updateMatrixWorld();
+        const at = screenAt(globe.localToWorld(arcPoint(it.a, it.b, it.omega, t, new THREE.Vector3())));
+        it.price.style.transform = `translate(${at.x + 10}px, ${at.y - 18}px)`;
+        it.price.style.opacity = String(at.facing && !(anim.dir < 0 && !it.ok) ? Math.min(1, p / 0.1, (1 - p) / 0.15) : 0);
+      }
+      const n = it.blocks.length, span = 1 - (n - 1) * it.stagger;
+      it.blocks.forEach((blk, i) => {
+        const tf = Math.min(1, Math.max(0, (p - i * it.stagger) / span));
+        const t = it.t0 + (it.t1 - it.t0) * (anim.dir > 0 ? tf : 1 - tf);
+        if (!it.ok && anim.dir < 0) { blk.mesh.visible = false; return; }   // a cancelled order has nothing to send back
+        if (!it.ok && t >= 0.5) {
+          if (!blk.shards) {                         // break into four shards that scatter and shrink
+            blk.mesh.visible = false;
+            arcPoint(it.a, it.b, it.omega, 0.5, pos);
+            blk.shards = [];
+            for (let j = 0; j < 4; j++) {
+              const s = new THREE.Mesh(boxGeo, blockMat[it.gen].on);
+              s.position.copy(pos);
+              s.quaternion.setFromUnitVectors(up, radial.copy(pos).normalize());
+              const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.25);
+              it.group.add(s);
+              blk.shards.push({ s, v, from: pos.clone() });
+            }
+            blk.breakAt = p;
+          }
+          const q = Math.min(1, (p - blk.breakAt) / Math.max(0.05, 1 - blk.breakAt));
+          for (const sh of blk.shards) {
+            sh.s.position.copy(sh.from).addScaledVector(sh.v, q);
+            sh.s.scale.setScalar(Math.max(0.001, 0.5 * (1 - q)));
+          }
+          return;
+        }
+        blk.mesh.visible = tf > 0 && tf < 1;
+        if (!blk.mesh.visible) return;
+        arcPoint(it.a, it.b, it.omega, t, pos);
+        blk.mesh.position.copy(pos);
+        blk.mesh.quaternion.setFromUnitVectors(up, radial.copy(pos).normalize());
+      });
+    }
+    return p >= 1;
+  };
+
+  // ---------------------------------------------------------------- theme
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const applyTheme = () => {
+    const bg = new THREE.Color(css("--bg"));
+    renderer.setClearColor(bg, 1);
+    occluderMat.color = bg;
+    maskMat.color = bg;
+    edgeMat.color = bg;
+    gridMat.color = new THREE.Color(css("--grid"));
+    coastMat.color = new THREE.Color(css("--coast"));
+    supPadMat.color = coastMat.color.clone();
+    vendorPadMat.color = new THREE.Color(css(launchedNow ? "--gen-n" : "--gen-h"));
+    occBase = bg.clone();
+    rentPadMat.color = new THREE.Color(css("--cmd-rent"));
+    rentLineMat.color = rentPadMat.color.clone();
+    powerPadMat.color = new THREE.Color(css("--cmd-power"));
+    alertLineMat.color = new THREE.Color(css("--alert"));
+    alertCrossMat.color = alertLineMat.color.clone();
+    powerLineMat.color = powerPadMat.color.clone();
+    powerDashMat.color = powerPadMat.color.clone();
+    parkedLineMat.color = new THREE.Color(css("--fg"));
+    for (const id of Object.keys(padMat)) padMat[id].color = new THREE.Color(css(`--site-${id}`));
+    buildObjects();
+    for (const [gen, token] of [["H", "--gen-h"], ["N", "--gen-n"]]) {
+      const c = new THREE.Color(css(token));
+      blockMat[gen].on.color = c;
+      blockMat[gen].off.color = c.clone().lerp(bg, 0.72);   // idle: same hue, much dimmer
+      hollowMat[gen].color = c;
+      orderFillMat[gen].color = c.clone().lerp(bg, 0.85);
+    }
+  };
+  applyTheme();
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme); } catch (e) {}
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  // ---------------------------------------------------------------- camera
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  // Hovering a datacentre or supplier on the globe lights it there and in the summary pane.
+  const stationById = Object.fromEntries(Object.entries(stationAnchors).map(([s, a]) => [`power-${s}`, a]));
+  const anchorOf = (id) => anchors[id] || supplierAnchors[id] || cloudAnchors[id] || stationById[id];
+  const pickIds = new Map([...Object.entries(anchors), ...Object.entries(supplierAnchors), ...Object.entries(cloudAnchors), ...Object.entries(stationById)]
+    .map(([id, a]) => [a, id]));
+  const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let hoverGlobe = null, pointerIn = false, lastFrame = 0;
+  // Hovering a name in any pane (log, outstanding orders, demand chart) lights that entity everywhere.
+  let hoverPane = null, paneHl;
+  document.addEventListener("pointerover", (e) => {
+    const t = e.target.closest && e.target.closest("[data-ent]");
+    hoverPane = t ? t.dataset.ent : null;
+  });
+  const hoverLevel = new Map(), HOVER_MS = 90;   // time constant of the hover fade
+  let pointerX = 0, pointerY = 0;
+  renderer.domElement.addEventListener("pointermove", (e) => {
+    pointerX = e.clientX; pointerY = e.clientY;
+    const box = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - box.left) / box.width) * 2 - 1, -((e.clientY - box.top) / box.height) * 2 + 1);
+    pointerIn = true;
+  });
+  renderer.domElement.addEventListener("pointerleave", () => { pointerIn = false; hoverGlobe = null; });
+  // Clicking a box in the summary pane turns the camera to face that entity, keeping its distance.
+  let focus = null;
+  const FOCUS_MS = 900;
+  const focusOn = (id) => {
+    controls.autoRotate = false;
+    const from = camera.position.clone(), dist = from.length();
+    const to = anchorOf(id).getWorldPosition(new THREE.Vector3()).normalize();
+    focus = { start: performance.now(), dist, q: new THREE.Quaternion().setFromUnitVectors(from.clone().normalize(), to), from: from.normalize() };
+  };
+  const stepFocus = (now) => {
+    if (!focus) return;
+    const t = Math.min(1, (now - focus.start) / FOCUS_MS), e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const q = new THREE.Quaternion().slerp(focus.q, e);
+    camera.position.copy(focus.from).applyQuaternion(q).multiplyScalar(focus.dist);
+    if (t >= 1) focus = null;
+  };
+  controls.addEventListener("start", () => { focus = null; });
+  const pickGlobe = () => {
+    if (!pointerIn) return;
+    raycaster.setFromCamera(ndc, camera);
+    const hit = raycaster.intersectObjects([occluder, ...pickIds.keys()], true).find((h) => h.object.type === "Mesh");
+    let o = hit && hit.object, id = null;
+    while (o && !id) { id = pickIds.get(o) || null; o = o.parent; }
+    hoverGlobe = id;
+    if (id) return globeTip(`${id}@${month}`, () => entityState(id));
+    // No entity under the pointer: the nearest arc within a few pixels, on the side facing the camera.
+    let best = null, bestD = 7 * 7;
+    for (const [layer, list] of Object.entries(arcTips)) {
+      if (!{ ghosts, parked, rentals, power: powerArcs }[layer].visible) continue;
+      for (const a of list) {
+        for (let i = 1; i < a.pts.length; i++) {
+          const p = screenAt(globe.localToWorld(a.pts[i - 1].clone())), q = screenAt(globe.localToWorld(a.pts[i].clone()));
+          if (!p.facing || !q.facing) continue;
+          const dx = q.x - p.x, dy = q.y - p.y, L = dx * dx + dy * dy;
+          const t = L ? Math.max(0, Math.min(1, ((pointerX - p.x) * dx + (pointerY - p.y) * dy) / L)) : 0;
+          const ex = p.x + t * dx - pointerX, ey = p.y + t * dy - pointerY, d = ex * ex + ey * ey;
+          if (d < bestD) { bestD = d; best = a; }
+        }
+      }
+    }
+    globeTip(best && `${best.para[0]}@${month}`, () => [best.para]);
+  };
+  // Hovering an entity on the globe shows its state this month next to the pointer.
+  let globeTipKey = null;
+  const entityState = (id) => {
+    const m = M(month), kk = Math.max(month, 0), q = (v) => `${fmt1(v)}k`;
+    if (id in SITES) {
+      const z = siteState(month, [id]), o = m.sites[id].owned, pw = m.sites[id].powered, [l, h] = band(kk, id, kk);
+      const sc = `var(--site-${id})`, pc = "var(--cmd-power)";
+      return [[id, sc],
+        ...(o.H > 0.005 ? [[`gen H GPUs\t${q(o.H)} (${q(pw.H)} powered)`, "var(--gen-h)"]] : []),
+        ...(o.N > 0.005 ? [[`gen N GPUs\t${q(o.N)} (${q(pw.N)} powered)`, "var(--gen-n)"]] : []),
+        [`power\t${fmtMW(z.mwOn)} / ${fmtMW(z.need)} MW`, pc],
+        ...(z.mwSoon > 0 ? [[`power signed\t${fmtMW(z.mwSoon)} MW`, pc]] : []),
+        [`compute\t${fmt1(siteCap(z))} kH`, sc],
+        `demand expected\t${fmt1(l)}–${fmt1(h)} kH`,
+        ...["H", "N"].filter((g) => o[g] > 0.005 && priceAt(month).market_value[g] != null)
+          .map((g) => [`used value gen ${g}\t$${priceAt(month).market_value[g].toFixed(1)}M per 1k`, `var(--gen-${g.toLowerCase()})`])];
+    }
+    if (id.startsWith("power-")) {
+      const site = id.slice(6), z = siteState(month, [site]), pc = "var(--cmd-power)", c = POWER_COST[site];
+      return [[`power ${site}`, pc], [`on\t${fmtMW(z.mwOn)} MW`, pc], ...(z.mwSoon > 0 ? [[`signed\t${fmtMW(z.mwSoon)} MW`, pc]] : []),
+        [`price\t$${c}M per MW-month`, pc], [`cost now\t$${(z.mwOn * c).toFixed(1)}M a month`, pc]];
+    }
+    if (id.startsWith("cloud-")) {
+      const x = m.settle[id.slice(6)];
+      const rc = "var(--cmd-rent)";
+      const pr = priceAt(month), f = SITE_PRICE[id.slice(6)], usd = (v) => `$${(v * f).toFixed(2)}M`;
+      return [[`cloud ${id.slice(6)}`, rc], [`reserved\t${fmt1(x.reserved)} kH`, rc], [`spot filled\t${fmt1(x.spot)} of ${fmt1(x.spot_req)} kH requested`, rc],
+        [`spot price\t${usd(pr.spot)} per kH-month`, rc], [`reserve 6 / 12 / 24 m\t${usd(pr.reserve["6"])} / ${usd(pr.reserve["12"])} / ${usd(pr.reserve["24"])}`, rc]];
+    }
+    const w = m.waiting[id];
+    const pr = priceAt(month), g = Object.keys(pr.gpu)[0], price = id === "vendor" ? pr.gpu[g] : pr.broker[id];
+    return [[id === "vendor" ? "vendor" : `broker ${id}`, "var(--coast)"], [`gen H on order\t${q(w.H)}`, "var(--gen-h)"], [`gen N on order\t${q(w.N)}`, "var(--gen-n)"],
+      [`gen ${g} price\t$${price.toFixed(1)}M per 1k`, "var(--cmd-buy)"]];
+  };
+  const globeTip = (key, paras) => {
+    if (!key) { if (globeTipKey) { globeTipKey = null; hideTip(); } return; }
+    const at = { left: pointerX + 14, top: pointerY + 14, bottom: pointerY + 14 };
+    if (key !== globeTipKey) { globeTipKey = key; showTip(at, paras()); return; }
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.min(at.left, innerWidth - w - 8)}px`;
+    tip.style.top = `${at.top + h > innerHeight - 8 ? pointerY - h - 8 : at.top}px`;
+  };
+  controls.enableDamping = true;
+  controls.enablePan = false;
+  controls.minDistance = 1.25;
+  controls.maxDistance = 8;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  controls.autoRotate = !reduce;
+  controls.autoRotateSpeed = 0.4;
+  controls.addEventListener("start", () => { controls.autoRotate = false; });
+
+  const resize = () => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    fatRes.set(w, h);
+    camera.aspect = w / h;
+    camera.position.setLength(Math.max(4.4, 4.4 / Math.min(1, camera.aspect * 1.25)));
+    // Draw the globe a little below centre so the timeline and training pane at the top don't cover it.
+    camera.setViewOffset(w, h, 0, -Math.min(70, h * 0.09), w, h);
+    camera.updateProjectionMatrix();
+  };
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------------------------------------------------------- playback
+  const LAST = RUN.months.length - 1, STEP_MS = 1300;
+  const slider = document.getElementById("month"), num = document.getElementById("num"), play = document.getElementById("play");
+  slider.max = String(LAST + 1);   // slider value = step + 1; 0 is the start
+  const ticks = [START, ...RUN.months].map(() => document.getElementById("ticks").appendChild(document.createElement("i")));
+  const JUMP_MS = 650;   // flight time when several months are crossed at once
+  let month = 0, playing = false, lastStep = 0;
+  // Command log: one section per month, each listing that month's commands as sent; refused ones struck through.
+  const log = document.getElementById("log");
+  const VERB_KIND = { buy_gpus: "buy", reserve: "rent", set_spot: "rent", contract_power: "power",
+    buy_option: "option", exercise_option: "option", move_gpus: "stock", resell_gpus: "stock" };
+  const SUPPLIER_TOKENS = new Set(["vendor", "A", "B"]);
+  // First token is the verb (coloured by kind); sites, suppliers and GPU generations take their globe colours.
+  const colourTokens = (li, toks, kind) => toks.forEach((tok, j) => {
+    if (j) li.append(" ");
+    const span = document.createElement("span");
+    span.textContent = tok;
+    const cls = j === 0 ? `v v-${kind}` : tok in SITES ? `t-${tok}` : SUPPLIER_TOKENS.has(tok) ? "t-sup"
+      : tok === "H" ? "t-h" : tok === "N" ? "t-n" : "";
+    if (cls) span.className = cls;
+    // Which globe entity a token names: rentals (reserve, set_spot) name the site's cloud provider.
+    if (j && tok in SITES) span.dataset.ent = kind === "rent" ? `cloud-${tok}` : tok;
+    else if (j && SUPPLIER_TOKENS.has(tok)) span.dataset.ent = tok;
+    li.appendChild(span);
+  });
+  const logEmpty = Object.assign(document.createElement("p"), { className: "empty", textContent: "no commands run yet" });
+  log.appendChild(logEmpty);
+  const logItems = [];   // [month][command index] -> li
+  const evtItems = [];   // [month][delivery index] -> li of the received/cancelled line, in the next month's section
+  const fmtQ = (q) => `${Math.round(q * 100) / 100}k`;   // thousands of GPUs
+  const logSections = RUN.months.map((m) => {
+    const sec = document.createElement("section");
+    const h = document.createElement("h2");
+    h.textContent = String(m.month);
+    const ol = document.createElement("ol");
+    // What arrived at the end of last month, before this month's commands.
+    const evts = [];
+    if (m.month > 0) evtItems[m.month - 1] = evts;
+    for (const d of m.month > 0 ? RUN.months[m.month - 1].deliveries : []) {
+      if (d.qty < 0.01) { evts.push(null); continue; }
+      const li = document.createElement("li");
+      li.className = d.ok ? "evt" : "evt cancelled";
+      // Same colours as the commands; the verb takes the colour of the command that caused it (buy or move).
+      const kind = d.move ? "stock" : "buy";
+      colourTokens(li, [d.ok ? "received" : "cancelled", `${fmtQ(d.qty)}`, d.gen, "GPUs", "from", d.src, d.ok ? "at" : "for", d.site], kind);
+      li.children[1].classList.add("q");
+      ol.appendChild(li);
+      evts.push(li);
+    }
+    const items = [];
+    logItems.push(items);
+    for (const c of m.commands || []) {
+      const li = document.createElement("li");
+      const toks = c.c.split(/\s+/);
+      colourTokens(li, toks, VERB_KIND[toks[0]] || "stock");
+      if (!c.ok) li.className = "refused";
+      if (c.ok && Math.abs(c.cost || 0) >= 0.05) {   // what the command cost (or brought in)
+        const cost = Object.assign(document.createElement("span"), { className: `cost ${c.cost > 0 ? "out" : "in"}`, textContent: fmtDelta(-c.cost) });
+        li.append(cost);
+      }
+      if (c.ok) { li.classList.add("cmd"); const ci = items.length; li.addEventListener("click", () => showOutcome(m.month, ci)); }
+      ol.appendChild(li);
+      items.push(li);
+    }
+    // The agent's belief log for the month: a one-line preview, the full text on hover.
+    for (const text of m.notes || []) {
+      const li = Object.assign(document.createElement("li"), { className: "note", textContent: text });
+      li.setAttribute("data-tip", text);
+      ol.appendChild(li);
+    }
+    sec.append(h, ol);
+    log.appendChild(sec);
+    return sec;
+  });
+  // Arrows in the log's left gutter, from each order to the line where it was received or cancelled.
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const arrowSvg = document.createElementNS(SVGNS, "svg");
+  arrowSvg.setAttribute("class", "arrows");
+  arrowSvg.setAttribute("aria-hidden", "true");
+  arrowSvg.innerHTML = '<defs>' + ["buy", "stock"].map((kind) =>
+    `<marker id="ah-${kind}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto">` +
+    `<path d="M0 0L6 3L0 6z" style="fill:var(--cmd-${kind});stroke:none"/></marker>`).join("") + '</defs><g></g>';
+  log.prepend(arrowSvg);
+  const arrowG = arrowSvg.querySelector("g");
+  const drawArrows = (k) => {
+    arrowG.replaceChildren();
+    arrowSvg.style.height = "0";   // measure the log without the old arrows' height
+    arrowSvg.style.height = `${log.scrollHeight}px`;
+    const gx = 24, cy = (li) => li.offsetTop + li.offsetHeight / 2;
+    for (let m = 0; m < k; m++) RUN.months[m].deliveries.forEach((d, di) => {
+      const to = evtItems[m] && evtItems[m][di];
+      if (!to) return;
+      for (const [om, oi] of d.orders || []) {
+        const from = logItems[om] && logItems[om][oi];
+        if (!from) continue;
+        const y1 = cy(from), y2 = cy(to), bend = Math.min(20, 6 + (y2 - y1) / 12);
+        const path = document.createElementNS(SVGNS, "path");
+        const kind = d.move ? "stock" : "buy";
+        path.setAttribute("d", `M${gx},${y1} C${gx - bend},${y1} ${gx - bend},${y2} ${gx - 1},${y2}`);
+        path.style.stroke = `var(--cmd-${kind})`;
+        path.setAttribute("marker-end", `url(#ah-${kind})`);
+        arrowG.appendChild(path);
+      }
+    });
+  };
+  // Pending buy orders at month k: the original command and how much of it is still to come.
+  const pendingPane = document.getElementById("pending"), pendingList = pendingPane.querySelector("ol");
+  const pendingEmpty = pendingPane.querySelector(".empty");
+  // News: the headlines the agent saw at the start of this month (the start step sees month 0's).
+  const newsPane = document.getElementById("news"), newsList = newsPane.querySelector("ul");
+  let newsShown = null;
+  const showNews = (k) => {
+    const items = RUN.months[Math.max(0, k)].news || [], key = Math.max(0, k);
+    if (key === newsShown) return;
+    newsShown = key;
+    newsList.replaceChildren(...items.map((t) => Object.assign(document.createElement("li"), { textContent: t, className: "fresh" })));
+    newsPane.querySelector(".empty").hidden = items.length > 0;
+  };
+  // Clicking a command in the log lights up where its outcome shows at the current month, without changing month:
+  // the log line where its GPUs arrived (if that is in the past), its outstanding-orders row (if it is still to come),
+  // or the pane row it changed (compute row of the site, a money row).
+  const flashBox = (parent, x, y, w, h) => {
+    const r = svgEl("rect", { class: "outcome-flash", x: x - 2, y: y - 2, width: w + 4, height: h + 4, rx: 2 }, parent);
+    setTimeout(() => r.remove(), 1900);
+    parent.closest(".pane")?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  };
+  const flashEl = (el) => { const b = el.getBBox(); flashBox(el.parentNode, b.x, b.y, b.width, b.height); };
+  const flashLog = (li) => {
+    log.scrollTo({ top: li.offsetTop - (log.clientHeight - li.offsetHeight) / 2, behavior: reduce ? "auto" : "smooth" });
+    lightOn(li);
+    setTimeout(() => lightOff(li), 1600);
+  };
+  const flashSiteRow = (site) => {
+    const i = Object.keys(SITES).indexOf(site);
+    if (i >= 0) flashBox(computeSvg, 0, i * ROW_H + 2, 274, ROW_H - 4);
+  };
+  const flashMoneyRow = (label) => {
+    const t = [...moneySvg.querySelectorAll("text")].find((e) => e.textContent === label);
+    if (t) { const b = t.getBBox(); flashBox(moneySvg, b.x, b.y, 132, b.height); }
+  };
+  const flashNode = (id) => flowNodes[id] && flashEl(flowNodes[id].g.firstElementChild || flowNodes[id].g);
+  const showOutcome = (om, oi) => {
+    const k = month, c = RUN.months[om].commands[oi], t = c.c.split(/\s+/), verb = t[0];
+    const ref = `${om},${oi}`, pendingRow = [...pendingList.children].find((li) => li.dataset.ref === ref);
+    if (verb === "buy_gpus" || verb === "move_gpus") {
+      let last = null;   // the latest arrival (or cancellation) already in the log
+      for (let m = 0; m < k; m++) RUN.months[m].deliveries.forEach((d, di) => {
+        if ((d.orders || []).some(([a, b]) => a === om && b === oi) && evtItems[m] && evtItems[m][di]) last = evtItems[m][di];
+      });
+      if (last) flashLog(last);
+      if (pendingRow) flashLog(pendingRow);
+      if (!last && !pendingRow) flashNode(verb === "move_gpus" ? t[4] : t.find((x) => x in SITES));
+      return;
+    }
+    if (verb === "contract_power") {
+      const p = (M(k).power || []).find((q) => q.ref && q.ref[0] === om && q.ref[1] === oi);
+      if (p && p.start > Math.max(k, 0) && pendingRow) return flashLog(pendingRow);
+      return flashSiteRow(t[2]);
+    }
+    if (verb === "reserve" || verb === "set_spot" || verb === "exercise_option") {
+      const site = t.find((x) => x in SITES);
+      flashSiteRow(site);
+      flashNode(`cloud-${site}`);
+      if (verb === "exercise_option") flashMoneyRow("options");
+      return;
+    }
+    if (verb === "buy_option") return flashMoneyRow("options");
+    if (verb === "resell_gpus") { flashMoneyRow("resale"); flashNode(t.find((x) => x in SITES)); }
+  };
+  const showPending = (k) => {
+    pendingList.replaceChildren();
+    for (const [om, oi, left] of M(k).pending || []) {
+      const c = RUN.months[om].commands[oi];
+      if (!c) continue;
+      const li = document.createElement("li"), cmd = document.createElement("span"), q = document.createElement("span");
+      colourTokens(cmd, c.c.split(/\s+/), "buy");
+      q.className = "left";
+      q.textContent = fmtQ(left);
+      q.title = `${fmtQ(left)} GPUs still to arrive`;
+      li.append(cmd, q);
+      li.dataset.ref = `${om},${oi}`;
+      // Clicking an order scrolls the log to the command that placed it and lights that line for a moment.
+      li.addEventListener("click", () => {
+        const target = logItems[om] && logItems[om][oi];
+        if (!target) return;
+        log.scrollTo({ top: target.offsetTop - (log.clientHeight - target.offsetHeight) / 2, behavior: reduce ? "auto" : "smooth" });
+        lightOn(target);
+        setTimeout(() => lightOff(target), 1600);
+      });
+      pendingList.appendChild(li);
+    }
+    // Power contracts signed but not yet switched on.
+    for (const p of (M(k).power || []).filter((p) => p.ref && p.start > Math.max(k, 0)).sort((a, b) => a.start - b.start)) {
+      const [om, oi] = p.ref, c = RUN.months[om].commands[oi];
+      const li = document.createElement("li"), cmd = document.createElement("span"), q = document.createElement("span");
+      colourTokens(cmd, c.c.split(/\s+/), "power");
+      q.className = "left";
+      q.textContent = `from ${p.start}`;
+      q.setAttribute("data-tip", `Switches on at month ${p.start}`);
+      li.append(cmd, q);
+      li.dataset.ref = `${om},${oi}`;
+      li.addEventListener("click", () => {
+        const target = logItems[om] && logItems[om][oi];
+        if (!target) return;
+        log.scrollTo({ top: target.offsetTop - (log.clientHeight - target.offsetHeight) / 2, behavior: reduce ? "auto" : "smooth" });
+        lightOn(target);
+        setTimeout(() => lightOff(target), 1600);
+      });
+      pendingList.appendChild(li);
+    }
+    pendingEmpty.hidden = pendingList.children.length > 0;
+  };
+  const showLog = (k) => {
+    logSections.forEach((sec, i) => { sec.hidden = i > k; sec.classList.toggle("now", i === k); });
+    logEmpty.hidden = k >= 0;
+    drawArrows(k);
+    log.scrollTop = log.scrollHeight;
+    showPending(k);
+    showNews(k);
+    updateMore();
+  };
+
+  // Scroll hints for the panes that scroll: a fade and chevron at the top or bottom edge while there is more that way.
+  const morePanes = ["log", "news", "pending"].map((id) => {
+    const pane = document.getElementById(id), h2 = pane.querySelector(":scope > h2");
+    const top = Object.assign(document.createElement("div"), { className: "more top" });
+    const bot = Object.assign(document.createElement("div"), { className: "more bot" });
+    top.setAttribute("aria-hidden", "true"); bot.setAttribute("aria-hidden", "true");
+    h2.after(top);
+    pane.append(bot);
+    const update = () => {
+      top.style.top = `${h2.offsetHeight - 10}px`;
+      top.classList.toggle("on", pane.scrollTop > 2);
+      bot.classList.toggle("on", pane.scrollTop + pane.clientHeight < pane.scrollHeight - 2);
+    };
+    pane.addEventListener("scroll", update, { passive: true });
+    return update;
+  });
+  const updateMore = () => morePanes.forEach((u) => u());
+  addEventListener("resize", updateMore);
+  // Step animation for the panes: they redraw from scratch each step, so match old and new marks by a key (bars by
+  // their row, tooltip name and order; numbers by where they sit), then grow each bar from its old extent to its new
+  // one and flash each number whose text changed.
+  const PANE_SVGS = () => document.querySelectorAll(".panes svg[id], .pane.training svg[id]");
+  const markKey = (el, svg, seen) => {
+    const g = el.parentNode === svg ? "" : el.parentNode.getAttribute("transform") || el.parentNode.id || "g";
+    const base = el.tagName === "text"
+      ? `${svg.id}|t|${g}|${el.getAttribute("x")}|${el.getAttribute("y")}`
+      : `${svg.id}|r|${g}|${Math.round(+el.getAttribute("y"))}|${(el.getAttribute("data-tip") || "").split(":")[0]}`;
+    const n = seen.get(base) || 0;
+    seen.set(base, n + 1);
+    return `${base}|${n}`;
+  };
+  const snapPanes = () => {
+    const snap = new Map();
+    for (const svg of PANE_SVGS()) {
+      const seen = new Map();
+      for (const el of svg.querySelectorAll("rect, text")) {
+        snap.set(markKey(el, svg, seen), el.tagName === "text" ? el.textContent : [+el.getAttribute("x") || 0, +el.getAttribute("width") || 0]);
+      }
+    }
+    return snap;
+  };
+  const TWEEN_MS = 450;
+  let tweens = [];
+  const animatePanes = (snap) => {
+    if (reduce || !snap.size) return;
+    tweens = [];
+    for (const svg of PANE_SVGS()) {
+      const seen = new Map();
+      for (const el of svg.querySelectorAll("rect, text")) {
+        const key = markKey(el, svg, seen), old = snap.get(key);
+        if (el.tagName === "text") {
+          if (old !== undefined && old !== el.textContent) { el.classList.remove("flash"); el.getBoundingClientRect(); el.classList.add("flash"); }
+          continue;
+        }
+        const x1 = +el.getAttribute("x") || 0, w1 = +el.getAttribute("width") || 0;
+        const [x0, w0] = old || [x1, 0];   // a new bar grows from nothing at its own start
+        if (Math.abs(x0 - x1) < 0.05 && Math.abs(w0 - w1) < 0.05) continue;
+        tweens.push({ el, x0, w0, x1, w1 });
+        el.setAttribute("x", x0); el.setAttribute("width", Math.max(0, w0));
+      }
+    }
+    tweens.start = performance.now();
+  };
+  const stepTweens = (now) => {
+    if (!tweens.length) return;
+    const p = Math.min(1, (now - tweens.start) / TWEEN_MS), e = 1 - (1 - p) ** 3;
+    for (const t of tweens) { t.el.setAttribute("x", t.x0 + (t.x1 - t.x0) * e); t.el.setAttribute("width", Math.max(0, t.w0 + (t.w1 - t.w0) * e)); }
+    if (p >= 1) tweens = [];
+  };
+  const setMonth = (k) => {
+    const snap = snapPanes();
+    month = k;
+    slider.value = String(k + 1);
+    num.value = k < 0 ? "–" : String(k); num.textContent = num.value;
+    ticks.forEach((t, i) => t.classList.toggle("past", i <= k + 1));
+    document.getElementById("prev").disabled = k < 0;
+    document.getElementById("next").disabled = k === LAST;
+    showMonth(k);
+    showLog(k);
+    showParked(k);
+    showGhosts(k);
+    showRent(k);
+    showTraining(k);
+    showStatus(k);
+    showDemand(k);
+    showCompute(k);
+    showPowerGlobe(k);
+    showMoney(k);
+    showPrices(k);
+    animatePanes(snap);
+    paneHl = undefined;   // panes were redrawn; re-apply the hover highlight
+  };
+  // Show month k now; the deliveries between the old and new month fly on top.
+  // Where money changed hands on the step into month k: last month's month-end charges at each site and refunds at
+  // suppliers, then this month's commands at whoever was paid (or paid out).
+  let moneyPops = [];
+  const POP_MS = 1600;
+  const spawnMoney = (k) => {
+    if (reduce) return;
+    const amounts = new Map();
+    const add = (anchor, v) => { if (anchor && Math.abs(v) >= 0.05) amounts.set(anchor, (amounts.get(anchor) || 0) + v); };
+    if (k > 0) {
+      const me = RUN.months[k - 1].month_end;
+      for (const [site, v] of Object.entries(me.sites)) add(anchors[site], -v);
+      for (const [src, v] of Object.entries(me.refunds)) add(supplierAnchors[src], v);
+    }
+    for (const c of M(k).commands) {
+      if (!c.ok || !c.cost) continue;
+      const t = c.c.split(/\s+/), b = parseBuy(c.c);
+      add(b ? supplierAnchors[b.src] : t[0] === "move_gpus" ? anchors[t[3]] : t[0] === "resell_gpus" ? anchors[t[t.length - 1]] : null, -c.cost);
+    }
+    for (const [anchor, v] of amounts) moneyPops.push({ anchor, start: performance.now(), el: moneyEl(fmtDelta(v), v < 0 ? "out" : "in") });
+  };
+  const stepMoney = (now) => {
+    moneyPops = moneyPops.filter((pp) => {
+      const q = (now - pp.start) / POP_MS;
+      if (q >= 1) { pp.el.remove(); return false; }
+      pp.anchor.getWorldPosition(centre);
+      const at = screenAt(centre);
+      pp.el.style.transform = `translate(${at.x}px, ${at.y - 22 - 20 * q}px) translateX(-50%)`;
+      pp.el.style.opacity = String(at.facing ? Math.min(1, q / 0.1, (1 - q) / 0.3) : 0);
+      return true;
+    });
+  };
+  const goTo = (k, dur) => {
+    const from = month; setMonth(k); spawnFlights(from, k, dur); if (from !== k) spawnPulses(k); if (k > from) spawnMoney(k);
+    if (from < LAUNCH && k >= LAUNCH && !reduce) startLaunchFx();
+  };
+  // At the launch step: a gen N ring spreads out from the vendor across the ground, and the globe glows gen N once.
+  const startLaunchFx = () => {
+    if (launchFx) supplierAnchors.vendor.remove(launchFx.ring);
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(css("--gen-n")), transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.036, 64), mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.002;
+    supplierAnchors.vendor.add(ring);
+    launchFx = { ring, start: performance.now() };
+  };
+  const stepLaunchFx = (now) => {
+    if (!launchFx) return;
+    const t = (now - launchFx.start) / 1800;
+    if (t >= 1) {
+      supplierAnchors.vendor.remove(launchFx.ring); launchFx.ring.geometry.dispose(); launchFx.ring.material.dispose();
+      launchFx = null; if (occBase) occluderMat.color.copy(occBase); return;
+    }
+    const e = 1 - (1 - t) ** 2;
+    launchFx.ring.scale.setScalar(1 + e * 14);
+    launchFx.ring.material.opacity = 0.9 * (1 - t);
+    if (occBase) occluderMat.color.copy(occBase).lerp(launchFx.ring.material.color, 0.3 * Math.sin(Math.PI * Math.min(1, t * 1.6)));
+  };
+  const setPlaying = (on) => {
+    playing = on;
+    play.dataset.state = on ? "playing" : "paused";
+    play.setAttribute("aria-label", on ? "Pause" : "Play");
+    lastStep = performance.now();
+  };
+  play.addEventListener("click", () => {
+    if (!playing && month >= LAST) { clearAnims(); pulses.forEach((pl) => pl.li && lightOff(pl.li)); pulses = []; setMonth(-1); }
+    setPlaying(!playing);
+  });
+  const prevBtn = document.getElementById("prev"), nextBtn = document.getElementById("next");
+  const stepBy = (d) => {
+    const k = Math.max(-1, Math.min(LAST, month + d));
+    if (k === month) return;
+    setPlaying(false);
+    goTo(k, FLIGHT_MS);
+  };
+  prevBtn.addEventListener("click", () => stepBy(-1));
+  nextBtn.addEventListener("click", () => stepBy(1));
+  slider.addEventListener("input", () => {
+    setPlaying(false);
+    const k = Number(slider.value) - 1;
+    goTo(k, Math.abs(k - month) > 1 ? JUMP_MS : FLIGHT_MS);
+  });
+  setMonth(-1);
+  setPlaying(false);   // start paused
+
+  // Pane explanations, shown on demand from each pane's info button.
+  const INFO = {
+    log: [
+      "Every command the agent sent, by month.",
+      "Italic: what arrived. Shaded: the agent's notes."],
+    flow: [
+      "Suppliers, datacentres and rented cloud, in thousands of GPUs.",
+      "Curves: what moved at the last step."],
+    pending: [
+      "Orders not yet delivered, and power not yet switched on.",
+      "Click one to find it in the log."],
+    compute: [
+      "This month's capacity against expected demand, per site.",
+      "Green line: power. Training: progress in the current window.",
+      "Chart: inference demand so far, and its possible range ahead."],
+    money: [
+      "Cash, credit left, spending so far, and cash over time."],
+    prices: [
+      "What the agent was quoted each month, up to now. Hover a line for this month's price."],
+    news: [
+      "Headlines the agent saw at the start of this month."],
+    training: [
+      "Cash now and its change since last step (hover for the breakdown).",
+      "Score if stopped now: the final score (0 to 1, higher is better) and net cost if the agent sent no more commands.",
+      "Commands used: this month's commands, out of the month's limit."],
+  };
+  const tip = document.getElementById("tip");
+  // A paragraph with a tab in it is a row: label on the left, value on the right.
+  // A paragraph may come as [text, colour]: the label (or the whole line, with no tab) takes that colour.
+  const tipPara = (t) => {
+    const p = document.createElement("p");
+    let color = null;
+    if (Array.isArray(t)) [t, color] = t;
+    if (!t.includes("\t")) { p.textContent = t; if (color) p.style.color = color; return p; }
+    p.className = t.startsWith("total\t") ? "row total" : "row";
+    for (const part of t.split("\t")) p.appendChild(Object.assign(document.createElement("span"), { textContent: part }));
+    if (color) p.firstChild.style.color = color;
+    return p;
+  };
+  const showTip = (btn, paras) => {
+    tip.replaceChildren(...(paras || INFO[btn.dataset.info]).map(tipPara));
+    tip.hidden = false;
+    const r = btn.getBoundingClientRect ? btn.getBoundingClientRect() : btn, w = tip.offsetWidth, h = tip.offsetHeight;   // an element, or a point {left, top, bottom}
+    const left = Math.min(Math.max(8, r.left - 12), innerWidth - w - 8);
+    const top = r.bottom + 8 + h > innerHeight - 8 ? r.top - h - 8 : r.bottom + 8;
+    tip.style.left = `${left}px`; tip.style.top = `${Math.max(8, top)}px`;
+    requestAnimationFrame(() => tip.classList.add("show"));
+  };
+  const hideTip = () => { tip.classList.remove("show"); tip.hidden = true; };
+  for (const btn of document.querySelectorAll(".info")) {
+    btn.addEventListener("pointerenter", () => showTip(btn));
+    btn.addEventListener("pointerleave", hideTip);
+    btn.addEventListener("focus", () => showTip(btn));
+    btn.addEventListener("blur", hideTip);
+  }
+  // Bars and figures carry their own explanation in data-tip; panes redraw every step, so listen on the document.
+  let tipEl = null;
+  document.addEventListener("pointerover", (e) => {
+    const el = e.target.closest?.("[data-tip]");
+    if (el === tipEl) return;
+    tipEl = el;
+    if (el) showTip(el, el.getAttribute("data-tip").split("\n")); else hideTip();
+  });
+
+  // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.
+  const BASE_DIST = 4.4;
+  let lastFlow = 0;
+  const stepFlow = (now) => {
+    const dt = lastFlow ? Math.min(100, now - lastFlow) : 0;
+    lastFlow = now;
+    for (const [m, base] of flowPairs) m.color.copy(base.color);
+    if (reduce) return;   // no motion: the dashes stay put
+    for (const [m] of flowPairs) m.uniforms.dashOffset.value -= dt * 0.00008;
+    powerDashMat.uniforms.dashOffset.value -= dt * 0.00004;   // signed power creeps in too, more slowly
+  };
+  (function loop(now) {
+    stepFlow(now);
+    stepTweens(now);
+    stepLaunchFx(now);
+    stepObjects(now);
+    if (tipEl && !tipEl.isConnected) { tipEl = null; hideTip(); }   // its pane redrew for another step
+    anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
+    // Light up both ends of every delivery in flight, rising and falling with the flight.
+    const level = new Map(), idLevel = new Map();
+    pulses = pulses.filter((pl) => { const live = now - pl.start < pl.dur; if (!live && pl.li) lightOff(pl.li); return live; });
+    for (const pl of pulses) {
+      const env = Math.sin(Math.PI * ((now - pl.start) / pl.dur));
+      pl.anchors.forEach((anc) => level.set(anc, Math.max(level.get(anc) || 0, env)));
+      pl.ids.forEach((id) => idLevel.set(id, Math.max(idLevel.get(id) || 0, env)));
+    }
+    for (const a of anims) {
+      const env = Math.sin(Math.PI * Math.min(1, (now - a.start) / a.dur));
+      for (const it of a.items) {
+        for (const anc of [it.fromA, it.toA]) level.set(anc, Math.max(level.get(anc) || 0, env));
+        for (const id of [it.fromId, it.toId]) idLevel.set(id, Math.max(idLevel.get(id) || 0, env));
+      }
+    }
+    stepFocus(now);
+    stepMoney(now);
+    const hl = hoverGlobe || hoverFlow || hoverPane;
+    if (hl !== paneHl) {
+      paneHl = hl;
+      document.querySelectorAll(".ent-hl").forEach((el) => el.classList.remove("ent-hl"));
+      if (hl) document.querySelectorAll(`[data-ent="${hl}"]`).forEach((el) => el.classList.add("ent-hl"));
+    }
+    // Parked moves stay hidden while move flights are in the air, so the blocks are never drawn twice.
+    const moving = anims.some((a) => a.items.some((it) => it.move));
+    parked.visible = !moving;
+    flowParkedG.style.display = moving ? "none" : "";
+    pickGlobe();
+    // Hover fades in and out rather than switching.
+    const dt = Math.min(100, now - (lastFrame || now)); lastFrame = now;
+    for (const id of pickIds.values()) {
+      const target = id === hoverGlobe || id === hoverFlow || id === hoverPane ? 1 : 0, h = hoverLevel.get(id) || 0;
+      const v = h + (target - h) * Math.min(1, dt / HOVER_MS);
+      hoverLevel.set(id, v);
+      if (v > 0.001) { level.set(anchorOf(id), Math.max(level.get(anchorOf(id)) || 0, v)); idLevel.set(id, Math.max(idLevel.get(id) || 0, v)); }
+    }
+    for (const [anc, g] of glows) { g.mat.color.copy(g.colorFrom.color); g.mat.opacity = 0.55 * (level.get(anc) || 0); }
+    flowStep(now, idLevel);
+    if (playing && now - lastStep >= STEP_MS) {
+      lastStep = now;
+      if (month < LAST) goTo(month + 1, FLIGHT_MS);
+      if (month >= LAST) setPlaying(false);
+    }
+    const d = camera.position.length();
+    controls.rotateSpeed = Math.max(0.12, (d - R) / (BASE_DIST - R));
+    // Zoom steps scale with height above the surface (each wheel tick moves a fixed share of the
+    // distance to the centre, which is far too much near the ground), and are gentler overall.
+    controls.zoomSpeed = 0.5 * ((d - R) / d) / ((BASE_DIST - R) / BASE_DIST);
+    controls.update();
+    placeLabels();
+    // While deliveries fly, the far side shows through dimmed; once they land and the run is paused, the globe fades to opaque.
+    const still = !playing && !anims.length, op = occluderMat.opacity;
+    const opTo = op + ((still ? 1 : 0.72) - op) * Math.min(1, dt / 400);
+    occluderMat.opacity = Math.abs(opTo - (still ? 1 : 0.72)) < 0.01 ? (still ? 1 : 0.72) : opTo;   // snap the tail, or it creeps for seconds
+    const solid = occluderMat.opacity >= 1;   // fully opaque: write depth so nothing behind is drawn at all
+    if (solid === occluderMat.transparent) { occluderMat.transparent = !solid; occluderMat.depthWrite = solid; occluderMat.needsUpdate = true; }
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })(performance.now());
+})();
+</script>

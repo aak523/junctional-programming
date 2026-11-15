@@ -2,26 +2,33 @@
 
 An RL environment for the AfterQuery "Break the Agent" track (Junction 2026). The agent is compute procurement lead at
 an AI lab for 24 months across three sites (`us`, `eu`, `ap`). It must finish three training runs inside their windows
-and serve each site's inference demand at the lowest settled net cost. To do that it buys GPUs from a vendor (slow,
-allocated) or two brokers (fast, possibly unreliable), reserves cloud capacity, buys and exercises capacity options,
-rents spot, signs power, moves and resells hardware, and manages cash on a credit line. The rules the agent gets are in
-[TASK.md](TASK.md).
+and serve each site's inference demand at the lowest net cost. To do that it buys GPUs directly from a vendor or two
+third-party brokers, reserves cloud capacity, buys and exercises capacity options, rents spot, signs power, moves and
+resells hardware, and manages cash on a credit line. The rules the agent reads are in [TASK.md](TASK.md).
 
-## Judge it in one command
+The supply regime, the next GPU generation's launch month, export controls, inference growth and broker reliability are
+hidden and can change without notice. Their structure and priors are all in TASK.md, so a careful agent can infer them.
+The difficulty is in deciding under that uncertainty: when to commit capital, how much flexibility to pay for, and
+when to explore an untested supplier.
+
+## Run the evaluation
+
+Requirements: bash, Docker, Python 3 and Harbor (`uv tool install harbor`).
 
 ```
 JUDGE_KEY=<any private words> ./judge.sh gemini/gemini-4-hydrogen --api-key-name GEMINI_API_KEY --env-file .env
+JUDGE_KEY=<any private words> ./judge.sh anthropic/<model>          # ANTHROPIC_API_KEY in the shell environment
 ```
 
-`judge.sh` (bash, Docker and `uv tool install harbor`) runs the standard harness on three fixed worlds,
-`harbor/judge/gpu-world-{a,b,c}`: the reference (`-a oracle`), three agent games (`-a opencode`, one per world),
-do-nothing (`-a nop`) and stop-early (`-a oracle --ae STOP_AFTER=3`: the reference for months 0..2, then nothing). It
-ends with one table of the four rewards per world and the verifier's mistake report for each agent game.
+`judge.sh` runs the standard harness (Harbor + OpenCode) on three fixed worlds, `harbor/judge/gpu-world-{a,b,c}`:
+the reference (`-a oracle`), three agent games (`-a opencode`, one per world), do-nothing (`-a nop`) and stop-early
+(the reference for months 0–2, then nothing). It prints the four rewards per world and the verifier's mistake report
+for each agent game. Each game has a 30-minute budget, and the reference plays in about 70 s.
 
-The worlds are evaluation seeds 4, 8 and 9: the three whose reference reward is closest to the median of seeds 0–9,
-not its best worlds. Their seeds are in this public repo and the agent has internet access, so set `JUDGE_KEY`: it
-turns each seed into a private one, the same on every run with the same key. The reference is deterministic for a
-seed, so it reproduces exactly. Without a key it scores the numbers below.
+The worlds are evaluation seeds 4, 8 and 9: the three whose reference reward is closest to the median of seeds 0–9.
+This repo is public and the agent has internet access, so `JUDGE_KEY` hashes each seed into a private one (the same key
+gives the same worlds on every run). The reference is deterministic for a seed. Without a key, Harbor reproduces
+these numbers to the fourth decimal (`harbor/jobs/judge-{reference,nop,stop-early}-check/`):
 
 | world | seed | reference | do-nothing | stop-early |
 |---|---|---|---|---|
@@ -29,151 +36,92 @@ seed, so it reproduces exactly. Without a key it scores the numbers below.
 | gpu-world-b | 8 | 0.899 | 0 | 0 |
 | gpu-world-c | 9 | 0.922 | 0 | 0.070 |
 
-## Status (15 Nov 2026)
+`harbor run -p harbor/gpu-world ...` plays a fresh random world per trial instead.
 
-| Model | World | Games | Model reward | Reference reward, same worlds | Model as % of reference |
+## Reward
+
+Reward = (oracle net cost / agent net cost, capped at 1) × (share of the three training runs met). The oracle is the
+same LP planner as the reference but given the true future (`world.score`). Missing a run keeps at most 2/3, so doing
+nothing scores 0. The verifier scores from the world server's ledger, using a token the agent never sees.
+
+Scripted ladder on evaluation seeds 0–9 (`python scripts/ladder.py 0 10`):
+
+| | do-nothing | stop-early | spot-only | exploiter | committer | **reference** | oracle |
+|---|---|---|---|---|---|---|---|
+| mean net cost ($M) | 3,401 | 3,134 | 2,391 | 1,460 | 896 | **790** | 734 |
+| mean reward | 0 | 0.023 | 0.096 | 0.374 | 0.806 | **0.922** | 1 |
+
+The exploiter tries buy-and-flip GPUs, contracts running past the horizon, options bought and never used, and orders
+left undelivered at the end. It costs at least 1.59× the reference on every seed.
+
+**Reference** (`gpu_world/policies.py`, `gpu_world/lp.py`): a Bayesian filter over every hidden factor feeds a linear
+programme solved over 24 futures sampled from the posterior, re-planned every month. It sees exactly what the agent
+sees, and its settings were tuned on seeds 100+ only.
+
+## Results: frontier agents
+
+| Agent (Harbor + OpenCode) | Rules | Games | Agent reward | Reference, same worlds | Agent as % of reference |
 |---|---|---|---|---|---|
-| Gemini 4 Hydrogen, v5 games re-scored against the fixed reference and oracle | v5 | 5 | 0.69–0.89 (mean 0.80) | 0.89–0.97 (mean 0.92) | 78–97% (mean 87%) |
-| Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v5 | 5 | 0.69–1.00 (mean 0.85) | 0.84–0.92 (mean 0.88) | 82–110% (mean 96%, standard error 4.5%) |
-| Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v4 | 5 | 0.79–0.97 | 0.87–0.99 | 89–98% (mean 92%) |
-| Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
-| Claude Fable 5 (Harbor + OpenCode) | v4 | 1 | 0.64 | 0.97 | 65% |
-| Gemini 4 Carbon (Harbor + OpenCode) | v3 | 5 | 0.25–0.37 | 0.80–0.94 | too slow to finish 24 months in 30 min |
+| Gemini 4 Hydrogen | v5 (current) | 5 | 0.69–0.89 (mean 0.80) | 0.89–0.97 (mean 0.92) | 78–97% (mean 87%), below in 5 of 5 |
+| Claude Fable 5 | v4 (legacy) | 1 | 0.64 | 0.97 | 65% |
 
-Reward = oracle net cost / agent net cost, capped at 1, times the share of the three training runs met (`world.score`;
-1 = as good as the perfect-information oracle). Missing a run keeps at most 2/3, so doing nothing scores 0 and
-stopping after 3 months 0.02 on average. Every game in the table met all three runs, so the scaling leaves it unchanged.
-Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
+Per-game results are in [`harbor/jobs/hydrogen-v5-paired/PAIRED.md`](harbor/jobs/hydrogen-v5-paired/PAIRED.md) and
+[`harbor/jobs/fable-5-v4/REPORT.md`](harbor/jobs/fable-5-v4/REPORT.md). Every verifier run attaches a mistake report
+that compares the agent's game with the reference's on the same world (`diagnosis` in `verifier/details.json`;
+`python gpu_world/compare.py harbor/jobs/<job>` prints it). Across Hydrogen's five games:
 
-- **v5 changed the rules to price Hydrogen's hedge.** Inference grows 4% or 8% a month, gen N launches in months 9–15,
-  used gen H loses 50% at launch, GPUs lose 4% of their value a month and positive cash earns 0.75% a month. Replaying
-  Hydrogen's 8 recorded v4 games in the same worlds with only the cost changes dropped it from 91% to 84% of the reference.
-- **The gap did not widen in play.** Hydrogen still buys a hardware pile early ($430–730M of GPUs vs the reference's
-  $50–260M), over-fills the first window (71–124 kH-months vs 60) and never tries broker B, and it is below the
-  reference in 4 of 5 games. But the same rules pushed the reference into leasing almost everything: in seed 1005
-  (tight supply for 21 of 24 months, 8% growth) it bought $93M of GPUs, left $258M of contracts running past month 23,
-  and lost to both Hydrogen and the oracle (which bought $265M).
-- **Most of that was a bug in the planners, not the rules.** When the LP planned to buy capacity options and exercise
-  them in the same month, the reference and the oracle exercised before buying, so the exercise slipped a month, and in
-  tight supply the lost month had to be bought back at a premium. With options bought first, the oracle on seed 1005
-  costs 1075 instead of 1226 (its LP bound is 1044) and the reference 1130 instead of 1354. The guard that exercised
-  options a month before a deadline was patching the same bug; it is gone (on seed 1003 it cost $50M for nothing).
-  Hydrogen's games do not depend on this code, so re-scoring them is exact: 87% of the reference, below it in all 5.
-- **An offline stand-in measures the gap without model credits.** `Committer` is the reference made to buy
-  Hydrogen's early fleet (9k gen H in months 0–2, 9k gen N at launch, at one site) and plan everything else around
-  it. On the five paired worlds it scores 85–99% of the reference where Hydrogen's re-scored games are at 78–97%. `gap.py` plays it
-  against the reference: on tuning seeds 100–139 it was at 90.0% of the reference (above it on 6 of 40) before the fix
-  and 86.5% (standard error 1.4%, above it on 1) after; on evaluation seeds 0–9 it is at 87.2% (above it on none).
-- **What is left between the reference and the oracle is mostly unknowable.** Revealing one hidden factor at a time
-  to the reference (tuning seeds 100–111, a $50M gap): everything its filter estimates (the current regime, launch
-  month, growth and broker reliability) together saves under $3M; the future supply path saves $30M (59% of the gap)
-  and the future demand path $8M (15%). Re-tuned after the fix, sharing decisions across the sampled futures for 2
-  months instead of 3 saves $8M (better on 11 of 12 seeds). A scenario tree (futures sharing their history and
-  decisions in groups up to a branch month), 48 futures instead of 24, and the other knobs did not help.
-- **Claude Fable 5 lost by the most so far**, at 65% of the reference in its one v4 game ([results/fable5_v4.md](results/fable5_v4.md)):
-  it met all three windows with no penalties and finished in 13 of its 30 minutes, but bought 2.15x the compute window 1
-  needed on the credit line ($70M of interest against the reference's zero), then liquidated the surplus at a loss.
+- **It buys a hardware pile early.** It spends $427–730M on GPUs where the reference spends
+  $49–231M, pays $26–97M more for power, and gets only part of that back from resale and the end-of-game mark.
+- **It over-fills the first training run.** It delivers 1.18–2.07× the 60 kH-months that run 1 needs. The
+  reference delivers 1.02–1.05× on every run.
+- **It does not explore.** It never orders from broker B in 4 of 5 games (and from neither broker in 2), while its
+  own notes call the brokers untested for up to 23 months. The reference probes both brokers in month 0.
+- **It reads the market correctly.** Its notes name the supply regime correctly in 89 of the 101 months where they
+  state one. The gap is in its decisions, not in missing information.
 
-The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
+Fable 5 shows the same over-commitment on credit. It bought 2.15× the compute that window 1 needed, which took its
+cash down to −$343M and cost $70M in interest (the reference paid none).
 
-## Why agents lose
+## Results: training a small open model
 
-Every verifier run attaches a mistake report (`diagnosis` in `details.json`, findings in `test-stdout.txt`): the
-agent's game against the reference's on the same world. `python compare.py harbor/jobs/hydrogen-v5-paired` prints
-it for Hydrogen's five v5 games. The pattern is the same in all five:
+We fine-tuned Qwen3-4B-Instruct-2507 (LoRA) on the environment's experience: behaviour cloning on the reference's
+games, then DAgger rounds in which the reference relabels the states the student actually reached. The model plays one
+month per message through the same command path as Harbor. Mean reward on 30 held-out worlds (greedy, this reward):
 
-- **It buys a hardware pile early.** It spent $427–730M on GPUs against the reference's $49–231M and paid for it in
-  power ($26–97M more), then took back only part of it in resale and the end-of-game mark.
-- **It over-fills the first training run.** It delivered 1.18–2.07x the 60 kH-months run 1 needed; the reference
-  delivers 1.02–1.05x on every run.
-- **It does not explore.** It never ordered from broker B in 4 of 5 games (in 2, from neither broker) while its notes
-  called the brokers untested or unknown in up to 23 months. The reference probes each broker in month 0.
-- **It reads the market correctly.** Its notes named the supply regime right in 89 of the 101 months that stated one.
-  The gap is in the decisions, not in missing information.
-
-Claude Fable 5's v4 game ([results/fable5_v4.md](results/fable5_v4.md)) shows the same over-commitment on credit:
-2.15x window 1's need, cash down to -$343M and $70M of interest against the reference's zero.
-
-## Why it is hard: where 2025–26 research says agents fail
-
-| Mechanic | Failure it targets | Evidence |
+| policy | reward | worlds with all 3 runs met |
 |---|---|---|
-| Three sites: local inference demand, separate power, caps and prices; GPUs move at a cost | long-horizon bookkeeping across interacting parts | RetailBench 2026 (agents lose track of items over long horizons) |
-| Capacity options (pay now for the right to reserve later at a fixed price, outside the caps) | valuing flexibility instead of over-committing | our Gemini runs (over-provisioning) |
-| Two brokers whose reliability is learned only by ordering; a reliable one can decay silently | exploration; judging suppliers on price | Krishnamurthy et al. 2024; RetailBench 2026 |
-| Inference growth switches silently; the regime switches without notice | acting on silent change (the knowing-doing gap) | STOCKTAKE 2026; WildGrid 2026 |
-| Long lead times, first-in-first-out allocation, power lead times, windowed training runs | in-transit orders and long commitments | Beer Game LLM studies (AAMAS 2026; Long et al. 2026); AIM-Bench |
-| Cash earns 0.75%/month, debt costs 2%/month; GPUs lose 4% of their value a month and 50% at the next-gen launch | over-insurance: idle cash and idle hardware both cost money | our Gemini runs |
-| Monthly `note` belief log | separates knowing from doing when explaining failures | STOCKTAKE |
+| do nothing | 0.00 | 0 / 30 |
+| Qwen3-4B, untrained | 0.12 | 1 / 30 |
+| after behaviour cloning (SFT) | 0.23 | 5 / 30 |
+| after DAgger round 3 | 0.46 | 12 / 30 |
+| **after DAgger round 4** | **0.57** | **21 / 30** |
+| reference | 0.92 | 30 / 30 |
 
-## Design
+Each DAgger round beat the previous model on the same worlds: +0.225 over SFT (standard error 0.044) and then +0.112
+(standard error 0.038). Changes to the SFT recipe (a short prompt, twice the data, Qwen3-8B, the fixed reference as
+teacher) stayed within run-to-run noise, and DPO and imitating its own best games did worse than plain relabelling.
+The best model still misses 10 of 90 training runs and over-leases. Method, all results and replay commands:
+[train/README.md](train/README.md).
 
-- **Seeded, no LLM inside the world.** `world.py` draws all randomness up front, so every policy faces the same world for a seed.
-- **Hidden state:** the supply regime, the gen N launch month, export controls, inference growth and its silent switch,
-  and broker reliability and its silent decay. The structure and priors are all in TASK.md; only the realised values are hidden.
-- **Reference, oracle and bound** (`policies.py`, `lp.py`):
-  - **reference:** a Bayesian filter over every hidden factor feeds a linear programme. Each month it solves the LP
-    over 24 futures sampled from the posterior, keeps this month's and next month's decisions common to all of them, and plays
-    this month's. A guard covers the cliff of a missed training run: in a window's last month it tops up spot to the
-    gap that capacity already certain leaves. It sees exactly what the agent sees,
-    and its knobs were tuned on seeds 100+ only.
-  - **oracle:** the same LP given the true future, played in the real world. It is a strong benchmark, not a strict
-    bound (the reference occasionally beats it).
-  - **LP bound:** the LP solved once over the whole horizon, a relaxation of the world.
-- **Isolation (Harbor):** the agent's container has only a `gpu` client. The world runs in a sidecar container that draws
-  a secret 48-bit seed per trial; the verifier settles the episode with a token the agent never sees.
+## Compute
 
-## Ladder (v5, evaluation seeds 0–9)
-
-| | do_nothing | stop_early | spot_only | exploiter | committer | **reference** | oracle | LP bound |
-|---|---|---|---|---|---|---|---|---|
-| mean net cost ($M) | 3,401 | 3,134 | 2,391 | 1,460 | 896 | **790** | 734 | 703 |
-| mean reward | 0 | 0.023 | 0.096 | 0.374 | 0.806 | **0.922** | 1 | |
-
-The reference meets all three training runs on every seed and scores 0.92 on average (0.85 at worst). Doing nothing
-scores 0 and stopping after 3 months 0.023 (0.10 at most: it meets the first run on 3 of 10 seeds). Every baseline costs at least 2.5x the reference on every seed, the
-exploiter at least 1.59x (1.86x on average), and the committer (early fleet, otherwise the reference) at least 1.05x
-(1.16x on average). The exploits tried were buy-and-flip GPUs,
-contracts past the horizon, options bought and never used, undelivered orders at the end, and stopping after 3 months.
-
-## Run it
-
-```
-# Harbor (needs Docker and `uv tool install harbor`)
-harbor run -p harbor/gpu-world -a oracle                                   # the reference solution
-harbor run -p harbor/gpu-world -a opencode -m gemini/gemini-4-hydrogen \
-    --api-key-name GEMINI_API_KEY -k 3 -n 3                                   # GEMINI_API_KEY in the shell environment
-harbor run -p harbor/gpu-world -a opencode -m anthropic/<model> -k 3 -n 3  # ANTHROPIC_API_KEY
-
-# Paired comparison on fixed worlds (what the status table reports): one task per seed, then run them all
-for s in 1001 1002 1003 1004 1005; do python build_harbor.py --seed $s --out paired/v5-s$s; done
-harbor run -p paired -a opencode -m gemini/gemini-4-hydrogen --api-key-name GEMINI_API_KEY --env-file .env -k 1 -n 4
-
-# Local tools
-python ladder.py 0 10 results/ladder.json   # scripted ladder + LP bound on seeds 0..9 (a few minutes)
-python gap.py 100 40                        # committer vs reference on tuning seeds 100..139: the offline gap (~15 min)
-python tune_lp.py 12 7                      # one reference knob at a time on tuning seeds 100..111 (~20 min)
-python compare.py harbor/jobs/<job>         # the mistake report for each trial, vs the reference on the same world
-python trace.py reference 3                 # month-by-month trajectory of a ladder policy
-python build_harbor.py                      # regenerate harbor/gpu-world from the sources
-```
-
-Each Harbor trial writes `verifier/reward.txt` and `verifier/details.json`: the world's seed, the reference,
-do-nothing and stop-early scores on that world, the mistake report, and the agent's belief notes and actions.
+- **Gemini API:** the frontier runs above are Gemini 4 Hydrogen (`gemini/gemini-4-hydrogen`) inside OpenCode, run
+  through Harbor with the key passed via `--api-key-name GEMINI_API_KEY`.
+- **Verda cloud:** the open-weight model is post-trained on on-demand Verda GPU instances, which
+  `train/cloud/box.py` creates and deletes: an A100 80GB for the main line and an 8x RTX PRO 6000 box for the
+  follow-up experiments, $63 in total.
 
 ## Layout
 
 | Path | What it is |
 |---|---|
-| `world.py` | the simulator |
-| `lp.py`, `policies.py` | the LP model, the Bayesian reference, the oracle and the baselines |
-| `service.py`, `server.py` | the command interface and the Harbor sidecar server |
 | `TASK.md` | the rules the agent reads |
-| `build_harbor.py`, `harbor/gpu-world/` | the Harbor task and its generator |
-| `judge.sh`, `harbor/judge/` | the judges' one-command evaluation and its three fixed-world tasks |
-| `ladder.py`, `gap.py`, `tune_lp.py`, `compare.py`, `trace.py`, `missrate.py` | local tools (see Run it); `gap.py` is the offline proxy for a frontier agent's gap; `compare.py` also writes the verifier's mistake report |
-| `harbor/jobs/` | v4 and v5 Harbor runs (reference solution, Gemini 4 Hydrogen, Claude Fable 5) |
-| `results/ladder.json` | the v5 ladder |
-| `results/fable5_v4.md` | the Claude Fable 5 game: cost breakdown against the reference on its world |
-| `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
-| `docs/HANDOFF.md` | the original challenge brief and design notes |
+| `judge.sh` | the one-command evaluation |
+| `gpu_world/` | the environment: simulator (`world.py`), command interface (`service.py`), Harbor world server (`server.py`), reference, oracle and baselines (`policies.py`, `lp.py`), mistake report (`compare.py`) |
+| `harbor/gpu-world/`, `harbor/judge/` | the Harbor tasks (random world per trial; the three judge worlds), generated by `scripts/build_harbor.py` |
+| `harbor/jobs/` | recorded Harbor runs, with write-ups |
+| `scripts/` | offline tools: `ladder.py` (the table above), `gap.py` (an offline stand-in for the frontier gap), `tune_lp.py` (reference tuning), `missrate.py` (reference run misses), `trace.py` (one policy's trajectory) |
+| `globe/` | 3D replay of recorded games (`globe/globe.html`) |
+
+Inside the Harbor task, the agent's container has only a `gpu` client. The world runs in a sidecar container, so there
+are no game files or seeds for the agent to read.
