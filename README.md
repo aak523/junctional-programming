@@ -84,14 +84,32 @@ cash down to −$343M and cost $70M in interest (the reference paid none).
 
 ## Results: training a small open model
 
-_Placeholder: results of the RL post-training run in progress._
+We fine-tuned Qwen3-4B-Instruct-2507 (LoRA) on the environment's experience: behaviour cloning on the reference's
+games, then DAgger rounds in which the reference relabels the states the student actually reached. The model plays one
+month per message through the same command path as Harbor. Mean reward on 30 held-out worlds (greedy, this reward):
+
+| policy | reward | worlds with all 3 runs met |
+|---|---|---|
+| do nothing | 0.00 | 0 / 30 |
+| Qwen3-4B, untrained | 0.12 | 1 / 30 |
+| after behaviour cloning (SFT) | 0.23 | 5 / 30 |
+| after DAgger round 3 | 0.46 | 12 / 30 |
+| **after DAgger round 4** | **0.57** | **21 / 30** |
+| reference | 0.92 | 30 / 30 |
+
+Each DAgger round beat the previous model on the same worlds: +0.225 over SFT (standard error 0.044) and then +0.112
+(standard error 0.038). Changes to the SFT recipe (a short prompt, twice the data, Qwen3-8B, the fixed reference as
+teacher) stayed within run-to-run noise, and DPO and imitating its own best games did worse than plain relabelling.
+The best model still misses 10 of 90 training runs and over-leases. Method, all results and replay commands:
+[train/README.md](train/README.md).
 
 ## Compute
 
 - **Gemini API:** the frontier runs above are Gemini 4 Hydrogen (`gemini/gemini-4-hydrogen`) inside OpenCode, run
   through Harbor with the key passed via `--api-key-name GEMINI_API_KEY`.
 - **Verda cloud:** the open-weight model is post-trained on on-demand Verda GPU instances, which
-  `train/cloud/box.py` creates and deletes (on the `train` branch, PR #1).
+  `train/cloud/box.py` creates and deletes: an A100 80GB for the main line and an 8x RTX PRO 6000 box for the
+  follow-up experiments, $63 in total.
 
 ## Layout
 
