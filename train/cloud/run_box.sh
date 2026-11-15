@@ -3,12 +3,12 @@
 # usage (on the box, in /root/jp, inside tmux): bash train/cloud/run_box.sh <stage>
 # stages: gen baselines base_smoke base mask sft sft_full sample relabel round2 round3
 set -o pipefail
-cd /root/jp
+cd "$(dirname "$0")/../.."   # the checkout this script lives in
 . /root/venv/bin/activate
 export HF_HUB_ENABLE_HF_TRANSFER=1 TOKENIZERS_PARALLELISM=false
 BASE=Qwen/Qwen3-4B-Instruct-2507
 EVAL="--seeds 0 10 --seeds 20000 20020"
-P=$(( $(nproc) - 2 ))
+P=${PROCS:-$(( $(nproc) - 2 ))}
 # A100 measurements: batch 1 x accum 16, no activation checkpointing, Liger fused loss = 6.1k tok/s (3.2x the defaults);
 # an example is ~5.2k tokens, so SFT uses a random 4,800 of the 9,600 teacher examples (~70 min)
 SFT_LIMIT=${SFT_LIMIT:-4800}
