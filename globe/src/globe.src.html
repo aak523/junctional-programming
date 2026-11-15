@@ -96,6 +96,17 @@
   .pending .t-us { color: var(--site-us); } .pending .t-eu { color: var(--site-eu); } .pending .t-ap { color: var(--site-ap); }
   .pending .t-sup { color: var(--coast); } .pending .t-h { color: var(--gen-h); } .pending .t-n { color: var(--gen-n); }
   /* The log's heading stays put while the commands scroll under it. */
+  /* Scrolling panes: the heading stays put, and a fade with a chevron at either edge says there is more that way. */
+  .pane.news > h2, .pane.pending > h2 { position: sticky; top: -10px; z-index: 1; margin: -10px -12px 0; padding: 10px 12px 6px; background: var(--bg); }
+  .more { position: sticky; z-index: 1; height: 18px; flex: none; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    display: flex; justify-content: center; font-size: 9px; line-height: 1; color: var(--muted); }
+  .more.on { opacity: 1; }
+  .more.top { margin-bottom: calc(-18px - var(--gap, 0px)); align-items: flex-start; background: linear-gradient(var(--bg) 30%, transparent); }
+  .more.bot { bottom: -10px; margin-top: calc(-18px - var(--gap, 0px)); margin-bottom: -10px; padding-bottom: 10px; box-sizing: content-box;
+    align-items: flex-end; background: linear-gradient(transparent, var(--bg) 60%); }
+  .more.top::before { content: "▲"; }
+  .more.bot::before { content: "▼"; }
+  .log { --gap: 10px; }
   .pane.log > h2 { position: sticky; top: -10px; z-index: 1; margin: -10px -12px -4px -26px; padding: 10px 12px 6px 12px; background: var(--bg); }
   .log section { display: flex; flex-direction: column; gap: 4px; }
   .log section[hidden] { display: none; }
@@ -1736,8 +1747,27 @@ const RUN = __RUN__;
     log.scrollTop = log.scrollHeight;
     showPending(k);
     showNews(k);
+    updateMore();
   };
 
+  // Scroll hints for the panes that scroll: a fade and chevron at the top or bottom edge while there is more that way.
+  const morePanes = ["log", "news", "pending"].map((id) => {
+    const pane = document.getElementById(id), h2 = pane.querySelector(":scope > h2");
+    const top = Object.assign(document.createElement("div"), { className: "more top" });
+    const bot = Object.assign(document.createElement("div"), { className: "more bot" });
+    top.setAttribute("aria-hidden", "true"); bot.setAttribute("aria-hidden", "true");
+    h2.after(top);
+    pane.append(bot);
+    const update = () => {
+      top.style.top = `${h2.offsetHeight - 10}px`;
+      top.classList.toggle("on", pane.scrollTop > 2);
+      bot.classList.toggle("on", pane.scrollTop + pane.clientHeight < pane.scrollHeight - 2);
+    };
+    pane.addEventListener("scroll", update, { passive: true });
+    return update;
+  });
+  const updateMore = () => morePanes.forEach((u) => u());
+  addEventListener("resize", updateMore);
   // Step animation for the panes: they redraw from scratch each step, so match old and new marks by a key (bars by
   // their row, tooltip name and order; numbers by where they sit), then grow each bar from its old extent to its new
   // one and flash each number whose text changed.
