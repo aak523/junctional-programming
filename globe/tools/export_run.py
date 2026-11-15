@@ -13,7 +13,8 @@ Each month also carries prices: what the agent saw at the start of that month (s
 before the site multiplier, gpu list and broker prices per thousand GPUs, used-market value per thousand GPUs).
 Each month also carries news: the headlines the agent saw at the start of that month.
 Each month also carries options: kH of options held after the month's commands.
-A replayed agent run also carries notes: the agent's belief-log entries written during each month.
+A replayed agent run also carries notes: the agent's belief-log entries written during each month; the reference's
+notes are its beliefs and the reasons for its month's actions.
 
 Each month records the commands the policy sent ([{c, ok}], ok false when the world refused it) and,
 after that month's actions and before the month-end settlement:
@@ -162,11 +163,13 @@ while w.t < W.T:
             power_ref[len(w.power) - 1] = [len(months), len(commands) - 1]
         return r
 
+    notes = NOTES.get(len(months), [])
     if stop is None or w.t < stop:
         try:
             pol(w.observe(), act)
         except ValueError:
             pass
+        notes = notes or getattr(pol, "notes", [])   # a scripted policy's own account of the month (the reference's beliefs)
     owned = {s: {g: round(v, 3) for g, v in w.owned[s].items()} for s in W.SITES}
     cash_now, costs_now, stopped = round(w.cash, 2), costs(w), if_stopped(w)
     power = power_now(w.t)
@@ -216,7 +219,7 @@ while w.t < W.T:
                                  "interest": rep["interest"], "funding": rep.get("funding", W.FUNDING),
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
                                              for b in rep["broker"] if not b["delivered"]}},
-                   "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), []),
+                   "met": {str(d): v for d, v in w.met.items()}, "notes": notes,
                    "power": power, "prices": prices, "news": news, "options": round(w.options, 2)})
 final = months[-1]["if_stopped"]["net_cost"]
 if details is not None and abs(final - details["net_cost"]) > 0.01:
