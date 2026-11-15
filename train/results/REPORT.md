@@ -1,0 +1,46 @@
+# Fine-tuning results
+
+World v5 rules (commit 2303cc6; world.py, lp.py, TASK.md and service.py unchanged since). Rewards use the oracle of commit 1bffa9f, 5403623 (after the options fix in 466fcc7). Greedy decoding, one episode per held-out seed; reward = oracle net cost / net cost, capped at 1 (the Harbor verifier's formula).
+
+## Seeds 0-9
+
+| policy | mean reward | mean net cost ($M) | all 3 runs met | command error rate | forced ends |
+|---|---|---|---|---|---|
+| do nothing (scripted) | 0.214 | 3401 | 0/10 | 0.0% | 0 |
+| Qwen3-4B-Instruct, untrained | 0.246 | 3064 | 1/10 | 48.3% | 8 |
+| SFT on 4,800 teacher months | 0.497 | 1613 | 2/10 | 1.8% | 0 |
+| + DAgger round 2 (relabels + own best episodes) | 0.417 | 1768 | 6/10 | 1.4% | 0 |
+| + DAgger aggregate (unseen teacher + relabels) | 0.583 | 1318 | 4/10 | 1.4% | 0 |
+| teacher: the reference before the options fix | 0.877 | 832 | 10/10 | 0.0% | 0 |
+| current Bayesian-LP reference | 0.922 | 790 | 10/10 | 0.0% | 0 |
+| perfect-information oracle | 1.000 | 734 | 10/10 | 0.0% | 0 |
+
+## Seeds 20000-20019
+
+| policy | mean reward | mean net cost ($M) | all 3 runs met | command error rate | forced ends |
+|---|---|---|---|---|---|
+| do nothing (scripted) | 0.215 | 3310 | 0/20 | 0.0% | 0 |
+| Qwen3-4B-Instruct, untrained | 0.249 | 2940 | 0/20 | 45.0% | 24 |
+| SFT on 4,800 teacher months | 0.445 | 1767 | 3/20 | 0.7% | 0 |
+| + DAgger round 2 (relabels + own best episodes) | 0.406 | 1779 | 12/20 | 1.8% | 0 |
+| + DAgger aggregate (unseen teacher + relabels) | 0.573 | 1319 | 8/20 | 1.1% | 0 |
+| teacher: the reference before the options fix | 0.862 | 828 | 20/20 | 0.0% | 0 |
+| current Bayesian-LP reference | 0.920 | 772 | 20/20 | 0.0% | 0 |
+| perfect-information oracle | 1.000 | 714 | 20/20 | 0.0% | 0 |
+
+## DAgger round
+
+```
+{
+ "relabelled_states": 2814,
+ "kept_episodes": 51,
+ "kept_states": 1224,
+ "replay_states": 960,
+ "total": 4998,
+ "seeds": 60,
+ "mean_reward_greedy": 0.458,
+ "mean_reward_samples": 0.4904,
+ "mean_reward_best_of_k": 0.6299,
+ "mean_reward_kept": 0.641
+}
+```

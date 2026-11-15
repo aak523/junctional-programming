@@ -7,18 +7,21 @@ import sys
 from pathlib import Path
 
 RES = Path(__file__).resolve().parent / "results"
-NAMES = ["do_nothing", "base", "sft", "dagger", "reference", "oracle"]
-LABEL = {"do_nothing": "do nothing (scripted)", "base": "Qwen3-4B-Instruct, untrained", "sft": "after SFT on the reference",
-         "dagger": "after SFT + DAgger round", "reference": "Bayesian-LP reference (teacher)", "oracle": "perfect-information oracle"}
+NAMES = ["do_nothing", "base", "sft", "dagger", "dagger3", "sft_v2", "teacher", "reference", "oracle"]
+LABEL = {"do_nothing": "do nothing (scripted)", "base": "Qwen3-4B-Instruct, untrained", "sft": "SFT on 4,800 teacher months",
+         "dagger": "+ DAgger round 2 (relabels + own best episodes)", "dagger3": "+ DAgger aggregate (unseen teacher + relabels)",
+         "sft_v2": "SFT on 4,800 months of the current reference", "teacher": "teacher: the reference before the options fix",
+         "reference": "current Bayesian-LP reference", "oracle": "perfect-information oracle"}
 
 
 def main():
     names = [n for n in (sys.argv[1:] or NAMES) if (RES / f"{n}.json").exists()]
     res = {n: json.loads((RES / f"{n}.json").read_text()) for n in names}
     sets = list(next(iter(res.values()))["sets"])
-    commits = sorted({r["world_commit"] for r in res.values()})
-    L = ["# Fine-tuning results", "", f"World commit: {', '.join(commits)}. Greedy decoding, one episode per seed; "
-         "reward = oracle net cost / net cost, capped at 1 (the Harbor verifier's formula).", ""]
+    oracles = sorted({r.get("oracle_commit", r["world_commit"]) for r in res.values()})
+    L = ["# Fine-tuning results", "", "World v5 rules (commit 2303cc6; world.py, lp.py, TASK.md and service.py unchanged since). "
+         f"Rewards use the oracle of commit {', '.join(oracles)} (after the options fix in 466fcc7). Greedy decoding, one "
+         "episode per held-out seed; reward = oracle net cost / net cost, capped at 1 (the Harbor verifier's formula).", ""]
     for s in sets:
         L += [f"## Seeds {s}", "", "| policy | mean reward | mean net cost ($M) | all 3 runs met | command error rate | forced ends |",
               "|---|---|---|---|---|---|"]
