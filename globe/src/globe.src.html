@@ -22,6 +22,7 @@
     --cmd-power: #5f8a00;
     --cmd-option: #c25e00;
     --cmd-stock: #0f8a82;
+    --alert: #d60000;
     --font: "Fira Sans", "Helvetica Neue", Arial, sans-serif;
     --font-cmd: "Fira Mono", "SF Mono", Menlo, Consolas, monospace;
   }
@@ -30,7 +31,7 @@
       --bg: #070b10; --fg: #d8e2ec; --muted: #7d8c9b; --grid: #1f3a4d; --coast: #6fd3ff;
       --gen-h: #4f9dff; --gen-n: #ffb547;
       --site-us: #ff5fa2; --site-eu: #5fe08a; --site-ap: #b28cff;
-      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9;
+      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9; --alert: #ff2e2e;
       color-scheme: dark;
     }
   }
@@ -38,7 +39,7 @@
     --bg: #070b10; --fg: #d8e2ec; --muted: #7d8c9b; --grid: #1f3a4d; --coast: #6fd3ff;
     --gen-h: #4f9dff; --gen-n: #ffb547;
     --site-us: #ff5fa2; --site-eu: #5fe08a; --site-ap: #b28cff;
-      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9;
+      --hl: #14344c; --cmd-buy: #ff7a6b; --cmd-rent: #ffd84d; --cmd-power: #c3e85a; --cmd-option: #ff9f43; --cmd-stock: #3fd0c9; --alert: #ff2e2e;
     color-scheme: dark;
   }
   html, body { height: 100%; }
@@ -117,6 +118,11 @@
   /* Events, not commands: italic sans, indented behind a rule, faded. Same colours. */
   .log li.evt { font-family: var(--font); font-style: italic; font-size: 11.5px; margin-left: 2px; padding-left: 8px; border-left: 2px solid var(--grid); opacity: 0.7; }
   .log li.evt .v { font-weight: 400; }
+  /* A cancelled broker order: alert red, full strength, with a cross and the GPU count struck through. */
+  .log li.evt.cancelled { opacity: 1; color: var(--alert); border-left-color: var(--alert); }
+  .log li.evt.cancelled .v { color: var(--alert); font-weight: 600; }
+  .log li.evt.cancelled .q { text-decoration: line-through; }
+  .log li.evt.cancelled::before { content: "✕ "; font-style: normal; font-weight: 700; }
   .log li.refused, .log li.refused span { color: var(--muted); text-decoration: line-through; }
   @media (max-width: 720px) {
     .panes { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -294,6 +300,9 @@ const RUN = __RUN__;
   // Marching dashes over a static arc, so its direction shows: short bright dashes travel from its start to its
   // end, over the arc itself drawn faint. Each base material gets one dash material that follows its colour.
   const flowPairs = [];   // [dash material, base material]
+  // Static arcs that show a tooltip on hover: points along each (globe-local) and a one-line summary, by layer.
+  const arcTips = { ghosts: [], parked: [], rentals: [], power: [] };
+  const tipArc = (layer, line, text, color) => { arcTips[layer].push({ pts: line.userData.pts, para: [text, color] }); return line; };
   const flowFor = (base) => {
     let pair = flowPairs.find(([, b]) => b === base);
     if (!pair) {
@@ -311,6 +320,7 @@ const RUN = __RUN__;
     return [line, f];
   };
   const hollowMat = { H: fatMat(), N: fatMat() };   // ordered, not yet delivered
+  const orderFillMat = { H: new THREE.MeshBasicMaterial(), N: new THREE.MeshBasicMaterial() };   // solid dark inside an order's outline
   const blockMat = { H: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() },
                      N: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() } };
 
@@ -508,6 +518,8 @@ const RUN = __RUN__;
       pos.push(v.x, v.y, v.z);
     }
     const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pos), mat);
+    line.userData.pts = [];
+    for (let i = 0; i < pos.length; i += 6) line.userData.pts.push(new THREE.Vector3(pos[i], pos[i + 1], pos[i + 2]));
     if (mat.dashed) line.computeLineDistances();
     line.userData.own = true;
     line.raycast = () => {};
@@ -517,11 +529,15 @@ const RUN = __RUN__;
   globe.add(powerArcs);
   const showPowerGlobe = (k) => {
     clearGroup(powerArcs);
+    arcTips.power = [];
     const kk = Math.max(k, 0), list = M(k).power || [];
     for (const site of Object.keys(STATIONS)) {
       const a = stationAnchors[site].position, b = anchors[site].position;
-      if (list.some((p) => p.site === site && p.start <= kk && kk < p.end)) powerArcs.add(...withFlow(lowArc(a, b, 0.03, 0, powerLineMat)));
-      if (list.some((p) => p.site === site && p.start > kk)) powerArcs.add(lowArc(a, b, 0.03, 0.045, powerDashMat));
+      const on = list.filter((p) => p.site === site && p.start <= kk && kk < p.end), soon = list.filter((p) => p.site === site && p.start > kk);
+      if (on.length) powerArcs.add(...withFlow(tipArc("power", lowArc(a, b, 0.03, 0, powerLineMat),
+        `Power to ${site}: ${on.reduce((t, p) => t + p.mw, 0)} MW on`, "var(--cmd-power)")));
+      if (soon.length) powerArcs.add(tipArc("power", lowArc(a, b, 0.03, 0.045, powerDashMat),
+        `Power signed for ${site}: ${soon.map((p) => `${p.mw} MW from month ${p.start}`).join(", ")}`, "var(--cmd-power)"));
     }
   };
 
@@ -558,6 +574,10 @@ const RUN = __RUN__;
         outline.position.copy(mid);
         outline.userData.own = true;   // its geometry is made here, so it is disposed when the stack is refilled
         blocks.add(outline);
+        const fill = new THREE.Mesh(new THREE.BoxGeometry(size.x * 0.995, size.y * 0.995, size.z * 0.995), hollow);
+        fill.position.copy(mid);
+        fill.userData.own = true;
+        blocks.add(fill);
       }
     }
   };
@@ -573,7 +593,7 @@ const RUN = __RUN__;
   };
   const showSuppliers = (waiting) => {
     for (const [id, blocks] of Object.entries(suppliers)) {
-      fillStack(blocks, [[hollowMat.N, waiting[id].N, true], [hollowMat.H, waiting[id].H, true]]);
+      fillStack(blocks, [[hollowMat.N, waiting[id].N, orderFillMat.N], [hollowMat.H, waiting[id].H, orderFillMat.H]]);
     }
   };
   // Step k is month k after its commands; k = -1 is the start, before any command.
@@ -637,7 +657,7 @@ const RUN = __RUN__;
       total += q;
       const w = (q / maxStock) * BAR_W;
       if (w > 0.2) svgEl("rect", hollow
-        ? { x: x + 0.5, y: 0.5, width: Math.max(0, w - 1), height: 7, fill: "transparent", stroke: color, "data-tip": `${label}: ${fmtK(q)}` }
+        ? { x: x + 0.5, y: 0.5, width: Math.max(0, w - 1), height: 7, fill: `color-mix(in srgb, ${color} 15%, var(--bg))`, stroke: color, "data-tip": `${label}: ${fmtK(q)}` }
         : { x, y: 0, width: w, height: 8, fill: color, "fill-opacity": op, "data-tip": `${label}: ${fmtK(q)}` }, n.bar);
       x += w;
     }
@@ -813,6 +833,7 @@ const RUN = __RUN__;
       parked.remove(c);
     }
     flowParkedG.replaceChildren();
+    arcTips.parked = [];
     for (const d of M(k).deliveries) {
       if (!d.move || d.qty < 0.01) continue;
       const a = anchors[d.src].position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
@@ -821,7 +842,9 @@ const RUN = __RUN__;
       for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, i / 64, new THREE.Vector3()));
       const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])), parkedLineMat);
       line.userData.own = true;
+      line.userData.pts = pts.filter((_, i) => i % 4 === 0);
       line.raycast = () => {};
+      tipArc("parked", line, `Moving ${fmtQ(d.qty)} gen ${d.gen}: ${d.src} → ${d.site}, arrives next month`, "var(--fg)");
       const stack = new THREE.Group();
       arcPoint(a, b, omega, 0.5, stack.position);
       stack.quaternion.setFromUnitVectors(up, stack.position.clone().normalize());
@@ -836,6 +859,13 @@ const RUN = __RUN__;
   };
   // Static traces of the deliveries made at the step into this month, so the step can be read without replaying it.
   const ghosts = new THREE.Group();
+  // Cancelled broker orders: the broken trace and a cross at the break, in alert red.
+  const alertLineMat = fatMat({ transparent: true, opacity: 0.9 }), alertCrossMat = fatMat({ linewidth: 3 });
+  const crossGeo = (() => {
+    const c = 0.03;
+    return new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-c, 0.002, -c), new THREE.Vector3(c, 0.002, c),
+      new THREE.Vector3(-c, 0.002, c), new THREE.Vector3(c, 0.002, -c)]);
+  })();
   globe.add(ghosts);
   const ghostMats = {};
   const ghostMat = (site) => (ghostMats[site] = ghostMats[site] || fatMat({ transparent: true, opacity: 0.35 }));
@@ -851,11 +881,13 @@ const RUN = __RUN__;
     for (let i = 0; i <= 64; i++) pts.push(arcPoint(a, b, omega, (t1 * i) / 64, new THREE.Vector3()));
     const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pts.flatMap((v) => [v.x, v.y, v.z])), mat);
     line.userData.own = true;
+    line.userData.pts = pts.filter((_, i) => i % 4 === 0);
     line.raycast = () => {};
     return line;
   };
   const showGhosts = (k) => {
     clearGroup(ghosts);
+    arcTips.ghosts = [];
     flowGhostG.replaceChildren();
     if (k <= 0) return;
     for (const d of RUN.months[k - 1].deliveries) {
@@ -863,12 +895,27 @@ const RUN = __RUN__;
       const fromA = d.move ? anchors[d.src] : supplierAnchors[d.src];
       const a = fromA.position.clone().normalize(), b = anchors[d.site].position.clone().normalize();
       const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
-      const mat = ghostMat(d.site);
-      mat.color = padMat[d.site].color;
-      ghosts.add(...withFlow(arcLine(a, b, omega, d.ok ? 1 : 0.5, mat)));   // a cancelled order's trace stops where it broke
-      const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: flowColor(d.site), "stroke-width": 1.5,
-        "stroke-opacity": 0.35 }, flowGhostG);
-      if (!d.ok) { const len = path.getTotalLength(); path.setAttribute("stroke-dasharray", `${len / 2} ${len}`); }
+      const mat = d.ok ? ghostMat(d.site) : alertLineMat;
+      if (d.ok) mat.color = padMat[d.site].color;
+      const from = d.move ? d.src : d.src === "vendor" ? "vendor" : `broker ${d.src}`, what = `${fmtQ(d.qty)} gen ${d.gen}`;
+      ghosts.add(...withFlow(tipArc("ghosts", arcLine(a, b, omega, d.ok ? 1 : 0.5, mat),   // a cancelled order's trace stops where it broke
+        !d.ok ? `Cancelled: ${what} from ${from} for ${d.site}, 80% refunded` : d.move ? `Moved ${what}: ${from} → ${d.site}` : `Delivered ${what}: ${from} → ${d.site}`,
+        d.ok ? `var(--site-${d.site})` : "var(--alert)")));
+      if (!d.ok) {   // and a red cross marks the break
+        const cross = new THREE.Group();
+        arcPoint(a, b, omega, 0.5, cross.position);
+        cross.quaternion.setFromUnitVectors(up, cross.position.clone().normalize());
+        cross.add(fatSegments(crossGeo, alertCrossMat));
+        ghosts.add(cross);
+      }
+      const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: d.ok ? flowColor(d.site) : "var(--alert)", "stroke-width": 1.5,
+        "stroke-opacity": d.ok ? 0.35 : 0.9 }, flowGhostG);
+      if (!d.ok) {
+        const len = path.getTotalLength(), mid = path.getPointAtLength(len / 2);
+        path.setAttribute("stroke-dasharray", `${len / 2} ${len}`);
+        const x = svgEl("text", { x: mid.x, y: mid.y + 4, "text-anchor": "middle", style: "fill:var(--alert);font-size:12px;font-weight:700" }, flowGhostG);
+        x.textContent = "✕";
+      }
     }
   };
   // Rented capacity at each site this month: reserved contracts in force plus the standing spot request.
@@ -882,7 +929,8 @@ const RUN = __RUN__;
       setBar(id, [["var(--cmd-rent)", 1, x.reserved, false, "Reserved cloud, kH"], ["var(--cmd-rent)", 1, x.spot_req, true, "Spot request, kH"]]);
       if (x.reserved + x.spot_req < 0.005) continue;
       const a = cloudAnchors[id].position.clone().normalize(), b = anchors[site].position.clone().normalize();
-      rentals.add(...withFlow(arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat)));
+      rentals.add(...withFlow(tipArc("rentals", arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat),
+        `Cloud → ${site}: ${fmt1(x.reserved)} kH reserved, ${fmt1(x.spot_req)} kH spot request`, "var(--cmd-rent)")));
       const from = flowNodes[site], to = flowNodes[id];
       svgEl("path", { d: `M${from.cx},${from.bottom} L${to.cx},${to.top}`, fill: "none", stroke: "var(--cmd-rent)", "stroke-width": 1.5, "stroke-opacity": 0.7 }, flowRentG);
     }
@@ -1239,6 +1287,8 @@ const RUN = __RUN__;
     rentPadMat.color = new THREE.Color(css("--cmd-rent"));
     rentLineMat.color = rentPadMat.color.clone();
     powerPadMat.color = new THREE.Color(css("--cmd-power"));
+    alertLineMat.color = new THREE.Color(css("--alert"));
+    alertCrossMat.color = alertLineMat.color.clone();
     powerLineMat.color = powerPadMat.color.clone();
     powerDashMat.color = powerPadMat.color.clone();
     parkedLineMat.color = new THREE.Color(css("--fg"));
@@ -1248,6 +1298,7 @@ const RUN = __RUN__;
       blockMat[gen].on.color = c;
       blockMat[gen].off.color = c.clone().lerp(bg, 0.72);   // idle: same hue, much dimmer
       hollowMat[gen].color = c;
+      orderFillMat[gen].color = c.clone().lerp(bg, 0.85);
     }
   };
   applyTheme();
@@ -1300,7 +1351,23 @@ const RUN = __RUN__;
     let o = hit && hit.object, id = null;
     while (o && !id) { id = pickIds.get(o) || null; o = o.parent; }
     hoverGlobe = id;
-    globeTip(id);
+    if (id) return globeTip(`${id}@${month}`, () => entityState(id));
+    // No entity under the pointer: the nearest arc within a few pixels, on the side facing the camera.
+    let best = null, bestD = 7 * 7;
+    for (const [layer, list] of Object.entries(arcTips)) {
+      if (!{ ghosts, parked, rentals, power: powerArcs }[layer].visible) continue;
+      for (const a of list) {
+        for (let i = 1; i < a.pts.length; i++) {
+          const p = screenAt(globe.localToWorld(a.pts[i - 1].clone())), q = screenAt(globe.localToWorld(a.pts[i].clone()));
+          if (!p.facing || !q.facing) continue;
+          const dx = q.x - p.x, dy = q.y - p.y, L = dx * dx + dy * dy;
+          const t = L ? Math.max(0, Math.min(1, ((pointerX - p.x) * dx + (pointerY - p.y) * dy) / L)) : 0;
+          const ex = p.x + t * dx - pointerX, ey = p.y + t * dy - pointerY, d = ex * ex + ey * ey;
+          if (d < bestD) { bestD = d; best = a; }
+        }
+      }
+    }
+    globeTip(best && `${best.para[0]}@${month}`, () => [best.para]);
   };
   // Hovering an entity on the globe shows its state this month next to the pointer.
   let globeTipKey = null;
@@ -1308,25 +1375,27 @@ const RUN = __RUN__;
     const m = M(month), kk = Math.max(month, 0), q = (v) => `${fmt1(v)}k`;
     if (id in SITES) {
       const z = siteState(month, [id]), o = m.sites[id].owned, pw = m.sites[id].powered, [l, h] = band(kk, id, kk);
-      return [id,
-        ...(o.H > 0.005 ? [`gen H GPUs\t${q(o.H)} (${q(pw.H)} powered)`] : []),
-        ...(o.N > 0.005 ? [`gen N GPUs\t${q(o.N)} (${q(pw.N)} powered)`] : []),
-        `power\t${fmtMW(z.mwOn)} / ${fmtMW(z.need)} MW`,
-        ...(z.mwSoon > 0 ? [`power signed\t${fmtMW(z.mwSoon)} MW`] : []),
-        `compute\t${fmt1(siteCap(z))} kH`,
+      const sc = `var(--site-${id})`, pc = "var(--cmd-power)";
+      return [[id, sc],
+        ...(o.H > 0.005 ? [[`gen H GPUs\t${q(o.H)} (${q(pw.H)} powered)`, "var(--gen-h)"]] : []),
+        ...(o.N > 0.005 ? [[`gen N GPUs\t${q(o.N)} (${q(pw.N)} powered)`, "var(--gen-n)"]] : []),
+        [`power\t${fmtMW(z.mwOn)} / ${fmtMW(z.need)} MW`, pc],
+        ...(z.mwSoon > 0 ? [[`power signed\t${fmtMW(z.mwSoon)} MW`, pc]] : []),
+        [`compute\t${fmt1(siteCap(z))} kH`, sc],
         `demand expected\t${fmt1(l)}–${fmt1(h)} kH`];
     }
     if (id.startsWith("cloud-")) {
       const x = m.settle[id.slice(6)];
-      return [`cloud ${id.slice(6)}`, `reserved\t${fmt1(x.reserved)} kH`, `spot request\t${fmt1(x.spot_req)} kH`];
+      const rc = "var(--cmd-rent)";
+      return [[`cloud ${id.slice(6)}`, rc], [`reserved\t${fmt1(x.reserved)} kH`, rc], [`spot request\t${fmt1(x.spot_req)} kH`, rc]];
     }
     const w = m.waiting[id];
-    return [id === "vendor" ? "vendor" : `broker ${id}`, `gen H on order\t${q(w.H)}`, `gen N on order\t${q(w.N)}`];
+    return [[id === "vendor" ? "vendor" : `broker ${id}`, "var(--coast)"], [`gen H on order\t${q(w.H)}`, "var(--gen-h)"], [`gen N on order\t${q(w.N)}`, "var(--gen-n)"]];
   };
-  const globeTip = (id) => {
-    if (!id) { if (globeTipKey) { globeTipKey = null; hideTip(); } return; }
-    const key = `${id}@${month}`, at = { left: pointerX + 14, top: pointerY + 14, bottom: pointerY + 14 };
-    if (key !== globeTipKey) { globeTipKey = key; showTip(at, entityState(id)); return; }
+  const globeTip = (key, paras) => {
+    if (!key) { if (globeTipKey) { globeTipKey = null; hideTip(); } return; }
+    const at = { left: pointerX + 14, top: pointerY + 14, bottom: pointerY + 14 };
+    if (key !== globeTipKey) { globeTipKey = key; showTip(at, paras()); return; }
     const w = tip.offsetWidth, h = tip.offsetHeight;
     tip.style.left = `${Math.min(at.left, innerWidth - w - 8)}px`;
     tip.style.top = `${at.top + h > innerHeight - 8 ? pointerY - h - 8 : at.top}px`;
@@ -1394,10 +1463,11 @@ const RUN = __RUN__;
     for (const d of m.month > 0 ? RUN.months[m.month - 1].deliveries : []) {
       if (d.qty < 0.01) { evts.push(null); continue; }
       const li = document.createElement("li");
-      li.className = "evt";
+      li.className = d.ok ? "evt" : "evt cancelled";
       // Same colours as the commands; the verb takes the colour of the command that caused it (buy or move).
       const kind = d.move ? "stock" : "buy";
       colourTokens(li, [d.ok ? "received" : "cancelled", `${fmtQ(d.qty)}`, d.gen, "GPUs", "from", d.src, d.ok ? "at" : "for", d.site], kind);
+      li.children[1].classList.add("q");
       ol.appendChild(li);
       evts.push(li);
     }
@@ -1611,11 +1681,15 @@ const RUN = __RUN__;
   };
   const tip = document.getElementById("tip");
   // A paragraph with a tab in it is a row: label on the left, value on the right.
+  // A paragraph may come as [text, colour]: the label (or the whole line, with no tab) takes that colour.
   const tipPara = (t) => {
     const p = document.createElement("p");
-    if (!t.includes("\t")) { p.textContent = t; return p; }
+    let color = null;
+    if (Array.isArray(t)) [t, color] = t;
+    if (!t.includes("\t")) { p.textContent = t; if (color) p.style.color = color; return p; }
     p.className = t.startsWith("total\t") ? "row total" : "row";
     for (const part of t.split("\t")) p.appendChild(Object.assign(document.createElement("span"), { textContent: part }));
+    if (color) p.firstChild.style.color = color;
     return p;
   };
   const showTip = (btn, paras) => {
