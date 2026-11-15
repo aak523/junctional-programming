@@ -15,6 +15,7 @@ rents spot, signs power, moves and resells hardware, and manages cash on a credi
 | Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v5 | 5 | 0.69–1.00 (mean 0.85) | 0.84–0.92 (mean 0.88) | 82–110% (mean 96%, standard error 4.5%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v4 | 5 | 0.79–0.97 | 0.87–0.99 | 89–98% (mean 92%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
+| Claude Fable 5 (Harbor + OpenCode) | v4 | 1 | 0.64 | 0.97 | 65% |
 | Gemini 4 Carbon (Harbor + OpenCode) | v3 | 5 | 0.25–0.37 | 0.80–0.94 | too slow to finish 24 months in 30 min |
 
 Reward = oracle net cost / agent net cost (1 = as good as the perfect-information oracle; doing nothing scores about 0.2).
@@ -45,6 +46,9 @@ Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
   and the future demand path $8M (15%). Re-tuned after the fix, sharing decisions across the sampled futures for 2
   months instead of 3 saves $8M (better on 11 of 12 seeds). A scenario tree (futures sharing their history and
   decisions in groups up to a branch month), 48 futures instead of 24, and the other knobs did not help.
+- **Claude Fable 5 lost by the most so far**, at 65% of the reference in its one v4 game ([results/fable5_v4.md](results/fable5_v4.md)):
+  it met all three windows with no penalties and finished in 13 of its 30 minutes, but bought 2.15x the compute window 1
+  needed on the credit line ($70M of interest against the reference's zero), then liquidated the surplus at a loss.
 
 The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
 
@@ -122,8 +126,9 @@ do-nothing scores for that world, the agent's belief notes and actions).
 | `service.py`, `server.py` | the command interface and the Harbor sidecar server |
 | `TASK.md` | the rules the agent reads |
 | `build_harbor.py`, `harbor/gpu-world/` | the Harbor task and its generator |
-| `harbor/jobs/` | v4 and v5 Harbor runs (reference solution, Gemini 4 Hydrogen) |
+| `harbor/jobs/` | v4 and v5 Harbor runs (reference solution, Gemini 4 Hydrogen, Claude Fable 5) |
 | `results/ladder.json` | the v5 ladder |
+| `results/fable5_v4.md` | the Claude Fable 5 game: cost breakdown against the reference on its world |
 | `gap.py` | the committer-vs-reference gap over many seeds (the offline proxy for a frontier agent) |
 | `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
 | `docs/HANDOFF.md` | the original challenge brief and design notes |

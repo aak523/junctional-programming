@@ -3,3 +3,5 @@ state/
 .env
 .env.*
 harbor/*.log
+harbor/jobs/*/*/agent/opencode/
+harbor/jobs/*/*/artifacts/
