@@ -149,7 +149,7 @@
   .tip p + p { margin-top: 6px; }
   .tip p.row { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
   .tip p.row + p.row { margin-top: 2px; }
-  .tip p.row:last-child { border-top: 1px solid var(--grid); padding-top: 3px; }
+  .tip p.row.total { border-top: 1px solid var(--grid); padding-top: 3px; }
   .training svg, .demand svg, .power svg { display: block; width: 100%; height: auto; overflow: visible; }
   .pane h3.sub { margin: 0 0 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
   .pane svg + h3.sub { margin-top: 10px; }
@@ -1249,7 +1249,9 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
     hoverPane = t ? t.dataset.ent : null;
   });
   const hoverLevel = new Map(), HOVER_MS = 90;   // time constant of the hover fade
+  let pointerX = 0, pointerY = 0;
   renderer.domElement.addEventListener("pointermove", (e) => {
+    pointerX = e.clientX; pointerY = e.clientY;
     const box = renderer.domElement.getBoundingClientRect();
     ndc.set(((e.clientX - box.left) / box.width) * 2 - 1, -((e.clientY - box.top) / box.height) * 2 + 1);
     pointerIn = true;
@@ -1279,6 +1281,36 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
     let o = hit && hit.object, id = null;
     while (o && !id) { id = pickIds.get(o) || null; o = o.parent; }
     hoverGlobe = id;
+    globeTip(id);
+  };
+  // Hovering an entity on the globe shows its state this month next to the pointer.
+  let globeTipKey = null;
+  const entityState = (id) => {
+    const m = M(month), kk = Math.max(month, 0), q = (v) => `${fmt1(v)}k`;
+    if (id in SITES) {
+      const z = siteState(month, [id]), o = m.sites[id].owned, pw = m.sites[id].powered, [l, h] = band(kk, id, kk);
+      return [id,
+        ...(o.H > 0.005 ? [`gen H GPUs\t${q(o.H)} (${q(pw.H)} powered)`] : []),
+        ...(o.N > 0.005 ? [`gen N GPUs\t${q(o.N)} (${q(pw.N)} powered)`] : []),
+        `power\t${fmtMW(z.mwOn)} / ${fmtMW(z.need)} MW`,
+        ...(z.mwSoon > 0 ? [`power signed\t${fmtMW(z.mwSoon)} MW`] : []),
+        `compute\t${fmt1(siteCap(z))} kH`,
+        `demand expected\t${fmt1(l)}–${fmt1(h)} kH`];
+    }
+    if (id.startsWith("cloud-")) {
+      const x = m.settle[id.slice(6)];
+      return [`cloud ${id.slice(6)}`, `reserved\t${fmt1(x.reserved)} kH`, `spot request\t${fmt1(x.spot_req)} kH`];
+    }
+    const w = m.waiting[id];
+    return [id === "vendor" ? "vendor" : `broker ${id}`, `gen H on order\t${q(w.H)}`, `gen N on order\t${q(w.N)}`];
+  };
+  const globeTip = (id) => {
+    if (!id) { if (globeTipKey) { globeTipKey = null; hideTip(); } return; }
+    const key = `${id}@${month}`, at = { left: pointerX + 14, top: pointerY + 14, bottom: pointerY + 14 };
+    if (key !== globeTipKey) { globeTipKey = key; showTip(at, entityState(id)); return; }
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.min(at.left, innerWidth - w - 8)}px`;
+    tip.style.top = `${at.top + h > innerHeight - 8 ? pointerY - h - 8 : at.top}px`;
   };
   controls.enableDamping = true;
   controls.enablePan = false;
@@ -1563,14 +1595,14 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
   const tipPara = (t) => {
     const p = document.createElement("p");
     if (!t.includes("\t")) { p.textContent = t; return p; }
-    p.className = "row";
+    p.className = t.startsWith("total\t") ? "row total" : "row";
     for (const part of t.split("\t")) p.appendChild(Object.assign(document.createElement("span"), { textContent: part }));
     return p;
   };
   const showTip = (btn, paras) => {
     tip.replaceChildren(...(paras || INFO[btn.dataset.info]).map(tipPara));
     tip.hidden = false;
-    const r = btn.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    const r = btn.getBoundingClientRect ? btn.getBoundingClientRect() : btn, w = tip.offsetWidth, h = tip.offsetHeight;   // an element, or a point {left, top, bottom}
     const left = Math.min(Math.max(8, r.left - 12), innerWidth - w - 8);
     const top = r.bottom + 8 + h > innerHeight - 8 ? r.top - h - 8 : r.bottom + 8;
     tip.style.left = `${left}px`; tip.style.top = `${Math.max(8, top)}px`;
