@@ -45,7 +45,7 @@
   body { background: var(--bg); color: var(--fg); font-family: var(--font); overflow: hidden; }
   /* Command log on the left; the globe fills the rest. On narrow screens the log moves below the globe. */
   #stage { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
-  /* Floating panes: one column in the top-left corner, the command log with the summary directly below it. */
+  /* Floating panes: one column in the top-left corner, the log with the summary directly below it. */
   .panes {
     position: fixed;
     top: calc(16px + env(safe-area-inset-top, 0px));
@@ -110,6 +110,9 @@
   .log li .cost { float: right; margin-left: 8px; font-variant-numeric: tabular-nums; }
   .log li .cost.in { color: var(--cmd-power); }
   .log li.lit { background: var(--hl); }
+  /* Belief-log preview: prose, not a command; one line, cut short. */
+  .log li.note { font-family: inherit; color: var(--fg); opacity: 0.7; background: var(--hl-soft, rgba(127,127,127,0.08));
+    padding: 1px 6px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
   /* Events, not commands: italic sans, indented behind a rule, faded. Same colours. */
   .log li.evt { font-family: var(--font); font-style: italic; font-size: 11.5px; margin-left: 2px; padding-left: 8px; border-left: 2px solid var(--grid); opacity: 0.7; }
   .log li.evt .v { font-weight: 400; }
@@ -196,7 +199,7 @@
 
 <div id="stage"></div>
 <div class="panes">
-  <aside class="pane log" id="log" aria-labelledby="log-h"><h2><span id="log-h">command log</span><button class="info" type="button" data-info="log" aria-label="About command log" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2></aside>
+  <aside class="pane log" id="log" aria-labelledby="log-h"><h2><span id="log-h">log</span><button class="info" type="button" data-info="log" aria-label="About log" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2></aside>
   <aside class="pane pending" id="pending" aria-labelledby="pending-h"><h2><span id="pending-h">outstanding orders</span><button class="info" type="button" data-info="pending" aria-label="About outstanding orders" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ol></ol><p class="empty">no orders outstanding</p></aside>
   <aside class="pane flow" aria-labelledby="flow-h"><h2><span id="flow-h">globe overview</span><button class="info" type="button" data-info="flow" aria-label="About globe overview" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="flow" viewBox="0 0 300 214" role="img"></svg></aside>
 </div>
@@ -1253,6 +1256,12 @@ const RUN = __RUN__;
       ol.appendChild(li);
       items.push(li);
     }
+    // The agent's belief log for the month: a one-line preview, the full text on hover.
+    for (const text of m.notes || []) {
+      const li = Object.assign(document.createElement("li"), { className: "note", textContent: text });
+      li.setAttribute("data-tip", text);
+      ol.appendChild(li);
+    }
     sec.append(h, ol);
     log.appendChild(sec);
     return sec;
@@ -1406,14 +1415,15 @@ const RUN = __RUN__;
     log: [
       "Every command the run sent, month by month, in the order it was sent. Refused commands are struck through.",
       "Italic lines at the top of a month are what arrived at the end of the month before: GPUs received, broker orders cancelled, moves arriving. Each arrow joins an order to where it arrived.",
-      "The first word is coloured by command type; sites, suppliers and GPU generations take their globe colours."],
+      "The first word is coloured by command type; sites, suppliers and GPU generations take their globe colours.",
+      "Shaded lines at the end of a month are the agent's belief log: what it wrote down that month about the market and its plans. Hover one for the full text."],
     flow: [
       "The globe flattened into rows. Top: suppliers, with the GPUs ordered from each and not yet delivered (outline). Middle: datacentres, with the GPUs they own; bright is powered, dim is idle, blue is gen H, amber gen N. Bottom: compute rented for each site, reserved contracts solid and the standing spot request as an outline.",
       "Faint curves are what moved at the last step; a labelled curve is a move still in transit. Counts are thousands of GPUs (kH for rented compute)."],
     pending: [
       "Buy orders placed but not yet fully delivered: the command that placed each, and how many of its GPUs are still to arrive (thousands).",
       "Vendor orders arrive in parts: none sooner than 3 months after ordering, then a capped amount each month, first come first served. Broker orders arrive in full or are cancelled.",
-      "Click an order to find it in the command log."],
+      "Click an order to find it in the log."],
     compute: [
       "This month's compute at each site against what it is expected to need. Bar: capacity by source, owned powered GPUs in the site's colour, reserved compute solid yellow, the spot request as a yellow outline. Bracket: the range this month's inference demand can fall in; the actual figure is only revealed when the month ends. Inference must be served at its own site.",
       "The all row adds the training still needed each month to meet the current window.",

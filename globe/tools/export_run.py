@@ -1,6 +1,9 @@
 """Export a GPU World run as month-by-month JSON for the globe.
 
 usage: python export_run.py <repo dir> <policy> <seed> <out.json>
+       python export_run.py <repo dir> <harbor verifier details.json> - <out.json>   (replay an agent's run)
+
+A replayed agent run also carries notes: the agent's belief-log entries written during each month.
 
 Each month records the commands the policy sent ([{c, ok}], ok false when the world refused it) and,
 after that month's actions and before the month-end settlement:
@@ -29,13 +32,39 @@ command (start: sites with owned, powered and own compute, and waiting).
 """
 import copy
 import json
+import pathlib
 import sys
 from collections import defaultdict
 
-repo, name, seed, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+repo, name, seed, out = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 sys.path.insert(0, repo)
 import policies  # noqa: E402
 import world as W  # noqa: E402
+
+NOTES = {}   # month -> the agent's notes that month
+if name.endswith(".json"):
+    # An agent's run, from the Harbor verifier's details: its seed, the commands the world accepted, and its notes.
+    details = json.load(open(name))
+    seed = details["seed"]
+    by_month = [[]]
+    for a in details["actions"]:
+        if a == "end_month":
+            by_month.append([])
+        else:
+            by_month[-1].append(a)
+    for n in details.get("notes", []):
+        NOTES.setdefault(n["month"], []).append(n["text"])
+
+    def replay():
+        def pol(obs, act):
+            for c in by_month[obs["month"]] if obs["month"] < len(by_month) else []:
+                act(c)
+        return pol
+    name = pathlib.Path(name).resolve().parts[-4]   # the Harbor job, e.g. fable-5-v4
+    POLICY = (replay, None)
+else:
+    seed = int(seed)
+    POLICY = policies.LADDER[name]
 
 SUPPLIERS = ("vendor",) + tuple(W.BROKERS)
 
@@ -58,7 +87,7 @@ def waiting(queue):
     return {s: {g: round(v, 3) for g, v in d.items()} for s, d in out.items()}
 
 
-pol_factory, stop = policies.LADDER[name]
+pol_factory, stop = POLICY
 w = W.World(seed)
 pol = pol_factory(w) if getattr(pol_factory, "needs_world", False) else pol_factory()
 months = []
@@ -138,7 +167,7 @@ while w.t < W.T:
                                  "interest": rep["interest"],
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
                                              for b in rep["broker"] if not b["delivered"]}},
-                   "met": {str(d): v for d, v in w.met.items()}})
+                   "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), [])})
 rules = {"demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
          "milestones": [list(m) for m in W.MILESTONES]}
 json.dump({"policy": name, "seed": seed, "rules": rules, "start": start, "months": months}, open(out, "w"), separators=(",", ":"))
