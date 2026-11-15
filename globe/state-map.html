@@ -110,7 +110,7 @@
       <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
       <tr><td>window_training</td><td>kH-months done in windows 0..7, 8..15, 16..23. Targets 60, 140, 320.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Training bars: done, this month, target.</td></tr>
       <tr><td>met</td><td>Pass or fail, decided at each window's last month.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>Bar colour for the current window only. No history of past windows.</td></tr>
-      <tr><td>penalties</td><td>$200M per missed window plus $5M per kH-month short.</td><td class="sees">rules</td><td class="where"><span class="chip n">missing</span>Folded into the score.</td></tr>
+      <tr><td>penalties</td><td>$200M per missed window plus $5M per kH-month short.</td><td class="sees">rules</td><td class="where"><span class="chip p">partial</span>Score hover: penalties and missed count.</td></tr>
     </table></div>
   </section>
 
@@ -123,7 +123,7 @@
       <tr><td>cost{}</td><td>Spend by category: capex, power, contracts, spot, moves, options, interest, unserved, resale.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Money pane spend rows.</td></tr>
       <tr><td>month cash flow</td><td>Charges, refunds, funding, commands between steps.</td><td class="sees">derived</td><td class="where"><span class="chip s">shown</span>Cash-delta hover breakdown.</td></tr>
       <tr><td>if_stopped.net_cost</td><td>Final score if no more commands: spend − mark + obligations + penalties.</td><td class="sees">no</td><td class="where"><span class="chip s">shown</span>Status "score if stopped".</td></tr>
-      <tr><td>if_stopped parts</td><td>spend, mark_to_market (75% of market value of all held GPUs), obligations (contract months past 23), penalties, milestones met.</td><td class="sees">no</td><td class="where"><span class="chip n">missing</span>Exported, not drawn.</td></tr>
+      <tr><td>if_stopped parts</td><td>spend, mark_to_market (75% of market value of all held GPUs), obligations (contract months past 23), penalties, milestones met.</td><td class="sees">no</td><td class="where"><span class="chip s">shown</span>Score hover breakdown.</td></tr>
     </table></div>
   </section>
 
