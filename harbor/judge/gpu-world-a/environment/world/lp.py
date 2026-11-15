@@ -66,7 +66,17 @@ def state_of(obs):
             "vendor": [q for q in obs["queue"] if q.get("src", "vendor") == "vendor"],
             "broker": [q for q in obs["queue"] if q.get("src", "vendor") != "vendor"],
             "power": obs["power"], "contracts": obs["contracts"], "done": obs["window_training"],
-            "options": obs.get("options", 0.0), "moves": obs.get("moves", [])}
+            "options": obs.get("options", 0.0), "moves": obs.get("moves", []), "bought": obs.get("bought_this_month", {})}
+
+
+def tier_room(done, tiers):
+    """(room left, multiplier) per tier after `done` units this month (room None = unlimited)."""
+    out, lo = [], 0.0
+    for size, mult in tiers:
+        hi = None if size is None else lo + size
+        out.append((None if hi is None else max(0.0, hi - max(lo, done)), mult))
+        lo = hi if hi is not None else lo
+    return out
 
 
 def mv(gen, k, L):
@@ -100,6 +110,12 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
         for g in GENS:
             for a, b in PAIRS:
                 d["mv", g, a, b] = m.var(ub=W.MOVE_CAP)
+        # volume pricing: this month's orders per source fill the GPU tiers in order (exact: the multipliers rise)
+        for src in ("vendor", *W.BROKERS):
+            done = state["bought"].get(src, 0.0) if k == t else 0.0
+            tiers = [(m.var(ub=room), mult) for room, mult in tier_room(done, W.GPU_TIERS)]
+            m.eq([(d["buy", s] if src == "vendor" else d["b", src, s], 1.0) for s in SITES] + [(z, -1.0) for z, _ in tiers], 0.0)
+            d["tier", src] = tiers
         return d
     common = {k: decisions(k) for k in range(t, min(T, t + shared + 1))}
     first = common[t]
@@ -120,7 +136,8 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
                 v["spot", s] = m.var(ub=p["scap"][s][k])
                 v["served", s] = m.var(ub=p["D"][s][k])
                 v["tr", s] = m.var()
-            v["cash"], v["debt"], v["pos"] = m.var(lb=None), m.var(), m.var()
+            v["cash"], v["pos"] = m.var(lb=None), m.var()
+            v["debt"] = [m.var(ub=cap) for cap, _ in W.DEBT_TIERS]
             V[k] = v
 
         def arrivals(g, s, j):
@@ -155,7 +172,13 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
             for g in GENS:
                 for a, b in PAIRS:
                     m.c[v["mv", g, a, b]] += w * W.MOVE_COST
-            m.c[v["debt"]] += w * W.RATE
+            for src in ("vendor", *W.BROKERS):   # the surcharge over list price (a cancelled broker order refunds 80% of it)
+                unit = price * W.BROKERS.get(src, 1.0)
+                keep = 1.0 if src == "vendor" else 1 - W.BROKER_REFUND * (1 - p["bq"][src][min(k + 1, T - 1)])
+                for z, mult in v["tier", src]:
+                    m.c[z] += w * unit * (mult - 1) * keep
+            for (_, rate), dv in zip(W.DEBT_TIERS, v["debt"]):
+                m.c[dv] += w * rate
             m.c[v["pos"]] -= w * W.EARN
             # caps shared across sites
             for b in W.BROKERS:
@@ -199,6 +222,7 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
             # cash: purchases within the credit line, then running charges, refunds, interest, funding
             capex = [(v["opt"], W.OPTION_PREMIUM)] + [(v["mv", g, a, b], W.MOVE_COST) for g in GENS for a, b in PAIRS]
             charges, charges_const = [], 0.0
+            capex += [(z, price * W.BROKERS.get(src, 1.0) * (mult - 1)) for src in ("vendor", *W.BROKERS) for z, mult in v["tier", src]]
             for s in SITES:
                 capex += [(v["buy", s], price)] + [(v["b", b, s], price * mu) for b, mu in W.BROKERS.items()]
                 mw_exist = sum(x["mw"] for x in state["power"] if x["site"] == s and x["start"] <= k < x["end"])
@@ -214,14 +238,18 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
                 for s in SITES:
                     for b, mu in W.BROKERS.items():
                         refunds.append((V[k - 1]["b", b, s], W.GPU_PRICE[gen[k - 1]] * mu * W.BROKER_REFUND * (1 - p["bq"][b][k])))
+                for b, mu in W.BROKERS.items():
+                    refunds += [(z, W.GPU_PRICE[gen[k - 1]] * mu * (mult - 1) * W.BROKER_REFUND * (1 - p["bq"][b][k])) for z, mult in V[k - 1]["tier", b]]
             refund_const = sum(W.BROKER_REFUND * o.get("paid", 0.0) * (1 - p["bq"][o["src"]][k]) for o in state["broker"] if o["placed"] + 1 == k)
             cash_in = [(v["cash"], 1.0)]
             m.ge(cash_in + [(x, -a) for x, a in capex] + resale, -W.CREDIT)
             end = cash_in + [(x, -a) for x, a in capex] + resale + [(x, -a) for x, a in charges] + refunds
-            # month-end balance = pos - debt (both >= 0; the LP never holds both, since RATE > EARN)
-            m.eq([(v["pos"], 1.0), (v["debt"], -1.0)] + [(x, -a) for x, a in end], refund_const - charges_const)
+            # month-end balance = pos - debt (both >= 0; the LP never holds both, since every debt rate > EARN; the debt
+            # tiers fill in order since their rates rise)
+            m.eq([(v["pos"], 1.0)] + [(dv, -1.0) for dv in v["debt"]] + [(x, -a) for x, a in end], refund_const - charges_const)
             if k + 1 < T:
-                m.eq([(V[k + 1]["cash"], 1.0), (v["debt"], W.RATE), (v["pos"], -W.EARN)] + [(x, -a) for x, a in end],
+                m.eq([(V[k + 1]["cash"], 1.0), (v["pos"], -W.EARN)] + [(dv, rate) for (_, rate), dv in zip(W.DEBT_TIERS, v["debt"])]
+                     + [(x, -a) for x, a in end],
                      W.FUNDING - charges_const + refund_const)
             if k == t:
                 m.eq([(v["cash"], 1.0)], state["cash"])
@@ -247,7 +275,7 @@ def solve(state, paths, weights=None, lead=None, shortfall=40.0, margin=0.0, sha
                     m.c[V[j]["d", g, s]] += w * val
     res = m.solve()
     x = res.x
-    dec = {key: float(x[i]) for key, i in first.items()}
+    dec = {key: float(x[i]) for key, i in first.items() if isinstance(i, int)}
     dec["gen"] = gen_now
     return dec, float(res.fun), [{s: float(x[i]) for s, i in sp.items()} for sp in spot_now]
 

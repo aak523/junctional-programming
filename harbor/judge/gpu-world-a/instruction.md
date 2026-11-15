@@ -43,6 +43,9 @@ You also start with 4k gen H in the vendor queue for `us` and a 2 kH reservation
   1.4 MW). Paid at order and delivered to that site. Orders join one first-in-first-out queue per generation (all sites
   together), usable from 3 months after ordering at the earliest. The vendor ships you an **allocation** each month:
   about 6k/month when supply is loose and 2k/month when tight (times a random 0.7..1.3 each month). Max 30k per order.
+- **Volume pricing** (vendor and each broker separately, all sites and orders in a month together): the first 3k GPUs
+  you order from a source in a month cost the listed price, the next 3k cost 10% more and anything beyond costs 25%
+  more. An order that crosses a tier pays each part at its tier's price. The count restarts each month.
 - **Brokers** `buy_gpus <thousands> [H|N] A <site>` (or `B`): outside the vendor's allocation, at most 4k per broker
   per month, at a markup (A: 1.10x list price, B: 1.25x), paid at order. At the end of the next month the broker
   either delivers the whole order (usable from 2 months after ordering) or cancels it and refunds 80%. Each broker is
@@ -76,9 +79,10 @@ You also start with 4k gen H in the vendor queue for `us` and a 2 kH reservation
 ## Cash
 You start with $400M and receive $40M of funding at the end of each month. All payments come out of cash: GPU
 orders, moves and options when placed; power, contracts and spot each month; resales and broker refunds come back in.
-You may go negative down to a $500M credit line: interest of 2% per month is charged on any negative balance at month
-end (and counts as a cost). A positive month-end balance earns 0.75% per month (the lab's cost of capital: idle cash
+You may go negative down to a $500M credit line: interest is charged on a negative month-end balance at 2% per month
+on the first $200M of debt and 3.5% per month on the rest (and counts as a cost). A positive month-end balance earns 0.75% per month (the lab's cost of capital: idle cash
 is not free), which reduces your interest cost. A purchase that would take you below -$500M is refused; monthly charges are always paid.
+Missing a training run also halves the next 3 monthly funding payments ($20M instead of $40M).
 
 ## The hidden state
 - **Supply regime** (loose or tight, the same at every site) sets allocations, reservation and spot caps, spot

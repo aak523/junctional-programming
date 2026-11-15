@@ -27,14 +27,15 @@ for each agent game. Each game has a 30-minute budget, and the reference plays i
 
 The worlds are evaluation seeds 4, 8 and 9: the three whose reference reward is closest to the median of seeds 0–9.
 This repo is public and the agent has internet access, so `JUDGE_KEY` hashes each seed into a private one (the same key
-gives the same worlds on every run). The reference is deterministic for a seed. Without a key, Harbor reproduces
-these numbers to the fourth decimal (`harbor/jobs/judge-{reference,nop,stop-early}-check/`):
+gives the same worlds on every run). The reference is deterministic for a seed. Without a key it scores these
+numbers under the v6 rules (the in-process ladder; the v5 Harbor checks in `harbor/jobs/judge-*-check/` reproduced
+the v5 ladder to the fourth decimal):
 
 | world | seed | reference | do-nothing | stop-early |
 |---|---|---|---|---|
-| gpu-world-a | 4 | 0.904 | 0 | 0 |
-| gpu-world-b | 8 | 0.899 | 0 | 0 |
-| gpu-world-c | 9 | 0.922 | 0 | 0.070 |
+| gpu-world-a | 4 | 0.909 | 0 | 0 |
+| gpu-world-b | 8 | 0.907 | 0 | 0 |
+| gpu-world-c | 9 | 0.923 | 0 | 0.070 |
 
 `harbor run -p harbor/gpu-world ...` plays a fresh random world per trial instead.
 
@@ -48,8 +49,8 @@ Scripted ladder on evaluation seeds 0–9 (`python scripts/ladder.py 0 10`):
 
 | | do-nothing | stop-early | spot-only | exploiter | committer | **reference** | oracle |
 |---|---|---|---|---|---|---|---|
-| mean net cost ($M) | 3,401 | 3,134 | 2,391 | 1,460 | 896 | **790** | 734 |
-| mean reward | 0 | 0.023 | 0.096 | 0.374 | 0.806 | **0.922** | 1 |
+| mean net cost ($M) | 3,411 | 3,145 | 2,396 | 1,543 | 957 | **786** | 739 |
+| mean reward | 0 | 0.023 | 0.096 | 0.332 | 0.759 | **0.928** | 1 |
 
 The exploiter tries buy-and-flip GPUs, contracts running past the horizon, options bought and never used, and orders
 left undelivered at the end. It costs at least 1.59× the reference on every seed.
@@ -58,11 +59,25 @@ left undelivered at the end. It costs at least 1.59× the reference on every see
 programme solved over 24 futures sampled from the posterior, re-planned every month. It sees exactly what the agent
 sees, and its settings were tuned on seeds 100+ only.
 
+## Rules v6: over-commitment costs what it would in practice
+
+Three rule changes, all in TASK.md:
+
+- **Volume pricing:** GPU orders get dearer with size. From each source, the first 3k a month cost list price, the next
+  3k cost 10% more, and anything beyond costs 25% more.
+- **Debt tiers:** interest is 2% a month on the first $200M of debt and 3.5% beyond.
+- **Funding cut:** a missed training run halves the next three funding payments.
+
+The reference and the oracle model all three exactly and still meet every run on seeds 0–39. On tuning seeds 100–139
+(`python scripts/gap.py 100 40 2`), a stand-in for Hydrogen's early fleet falls from 86.5% of the reference under v5 to
+81.4% (standard error 1.3%), below it on all 40 worlds. A stand-in for Fable 5's splurge on credit lands at 70.2%. The
+frontier games and the trained model below were played under earlier rules, as the tables say.
+
 ## Results: frontier agents
 
 | Agent (Harbor + OpenCode) | Rules | Games | Agent reward | Reference, same worlds | Agent as % of reference |
 |---|---|---|---|---|---|
-| Gemini 4 Hydrogen | v5 (current) | 5 | 0.69–0.89 (mean 0.80) | 0.89–0.97 (mean 0.92) | 78–97% (mean 87%), below in 5 of 5 |
+| Gemini 4 Hydrogen | v5 | 5 | 0.69–0.89 (mean 0.80) | 0.89–0.97 (mean 0.92) | 78–97% (mean 87%), below in 5 of 5 |
 | Claude Fable 5 | v4 (legacy) | 1 | 0.64 | 0.97 | 65% |
 
 Per-game results are in [`harbor/jobs/hydrogen-v5-paired/PAIRED.md`](harbor/jobs/hydrogen-v5-paired/PAIRED.md) and
@@ -86,7 +101,7 @@ cash down to −$343M and cost $70M in interest (the reference paid none).
 
 We fine-tuned Qwen3-4B-Instruct-2507 (LoRA) on the environment's experience: behaviour cloning on the reference's
 games, then DAgger rounds in which the reference relabels the states the student actually reached. The model plays one
-month per message through the same command path as Harbor. Mean reward on 30 held-out worlds (greedy, this reward):
+month per message through the same command path as Harbor. Mean reward on 30 held-out worlds (greedy, this reward, v5 rules):
 
 | policy | reward | worlds with all 3 runs met |
 |---|---|---|

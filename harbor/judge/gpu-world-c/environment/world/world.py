@@ -11,7 +11,7 @@ import math
 import operator
 import random
 
-RULES = "v5"                              # the rules' version, recorded with exported runs (bump it when a rule changes)
+RULES = "v6"                              # the rules' version, recorded with exported runs (bump it when a rule changes)
 T = 24
 OPS_PER_MONTH = 15
 SITES = ("us", "eu", "ap")
@@ -54,7 +54,10 @@ BROKER_DECAY_P, BROKER_DECAY_RANGE = 0.4, (8, 15)  # a reliable broker silently 
 GROWTH = (0.04, 0.08)                     # inference growth per month
 GROWTH_SWITCH_P, GROWTH_SWITCH_RANGE = 0.5, (8, 15)  # growth silently switches to the other value (once)
 DEMAND0, DEMAND_NOISE = 6.0, 0.05         # kH at month 0; lognormal noise around the demand trend each month
-CASH0, FUNDING, CREDIT, RATE = 400.0, 40.0, 500.0, 0.02  # $M cash, monthly funding, credit line, monthly interest on debt
+CASH0, FUNDING, CREDIT = 400.0, 40.0, 500.0  # $M cash, monthly funding, credit line
+DEBT_TIERS = ((200.0, 0.02), (None, 0.035))   # monthly interest: 2% on the first $200M of debt, 3.5% on the rest
+FUNDING_CUT, FUNDING_CUT_MONTHS = 0.5, 3      # a missed training run halves the next 3 monthly funding payments
+GPU_TIERS = ((3.0, 1.0), (3.0, 1.10), (None, 1.25))  # thousand GPUs per source per month: list, +10%, +25%
 EARN = 0.0075                             # monthly interest earned on a positive month-end balance (the lab's cost of capital)
 
 BEARISH = ["CoWoS packaging lines reported fully booked through next year.",
@@ -65,6 +68,26 @@ BULLISH = ["New CoWoS capacity comes online ahead of schedule.",
            "HBM supply loosens as a third memory vendor qualifies.",
            "Distributors report accelerator inventory building up.",
            "Cloud providers cut list prices for reserved GPU capacity."]
+
+
+def tiered(qty, done, tiers):
+    """Sum of the tier multipliers over `qty` units taken after `done` units, through (size, multiplier) tiers
+    (size None = unlimited). With GPU_TIERS it prices an order; with DEBT_TIERS it gives the interest on a debt."""
+    total, lo = 0.0, 0.0
+    for size, mult in tiers:
+        hi = math.inf if size is None else lo + size
+        total += max(0.0, min(done + qty, hi) - max(done, lo)) * mult
+        lo = hi
+    return total
+
+
+def tier_text():
+    out, lo = [], 0.0
+    for size, mult in GPU_TIERS:
+        price = "list" if mult == 1 else f"{mult - 1:+.0%}"
+        out.append(f"beyond {lo:g}k {price}" if size is None else f"{'first' if lo == 0 else 'next'} {size:g}k {price}")
+        lo += size or 0
+    return ", ".join(out)
 
 
 def score(net_cost, oracle, milestones_met):
@@ -124,7 +147,8 @@ class World:
         self.cost = {"capex": 0.0, "power": 0.0, "contracts": 0.0, "spot": 0.0, "unserved": 0.0, "resale": 0.0,
                      "interest": 0.0, "moves": 0.0, "options": 0.0}
         self.cash = CASH0
-        self.broker_bought = {b: 0.0 for b in BROKERS}
+        self.bought_now = {src: 0.0 for src in ("vendor", *BROKERS)}   # thousand GPUs ordered this month, per source
+        self.funding_cut = 0     # funding payments still halved after a missed run
         self.broker_orders = {b: 0 for b in BROKERS}
         self.met = {}
         self.history = []      # one report per finished month
@@ -216,9 +240,10 @@ class World:
             raise ValueError("source must be vendor, A or B")
         if not 0 < qty <= 30:
             raise ValueError("qty must be in (0, 30] thousand GPUs per order")
-        if src in BROKERS and self.broker_bought[src] + qty > BROKER_CAP + 1e-9:
-            raise ValueError(f"broker {src} sells at most {BROKER_CAP:g}k per month ({self.broker_bought[src]:g}k bought this month)")
-        price = qty * GPU_PRICE[gen] * (BROKERS[src] if src in BROKERS else 1.0)
+        if src in BROKERS and self.bought_now[src] + qty > BROKER_CAP + 1e-9:
+            raise ValueError(f"broker {src} sells at most {BROKER_CAP:g}k per month ({self.bought_now[src]:g}k bought this month)")
+        unit = GPU_PRICE[gen] * (BROKERS[src] if src in BROKERS else 1.0)
+        price = unit * tiered(qty, self.bought_now[src], GPU_TIERS)
         self._pay(price)
         self._op()
         self.cash -= price
@@ -226,14 +251,15 @@ class World:
         order = {"id": self.next_id, "gen": gen, "qty": qty, "left": qty, "placed": self.t, "src": src, "paid": price, "site": site}
         self.next_id += 1
         self.queue.append(order)
+        self.bought_now[src] += qty
+        tier = f" Volume pricing: {price / (qty * unit) - 1:+.1%} on this order ({self.bought_now[src]:g}k from {src} this month)."             if price > qty * unit + 1e-9 else ""
         if src in BROKERS:
-            self.broker_bought[src] += qty
             order["n"] = self.broker_orders[src]
             self.broker_orders[src] += 1
             return (f"Ordered {qty:g}k gen {gen} GPUs from broker {src} for ${price:.1f}M (paid now), to {site}. Order #{order['id']}: "
-                    f"the broker confirms delivery or cancellation at the end of month {self.t + 1}; if delivered, usable from month {self.t + 2}.")
+                    f"the broker confirms delivery or cancellation at the end of month {self.t + 1}; if delivered, usable from month {self.t + 2}.{tier}")
         return (f"Ordered {qty:g}k gen {gen} GPUs for ${price:.1f}M (paid now), to {site}. Order #{order['id']} joins the vendor "
-                f"{gen} queue; usable from month {self.t + MIN_LEAD} at the earliest.")
+                f"{gen} queue; usable from month {self.t + MIN_LEAD} at the earliest.{tier}")
 
     def reserve(self, qty, months, site=None):
         site = self._site(site)
@@ -370,6 +396,8 @@ class World:
         for a, d, target in MILESTONES:
             if d == k:
                 self.met[d] = self.window_training(a, d) + training >= target - 1e-9
+                if not self.met[d]:
+                    self.funding_cut = FUNDING_CUT_MONTHS
         shipped = {}
         for gen in ("H", "N"):
             a = ALLOC[gen][self.regime[k]] * self.alloc_noise[k][gen] * (EXPORT_ALLOC if gen == "H" and self.export_active(k) else 1.0)
@@ -399,7 +427,7 @@ class World:
             if m["arrive"] == k + 1:
                 self.owned[m["to"]][m["gen"]] += m["qty"]
         self.moves = [m for m in self.moves if m["arrive"] > k + 1]
-        interest = RATE * -self.cash if self.cash < 0 else -EARN * self.cash   # negative = earned
+        interest = tiered(-self.cash, 0.0, DEBT_TIERS) if self.cash < 0 else -EARN * self.cash   # negative = earned
         self.cost["interest"] += interest
         self.cash -= interest
         self.history.append({"month": k, "inference_demand": self.demand[k], "served": round(sum(x["served"] for x in sites.values()), 2),
@@ -410,8 +438,11 @@ class World:
                              "capacity": round(sum(x["capacity"] for x in sites.values()), 2), "training": round(training, 2),
                              "shipped": {g: round(v, 2) for g, v in shipped.items()}, "broker": broker, "sites": sites,
                              "interest": round(interest, 2), "cash_end": round(self.cash, 2)})
-        self.cash += FUNDING
-        self.broker_bought = {b: 0.0 for b in BROKERS}
+        funding = FUNDING * (FUNDING_CUT if self.funding_cut > 0 else 1.0)
+        self.funding_cut = max(0, self.funding_cut - 1)
+        self.history[-1]["funding"] = funding
+        self.cash += funding
+        self.bought_now = {src: 0.0 for src in self.bought_now}
         self.t += 1
         self.ops = 0
         self.resold = {"H": 0.0, "N": 0.0}
@@ -459,7 +490,7 @@ class World:
                        "src": o["src"], "site": o["site"], "paid": o["paid"]} for o in self.queue],
             "contracts": [dict(c) for c in self.contracts if c["end"] > k],
             "spot_level": dict(self.spot_level), "options": self.options, "moves": [dict(m) for m in self.moves],
-            "cash": round(self.cash, 2),
+            "cash": round(self.cash, 2), "bought_this_month": dict(self.bought_now), "funding_cut_months": self.funding_cut,
             "prices": None if k >= T else {
                 "gpu": {g: GPU_PRICE[g] for g in (("N",) if self.launched() else ("H",))},
                 "spot": round(self.spot_price(), 3), "reserve": {m: round(self.term_price(m), 3) for m in TERM_FACTOR},
@@ -491,8 +522,10 @@ class World:
         L.append("Training runs (kH-months done / needed within months a..b): " + "; ".join(
             f"months {a}..{d}: {done:g} / {t:g}" + (" MET" if o["met"].get(d) else " MISSED" if d in o["met"] else "")
             for (a, d, t), done in zip(MILESTONES, o["window_training"])))
-        L.append(f"Cash: ${o['cash']:.1f}M (credit line ${CREDIT:g}M; {RATE:.0%}/month interest on debt, {EARN:.2%}/month earned on a positive balance; +${FUNDING:g}M funding each month). "
-                 f"Options held: {o['options']:g} kH.")
+        (c1, r1), (_, r2) = DEBT_TIERS
+        cut = f" (halved for the next {self.funding_cut} payments after a missed run)" if self.funding_cut else ""
+        L.append(f"Cash: ${o['cash']:.1f}M (credit line ${CREDIT:g}M; interest {r1:.0%}/month on the first ${c1:g}M of debt, {r2:.1%} on the rest; "
+                 f"{EARN:.2%}/month earned on a positive balance; +${FUNDING:g}M funding each month{cut}). Options held: {o['options']:g} kH.")
         L.append("Sites this month:")
         for s in SITES:
             mw, pw = self.powered(s, k)
@@ -509,6 +542,8 @@ class World:
             for q in o["queue"] if q["src"] != "vendor") or "none") + ". GPUs in transit: " + ("; ".join(
             f"{m['qty']:g}k gen {m['gen']} to {m['to']} (arrive month {m['arrive']})" for m in o["moves"]) or "none"))
         p = o["prices"]
+        L.append(f"GPUs ordered so far this month (volume pricing per source: {tier_text()}): "
+                 + ", ".join(f"{src} {q:g}k" for src, q in o["bought_this_month"].items()) + ".")
         L.append(f"Prices now: buy {', '.join(f'gen {g} ${v:g}M per 1k GPUs' for g, v in p['gpu'].items())} from the vendor, "
                  f"{', '.join(f'${v:g}M from broker {b}' for b, v in p['broker'].items())}; "
                  f"reserve per kH-month (x site price: us 1.0, eu 1.1, ap 0.95): 6m ${p['reserve'][6]}, 12m ${p['reserve'][12]}, 24m ${p['reserve'][24]}; "

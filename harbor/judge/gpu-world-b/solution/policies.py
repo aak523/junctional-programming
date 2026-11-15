@@ -330,7 +330,8 @@ class LPPolicy:
             for b, mu in W.BROKERS.items():
                 do(f"buy_gpus {p['probe']} {gen} {b} us")
                 cost = p["probe"] * W.GPU_PRICE[gen] * mu
-                obs = obs | {"cash": obs["cash"] - cost, "queue": obs["queue"] + [
+                bought = obs.get("bought_this_month", {}) | {b: obs.get("bought_this_month", {}).get(b, 0.0) + p["probe"]}
+                obs = obs | {"cash": obs["cash"] - cost, "bought_this_month": bought, "queue": obs["queue"] + [
                     {"gen": gen, "ordered": p["probe"], "left": p["probe"], "placed": t, "src": b, "paid": cost, "site": "us"}]}
         paths = self.paths(obs)
         dec, _, spot = lp.solve(lp.state_of(obs), paths, lead=self.lead(obs), shortfall=p["shortfall"],
@@ -447,6 +448,12 @@ class Committer(LPPolicy):
         for g, q in buy.items():
             if q > 0 and do(f"buy_gpus {q:.2f} {g} {site}"):
                 do(f"contract_power {q * W.POWER_MW[g]:.1f} {site}")
+
+
+class Splasher(Committer):
+    """Stand-in for Claude Fable 5's v4 game: a ~20k gen H fleet bought in months 0-2 (on the credit line) and 9k gen N
+    at launch, at one site, with the reference planning everything else around it."""
+    P = {**Committer.P, "fleet_h": 20.0}
 
 
 LADDER = {"do_nothing": (do_nothing, None), "stop_early": (StopEarly, 3), "spot_only": (SpotOnly, None),
