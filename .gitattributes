@@ -1,3 +1,4 @@
 # Harbor files run in Linux containers: keep them LF on every checkout
 harbor/** text eol=lf
 *.sh text eol=lf
+*.db binary

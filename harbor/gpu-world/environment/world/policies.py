@@ -3,8 +3,9 @@
 Every policy except `oracle` sees only World.observe() and the documented rules (the constants in
 world.py, which TASK.md states), and acts through the same text commands the agent uses.
 
-- reference (`LPPolicy`): Bayesian filter over every hidden factor, then each month an LP over 12 futures
-  sampled from the posterior (sample-average approximation); plays the first month's decisions.
+- reference (`LPPolicy`): Bayesian filter over every hidden factor, then each month an LP over 24 futures
+  sampled from the posterior (sample-average approximation, common random numbers across months); plays the
+  first month's decisions.
 - oracle (`OracleMPC`): the same LP on the true future. Perfect information; an upper bound in practice.
 """
 import math
@@ -59,6 +60,14 @@ class SpotOnly:
 
 
 # ---------------------------------------------------------------- beliefs
+REGIMES = ("loose", "tight")
+
+
+def growth_rate(g, sw, k):
+    """Monthly inference growth in month k under the hypothesis (g at month 0, switch at month sw or never)."""
+    return g if sw is None or k < sw else W.GROWTH[1 - W.GROWTH.index(g)]
+
+
 class Bayes:
     """Filters the supply regime, launch month, export controls, demand growth and broker reliability."""
 
@@ -66,6 +75,9 @@ class Bayes:
         self.b = 0.5                       # P(tight) for the current month
         self.launch = {m: 1.0 for m in range(W.LAUNCH_RANGE[0], W.LAUNCH_RANGE[1] + 1)}
         self.pending = None                # (eligible-by-gen, export_active) for shipment evidence
+        self.asked = {s: 0.0 for s in SITES}   # reservation kH requested last month per site (cap-fill evidence)
+        self.spike_last = False            # last month's news announced a rival spot buyer (spot caps halved)
+        self.growth = {}                   # posterior over (growth at month 0, switch month or None)
         self.export_start = None
         self.export_rumour = -99
         self.seen = -1
@@ -87,6 +99,16 @@ class Bayes:
                     like = {r: (1 / (0.6 * W.ALLOC[g][r] * f)) if 0.7 * W.ALLOC[g][r] * f - 1e-6 <= sh[g] <= 1.3 * W.ALLOC[g][r] * f + 1e-6 else 1e-3
                             for r in ("loose", "tight")}
                     self._bayes(like["tight"], like["loose"])
+        if hist:   # what last month's spot and reservation requests actually got: the caps depend on the regime
+            exp_last = self.export_start is not None and self.export_start <= t - 1 < self.export_start + W.EXPORT_MONTHS
+            for s in SITES:
+                x = hist[-1]["sites"][s]
+                if x["spot_requested"] > 0:
+                    self._fill(x["spot_requested"], x["spot_filled"], {r: W.SPOT_CAP[r][s] * (0.5 if self.spike_last else 1.0)
+                                                                       * (W.EXPORT_SPOT if exp_last else 1.0) for r in REGIMES})
+                if self.asked[s] > 0:
+                    got = sum(c["qty"] for c in obs["contracts"] if c["site"] == s and c["start"] == t and not c.get("option"))
+                    self._fill(self.asked[s], got, {r: W.RESERVE_CAP[r][s] for r in REGIMES})
         if t > 0:
             self.b = self.b * (1 - W.SWITCH) + (1 - self.b) * W.SWITCH
         if hist:   # broker outcomes resolved at the end of last month, then the silent-decay hazard into this month
@@ -139,36 +161,47 @@ class Bayes:
                         self.launch[m] *= 1.0 if abs(m - x) <= 2 else 0.0
             z = sum(self.launch.values()) or 1.0
             self.launch = {m: v / z for m, v in self.launch.items()}
+        self.spike_last = spike
+        self._growth_update(hist)
 
     def _bayes(self, lt, ll):
         self.b = self.b * lt / (self.b * lt + (1 - self.b) * ll)
 
-    def note_queue(self, obs):
-        """Record what could have shipped this month, so next month's shipments are evidence about the regime."""
+    def p_tight(self):
+        return self.b
+
+    def _fill(self, asked, got, cap):
+        """Evidence from getting `got` of `asked` kH when the cap is `cap[regime]` (deterministic, up to rounding)."""
+        like = {r: 1.0 if abs(got - min(asked, cap[r])) < 0.011 else 1e-3 for r in REGIMES}
+        self._bayes(like["tight"], like["loose"])
+
+    def note_actions(self, obs, asked):
+        """Record what could have shipped this month and what was asked of each site's reservation cap, so next
+        month's shipments and fills are evidence about this month's regime."""
         t = obs["month"]
         elig = {g: sum(q["left"] for q in obs["queue"] if q.get("src", "vendor") == "vendor" and q["gen"] == g
                        and t >= q["placed"] + W.MIN_LEAD - 1) for g in ("H", "N")}
         exp = self.export_start is not None and self.export_start <= t < self.export_start + W.EXPORT_MONTHS
         self.pending = (elig, exp)
+        self.asked = dict(asked)
 
-    def demand_fit(self, obs, halflife=4.0):
-        """Exponentially weighted log-linear trend: recent months dominate, so a silent growth switch shows up.
-        Returns (fitted level at the last observed month, growth per month, months observed)."""
-        d = [h["inference_demand"] for h in obs["history"]]
-        n = len(d)
-        g = 0.05
-        if n >= 3:
-            w = [0.5 ** ((n - 1 - i) / halflife) for i in range(n)]
-            sw = sum(w)
-            mx = sum(wi * i for wi, i in zip(w, range(n))) / sw
-            my = sum(wi * math.log(v) for wi, v in zip(w, d)) / sw
-            sxx = sum(wi * (i - mx) ** 2 for wi, i in zip(w, range(n)))
-            g_hat = sum(wi * (i - mx) * (math.log(v) - my) for wi, i, v in zip(w, range(n), d)) / sxx
-            g = min(0.1, max(0.0, (g_hat * sxx + 0.05 * 2) / (sxx + 2)))
-            base = math.exp(my + g * (n - 1 - mx))
-        else:
-            base = d[-1] if d else 6.0 * math.exp(-0.05)
-        return base, g, n
+    def _growth_update(self, hist):
+        """Exact posterior over (growth at month 0, switch month) under the documented demand model: log demand is
+        the trend from DEMAND0 plus independent N(0, DEMAND_NOISE) noise each month."""
+        d = [h["inference_demand"] for h in hist]
+        lo, hi = W.GROWTH_SWITCH_RANGE
+        ll = {}
+        for g in W.GROWTH:
+            for sw in (None, *range(lo, hi + 1)):
+                prior = 0.5 * (W.GROWTH_SWITCH_P / (hi - lo + 1) if sw is not None else 1 - W.GROWTH_SWITCH_P)
+                x, trend = math.log(prior), math.log(W.DEMAND0)
+                for k, v in enumerate(d):
+                    x -= 0.5 * ((math.log(v) - trend) / W.DEMAND_NOISE) ** 2
+                    trend += growth_rate(g, sw, k)
+                ll[g, sw] = x
+        top = max(ll.values())
+        z = sum(math.exp(x - top) for x in ll.values())
+        self.growth = {h: math.exp(x - top) / z for h, x in ll.items()}
 
     def sample_path(self, obs, rng):
         """One future drawn from the posterior (plus the documented noise models), as an lp path."""
@@ -202,20 +235,12 @@ class Bayes:
             c[k] = min(4.0, max(0.8, c[k]))
         sprice = {k: (obs["prices"]["spot"] if k == t else
                       c[k] * W.SPOT_MULT[reg[k]] * math.exp(rng.gauss(0, W.SPOT_NOISE)) * (1.5 if spike[k] else 1.0)) for k in range(t, T)}
-        level, g_hat, n = self.demand_fit(obs)
-        wts = [math.exp(-0.5 * ((g_hat - g) / 0.015) ** 2) for g in W.GROWTH]
-        g = rng.choices(W.GROWTH, wts)[0]
-        lo, hi = W.GROWTH_SWITCH_RANGE
-        fut = [m for m in range(max(t, lo), hi + 1)]
-        past = len(range(lo, max(lo, t)))
-        sw = None
-        if fut and rng.random() < (W.GROWTH_SWITCH_P * len(fut) / (hi - lo + 1)) / (1 - W.GROWTH_SWITCH_P * past / (hi - lo + 1)):
-            sw = rng.choice(fut)
-        D, lvl = {}, math.log(level)
-        for k in range(n, T):
-            lvl += (W.GROWTH[1] if g == W.GROWTH[0] else W.GROWTH[0]) if sw is not None and k > sw else g
-            if k >= t:
-                D[k] = math.exp(lvl + rng.gauss(0, 0.05))
+        g, sw = rng.choices(list(self.growth), list(self.growth.values()))[0]
+        trend = math.log(W.DEMAND0) + sum(growth_rate(g, sw, k) for k in range(t))
+        D = {}
+        for k in range(t, T):
+            D[k] = math.exp(trend + rng.gauss(0, W.DEMAND_NOISE))
+            trend += growth_rate(g, sw, k)
         bq = {}
         for b in W.BROKERS:
             rel = rng.random() < self.rel[b]
@@ -251,6 +276,9 @@ class Truth:
     def update(self, obs):
         pass
 
+    def p_tight(self):
+        return 1.0 if self.w.regime[self.w.t] == "tight" else 0.0
+
 
 # ---------------------------------------------------------------- the LP planner
 class LPPolicy:
@@ -258,18 +286,23 @@ class LPPolicy:
 
     With posterior samples (`Bayes`) this is the reference; with the single true path it is the perfect-information
     policy. Broker reliability can only be learned by ordering, which the LP does not value, so both probe each
-    broker once at the start. The spot request at each site is a high quantile of the per-path optimum (cheap insurance)."""
-    P = {"paths": 12, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.06, "shared": 2}
+    broker once at the start. The spot request at each site is a high quantile of the per-path optimum (cheap
+    insurance), and in a training window's last month at least the gap the LP's convex shortfall cost would leave
+    (`guard`: the fixed penalty of a missed run is a cliff the LP cannot see). Charging unserved inference above its
+    true cost was tried against the LP's inference-for-training leak and over-insured instead; `unserved` stays true."""
+    P = {"paths": 24, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.03, "shared": 1,
+         "unserved": W.UNSERVED_INFERENCE, "guard": True}
 
     def __init__(self, beliefs=None, seed=0, **params):
         self.bel = beliefs or Bayes()
         self.p = {**self.P, **params}
-        self.rng = random.Random(seed)
+        self.seed = seed
 
     def paths(self, obs):
         if isinstance(self.bel, Truth):
             return [lp.oracle_path(self.bel.w)]
-        return [self.bel.sample_path(obs, self.rng) for _ in range(self.p["paths"])]
+        # common random numbers: path i reuses its own stream every month, so the plan moves with the posterior, not with the sampling
+        return [self.bel.sample_path(obs, random.Random(self.seed * 1009 + i)) for i in range(self.p["paths"])]
 
     def lead(self, obs):
         if isinstance(self.bel, Truth):   # the oracle knows the next energisation date at each site
@@ -284,8 +317,9 @@ class LPPolicy:
         def do(cmd):
             try:
                 act(cmd)
+                return True
             except ValueError:
-                pass
+                return False
         gen = "N" if obs["launched"] else "H"
         if t == 0:   # exploration: a small order is the only way to learn a broker's reliability
             for b, mu in W.BROKERS.items():
@@ -293,10 +327,24 @@ class LPPolicy:
                 cost = p["probe"] * W.GPU_PRICE[gen] * mu
                 obs = obs | {"cash": obs["cash"] - cost, "queue": obs["queue"] + [
                     {"gen": gen, "ordered": p["probe"], "left": p["probe"], "placed": t, "src": b, "paid": cost, "site": "us"}]}
-        dec, _, spot = lp.solve(lp.state_of(obs), self.paths(obs), lead=self.lead(obs), shortfall=p["shortfall"],
-                                margin=p["margin"], shared=p["shared"])
+        paths = self.paths(obs)
+        dec, _, spot = lp.solve(lp.state_of(obs), paths, lead=self.lead(obs), shortfall=p["shortfall"],
+                                margin=p["margin"], shared=p["shared"], unserved=p["unserved"])
+        # the LP's convex shortfall cost cannot see the fixed penalty of a missed run: in a window's last month, if the
+        # capacity already certain for this month leaves a gap under the highest-demand path, ask for it on spot (only
+        # what is filled is paid for). Tight supply: ask every site, the caps are small. Loose: split it by the caps.
+        def sure(k):   # training capacity in month k already certain: powered GPUs and active contracts, net of peak demand
+            return sum(powered_compute(obs, s, k) - max(x["D"][s][k] for x in paths)
+                       + sum(c["qty"] for c in obs["contracts"] if c["site"] == s and c["start"] <= k < c["end"]) for s in SITES)
+        floor = {s: 0.0 for s in SITES}
+        for (a, d, target), done in zip(MILESTONES, obs["window_training"]):
+            if d == t and p["guard"]:
+                need = target - done - sure(t) + 0.5
+                if need > 0:
+                    loose = W.SPOT_CAP["loose"]
+                    floor = {s: need if self.bel.p_tight() > 0.5 else 1.3 * need * loose[s] / sum(loose.values()) for s in SITES}
         for s in SITES:   # spot first: it is this month's capacity
-            level = sorted(x[s] for x in spot)[min(len(spot) - 1, int(p["spot_q"] * len(spot)))]
+            level = max(floor[s], sorted(x[s] for x in spot)[min(len(spot) - 1, int(p["spot_q"] * len(spot)))])
             if abs(level - obs["spot_level"][s]) > 0.05:
                 do(f"set_spot {max(0.0, level):.2f} {s}")
         for s in SITES:
@@ -305,14 +353,16 @@ class LPPolicy:
         for s in SITES:
             if dec["pw", s] > 0.5:
                 do(f"contract_power {min(100.0, dec['pw', s]):.1f} {s}")
+        asked = {s: 0.0 for s in SITES}
+        held = obs["options"]
+        if dec["opt"] > 0.25 and do(f"buy_option {dec['opt']:.2f}"):   # before exercising: the plan may exercise them now
+            held += round(dec["opt"], 2)
         for s in SITES:
             for x in lp.TERMS:
-                if dec["res", x, s] > 0.25:
-                    do(f"reserve {dec['res', x, s]:.2f} {x} {s}")
-            if dec["ex", s] > 0.25:
-                do(f"exercise_option {min(dec['ex', s], obs['options']):.2f} {s}")
-        if dec["opt"] > 0.25:
-            do(f"buy_option {dec['opt']:.2f}")
+                if dec["res", x, s] > 0.25 and do(f"reserve {dec['res', x, s]:.2f} {x} {s}"):
+                    asked[s] += round(dec["res", x, s], 2)
+            if dec["ex", s] > 0.25 and held > 0.05 and do(f"exercise_option {min(dec['ex', s], held):.2f} {s}"):
+                held -= min(dec["ex", s], held)
         for s in SITES:
             for b in W.BROKERS:
                 if dec["b", b, s] > 0.25:
@@ -325,7 +375,7 @@ class LPPolicy:
                 if dec["r", g, s] > 0.25:
                     do(f"resell_gpus {min(dec['r', g, s], obs['owned'][s][g]):.2f} {g} {s}")
         if isinstance(self.bel, Bayes):
-            self.bel.note_queue(obs)
+            self.bel.note_actions(obs, asked)
 
 
 class OracleMPC(LPPolicy):
@@ -363,8 +413,39 @@ class Exploiter(LPPolicy):
             pass
 
 
+class Committer(LPPolicy):
+    """Stand-in for a frontier agent's early commitment (Gemini 4 Hydrogen's v5 games bought ~9k gen H GPUs in the
+    first months and ~9k gen N at launch, at one cheap site): the reference planner, made to buy that fleet and its
+    power regardless of the world, and planning everything else around it. Used offline (gap.py) to measure what the
+    commitment costs against the reference without spending model credits."""
+    P = {**LPPolicy.P, "fleet_h": 9.0, "fleet_n": 9.0, "buy_by": 2, "site": "ap"}
+
+    def __init__(self, beliefs=None, seed=0, **params):
+        super().__init__(beliefs, seed, **params)
+        self.n_done = False
+
+    def __call__(self, obs, act):
+        super().__call__(obs, act)   # the planner sees this month's forced orders next month
+        t, p, site = obs["month"], self.p, self.p["site"]
+
+        def do(cmd):
+            try:
+                act(cmd)
+                return True
+            except ValueError:
+                return False
+        buy = {}
+        if t <= p["buy_by"]:
+            buy["H"] = p["fleet_h"] / (p["buy_by"] + 1)
+        if obs["launched"] and not self.n_done:
+            buy["N"], self.n_done = p["fleet_n"], True
+        for g, q in buy.items():
+            if q > 0 and do(f"buy_gpus {q:.2f} {g} {site}"):
+                do(f"contract_power {q * W.POWER_MW[g]:.1f} {site}")
+
+
 LADDER = {"do_nothing": (do_nothing, None), "stop_early": (StopEarly, 3), "spot_only": (SpotOnly, None),
-          "exploiter": (Exploiter, None), "reference": (LPPolicy, None), "oracle": (OracleMPC, None)}
+          "exploiter": (Exploiter, None), "committer": (Committer, None), "reference": (LPPolicy, None), "oracle": (OracleMPC, None)}
 
 
 def ladder(seed):

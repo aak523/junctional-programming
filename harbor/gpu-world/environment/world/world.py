@@ -34,6 +34,7 @@ TERM_FACTOR = {6: 1.15, 12: 1.0, 24: 0.9}
 MOVE_COST, MOVE_CAP = 0.5, 5.0            # $M per thousand GPUs moved; thousand GPUs per month; they arrive next month
 OPTION_PREMIUM, OPTION_STRIKE, OPTION_TERM, OPTION_CAP = 1.0, 1.6, 6, 20.0  # $M/kH; $M/kH-month; months; kH bought/month
 RESALE = 0.75                             # resale (and settlement mark) = 75% of market value
+DEPR = 0.96                               # used-market value of a GPU generation falls 4% per month
 RESELL_CAP = 3.0                          # thousand GPUs resellable per month per generation (all sites together)
 UNSERVED_INFERENCE = 4.0                  # $M lost per kH-month of unserved inference demand
 MILESTONES = [(0, 7, 60.0), (8, 15, 140.0), (16, 23, 320.0)]  # (first month, last month, training kH-months needed within)
@@ -41,17 +42,19 @@ MISS_PENALTY, SHORTFALL_COST = 200.0, 5.0
 SWITCH = 0.10
 HEADLINE_RATE, HEADLINE_ACC = 0.7, 0.75
 EXPORT_ALLOC, EXPORT_SPOT, EXPORT_MONTHS = 0.4, 0.6, 6
-LAUNCH_RANGE = (11, 18)
-LAUNCH_MV, LAUNCH_PRICE = 0.6, 0.75
+LAUNCH_RANGE = (9, 15)
+LAUNCH_MV, LAUNCH_PRICE = 0.5, 0.75
 SPIKE_P = 0.12
 BROKERS = {"A": 1.10, "B": 1.25}          # price markup over list; usable 2 months after ordering, outside the vendor allocation
 BROKER_CAP = 4.0                          # thousand GPUs per broker per month
 BROKER_Q = {"reliable": 0.9, "unreliable": 0.35}  # chance an order is delivered; otherwise cancelled with a partial refund
 BROKER_REFUND = 0.8
 BROKER_DECAY_P, BROKER_DECAY_RANGE = 0.4, (8, 15)  # a reliable broker silently turns unreliable (once, at a hidden month)
-GROWTH = (0.03, 0.07)                     # inference growth per month
+GROWTH = (0.04, 0.08)                     # inference growth per month
 GROWTH_SWITCH_P, GROWTH_SWITCH_RANGE = 0.5, (8, 15)  # growth silently switches to the other value (once)
+DEMAND0, DEMAND_NOISE = 6.0, 0.05         # kH at month 0; lognormal noise around the demand trend each month
 CASH0, FUNDING, CREDIT, RATE = 400.0, 40.0, 500.0, 0.02  # $M cash, monthly funding, credit line, monthly interest on debt
+EARN = 0.0075                             # monthly interest earned on a positive month-end balance (the lab's cost of capital)
 
 BEARISH = ["CoWoS packaging lines reported fully booked through next year.",
            "HBM yields disappoint; memory makers cut shipment guidance.",
@@ -74,7 +77,7 @@ class World:
         self.launch = rng.randint(*LAUNCH_RANGE)
         self.export = rng.randint(5, 15) if rng.random() < 0.5 else None
         g = rng.choice(GROWTH)
-        noise = [rng.gauss(0, 0.05) for _ in range(T)]
+        noise = [rng.gauss(0, DEMAND_NOISE) for _ in range(T)]
         c = [1.6]
         for k in range(1, T + 1):
             x = c[-1] * DRIFT[r[k - 1]] * math.exp(rng.gauss(0, DRIFT_NOISE))
@@ -90,7 +93,7 @@ class World:
         self.growth_switch = rng.randint(*GROWTH_SWITCH_RANGE) if rng.random() < GROWTH_SWITCH_P else None
         g2 = GROWTH[1] if g == GROWTH[0] else GROWTH[0]
         self.growth = [g if self.growth_switch is None or k < self.growth_switch else g2 for k in range(T)]
-        self.demand = [round(6.0 * math.exp(sum(self.growth[:k]) + noise[k]), 2) for k in range(T)]
+        self.demand = [round(DEMAND0 * math.exp(sum(self.growth[:k]) + noise[k]), 2) for k in range(T)]
         self.broker_reliable, self.broker_decay, self.broker_u = {}, {}, {}
         for b in BROKERS:
             self.broker_reliable[b] = rng.random() < 0.5
@@ -154,8 +157,8 @@ class World:
     def market_value(self, gen, k=None):
         k = self.t if k is None else k
         if gen == "H":
-            return GPU_PRICE["H"] * 0.98 ** k * (LAUNCH_MV if k >= self.launch else 1.0)
-        return GPU_PRICE["N"] * 0.98 ** max(0, k - self.launch) if k >= self.launch else 0.0
+            return GPU_PRICE["H"] * DEPR ** k * (LAUNCH_MV if k >= self.launch else 1.0)
+        return GPU_PRICE["N"] * DEPR ** max(0, k - self.launch) if k >= self.launch else 0.0
 
     def spot_price(self, k=None):
         """Base spot price; a site pays this times SITE_PRICE."""
@@ -388,7 +391,7 @@ class World:
             if m["arrive"] == k + 1:
                 self.owned[m["to"]][m["gen"]] += m["qty"]
         self.moves = [m for m in self.moves if m["arrive"] > k + 1]
-        interest = RATE * -self.cash if self.cash < 0 else 0.0
+        interest = RATE * -self.cash if self.cash < 0 else -EARN * self.cash   # negative = earned
         self.cost["interest"] += interest
         self.cash -= interest
         self.history.append({"month": k, "inference_demand": self.demand[k], "served": round(sum(x["served"] for x in sites.values()), 2),
@@ -472,7 +475,7 @@ class World:
                      f"training {h['training']} kH-months. Vendor shipments received: H {h['shipped']['H']:g}k, N {h['shipped']['N']:g}k." +
                      "".join(f" Broker {e['src']} order #{e['id']} ({e['qty']:g}k gen {e['gen']} to {e['site']}): " +
                              ("DELIVERED." if e["delivered"] else f"CANCELLED, {BROKER_REFUND:.0%} refunded.") for e in h["broker"]) +
-                     (f" Interest charged: ${h['interest']:g}M." if h["interest"] else ""))
+                     (f" Interest charged: ${h['interest']:g}M." if h["interest"] > 0 else f" Interest earned: ${-h['interest']:g}M." if h["interest"] < 0 else ""))
             for s in SITES:
                 x = h["sites"][s]
                 L.append(f"  {s}: demand {x['demand']} served {x['served']} | capacity {x['capacity']} = owned&powered {x['own_compute']} "
@@ -480,7 +483,7 @@ class World:
         L.append("Training runs (kH-months done / needed within months a..b): " + "; ".join(
             f"months {a}..{d}: {done:g} / {t:g}" + (" MET" if o["met"].get(d) else " MISSED" if d in o["met"] else "")
             for (a, d, t), done in zip(MILESTONES, o["window_training"])))
-        L.append(f"Cash: ${o['cash']:.1f}M (credit line ${CREDIT:g}M; {RATE:.0%}/month interest on debt; +${FUNDING:g}M funding each month). "
+        L.append(f"Cash: ${o['cash']:.1f}M (credit line ${CREDIT:g}M; {RATE:.0%}/month interest on debt, {EARN:.2%}/month earned on a positive balance; +${FUNDING:g}M funding each month). "
                  f"Options held: {o['options']:g} kH.")
         L.append("Sites this month:")
         for s in SITES:
