@@ -7,7 +7,7 @@
  "sets": {
   "0-9": {
    "n": 10,
-   "mean_reward": 0.6239,
+   "mean_reward": 0.5524,
    "mean_net_cost": 1221.9,
    "all_milestones": 6,
    "error_rate": 0.0127,
@@ -15,7 +15,7 @@
   },
   "20000-20019": {
    "n": 20,
-   "mean_reward": 0.6342,
+   "mean_reward": 0.578,
    "mean_net_cost": 1150.07,
    "all_milestones": 15,
    "error_rate": 0.0126,
@@ -26,7 +26,7 @@
   "0": {
    "net_cost": 927.77,
    "oracle_cost": 511.62,
-   "reward": 0.5515,
+   "reward": 0.3676,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -53,7 +53,7 @@
   "3": {
    "net_cost": 2435.08,
    "oracle_cost": 1092.91,
-   "reward": 0.4488,
+   "reward": 0.2992,
    "milestones_met": 2,
    "errors": 3,
    "forced_ends": 0,
@@ -62,7 +62,7 @@
   "4": {
    "net_cost": 1246.38,
    "oracle_cost": 700.44,
-   "reward": 0.562,
+   "reward": 0.3747,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -80,7 +80,7 @@
   "6": {
    "net_cost": 1731.3,
    "oracle_cost": 1008.87,
-   "reward": 0.5827,
+   "reward": 0.3885,
    "milestones_met": 2,
    "errors": 2,
    "forced_ends": 0,
@@ -116,7 +116,7 @@
   "20000": {
    "net_cost": 1326.46,
    "oracle_cost": 883.27,
-   "reward": 0.6659,
+   "reward": 0.4439,
    "milestones_met": 2,
    "errors": 2,
    "forced_ends": 0,
@@ -125,7 +125,7 @@
   "20001": {
    "net_cost": 1983.66,
    "oracle_cost": 1095.05,
-   "reward": 0.552,
+   "reward": 0.368,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -152,7 +152,7 @@
   "20004": {
    "net_cost": 1972.64,
    "oracle_cost": 984.0,
-   "reward": 0.4988,
+   "reward": 0.1663,
    "milestones_met": 1,
    "errors": 1,
    "forced_ends": 0,
@@ -233,7 +233,7 @@
   "20013": {
    "net_cost": 1410.25,
    "oracle_cost": 831.09,
-   "reward": 0.5893,
+   "reward": 0.3929,
    "milestones_met": 2,
    "errors": 2,
    "forced_ends": 0,
@@ -278,7 +278,7 @@
   "20018": {
    "net_cost": 1307.77,
    "oracle_cost": 735.73,
-   "reward": 0.5626,
+   "reward": 0.3751,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -294,5 +294,6 @@
    "n_actions": 82
   }
  },
- "oracle_commit": "a75ac70"
+ "oracle_commit": "a75ac70",
+ "reward_commit": "e48e91a+dirty"
 }

@@ -26,14 +26,14 @@ def scripted_seed(args):
     pol, stop = policies.LADDER[name]
     s = policies.play(pol, seed, stop)
     oracle = s["net_cost"] if name == "oracle" else oracle_cost(seed)
-    return {"net_cost": s["net_cost"], "oracle_cost": oracle, "reward": round(E.score(s["net_cost"], oracle), 4),
+    return {"net_cost": s["net_cost"], "oracle_cost": oracle, "reward": round(E.score(s["net_cost"], oracle, s["milestones_met"]), 4),
             "milestones_met": s["milestones_met"], "errors": 0, "forced_ends": 0, "n_actions": None}
 
 
 def world_commit():
     root = HERE.parent
     h = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain", "--", "world.py", "lp.py", "policies.py", "TASK.md"],
+    dirty = subprocess.run(["git", "status", "--porcelain", "--", "gpu_world", "TASK.md"],
                            cwd=root, capture_output=True, text=True).stdout.strip()
     return h + ("+dirty" if dirty else "")
 

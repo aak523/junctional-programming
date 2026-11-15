@@ -20,7 +20,7 @@ def oracle_cost(seed):
 
 
 def episode_fields(res, oracle):
-    return {"net_cost": res["net_cost"], "oracle_cost": oracle, "reward": round(E.score(res["net_cost"], oracle), 4),
+    return {"net_cost": res["net_cost"], "oracle_cost": oracle, "reward": round(E.score(res["net_cost"], oracle, res["milestones_met"]), 4),
             "milestones_met": res["milestones_met"], "errors": res["errors"], "forced_ends": res["forced_ends"]}
 
 

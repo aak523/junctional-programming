@@ -1,0 +1,123 @@
+{
+ "reward": 0.0,
+ "seed": 8,
+ "net_cost": 3127.29,
+ "months_played": 0,
+ "milestones_met": 0,
+ "settlement": {
+  "spend": 392.51,
+  "mark_to_market": 49.27,
+  "obligations": 0,
+  "milestones_met": 0,
+  "missed": [
+   7,
+   15,
+   23
+  ],
+  "penalties": 2784.05,
+  "net_cost": 3127.29,
+  "costs": {
+   "capex": 0.0,
+   "power": 54.0,
+   "contracts": 20.0,
+   "spot": 0.0,
+   "unserved": 474.81,
+   "resale": 0.0,
+   "interest": -156.29,
+   "moves": 0.0,
+   "options": 0.0
+  }
+ },
+ "scale": {
+  "oracle": 596.51,
+  "reference": 663.15,
+  "do_nothing": 3127.29,
+  "stop_early": 3023.36,
+  "reference_reward": 0.8995,
+  "do_nothing_reward": 0.0,
+  "stop_early_reward": 0.0
+ },
+ "diagnosis": {
+  "agent": {
+   "net_cost": 3127.29,
+   "runs_met": 0,
+   "window_fill": [
+    0.92,
+    0.19,
+    0.0
+   ],
+   "surplus_training": 0,
+   "gpu_spend": 0.0,
+   "resale_income": 0.0,
+   "contracts": 20.0,
+   "spot": 0.0,
+   "options": 0.0,
+   "power": 54.0,
+   "unserved": 474.81,
+   "interest_charged": 0.0,
+   "min_cash": 396.25,
+   "broker_orders": {
+    "A": 0,
+    "B": 0
+   },
+   "end_mark": 49.27,
+   "obligations_after_23": 0,
+   "penalties": 2784.05
+  },
+  "reference": {
+   "net_cost": 663.15,
+   "runs_met": 3,
+   "window_fill": [
+    1.05,
+    1.03,
+    1.04
+   ],
+   "surplus_training": 19,
+   "gpu_spend": 181.47,
+   "resale_income": 10.15,
+   "contracts": 503.59,
+   "spot": 52.6,
+   "options": 5.04,
+   "power": 82.03,
+   "unserved": 2.69,
+   "interest_charged": 0.0,
+   "min_cash": 365.2,
+   "broker_orders": {
+    "A": 1,
+    "B": 1
+   },
+   "end_mark": 112.04,
+   "obligations_after_23": 61.79,
+   "penalties": 0.0
+  },
+  "cost_gap_vs_reference": {
+   "GPUs": -181.5,
+   "resale": 10.2,
+   "contracts": -483.6,
+   "spot": -52.6,
+   "options": -5.0,
+   "power": -28.0,
+   "unserved inference": 472.1,
+   "interest": 0.0,
+   "end-of-game mark": 62.8,
+   "obligations after month 23": -61.8,
+   "penalties": 2784.1
+  },
+  "beliefs": {
+   "notes": 0,
+   "regime_claims": 0,
+   "regime_right": 0,
+   "months_brokers_called_untested": 0
+  },
+  "findings": [
+   "Missed training run 1 (months 0..7): 0.92x of the 60 kH-months it needed.",
+   "Missed training run 2 (months 8..15): 0.19x of the 140 kH-months it needed.",
+   "Missed training run 3 (months 16..23): 0.00x of the 320 kH-months it needed.",
+   "Left $475M of inference demand unserved (reference $3M).",
+   "Never ordered from broker A or B, so it never learned whether they are reliable (the reference probes each broker in month 0).",
+   "Net cost $3127M vs the reference's $663M ($M against the reference: penalties +2784, unserved inference +472, end-of-game mark +63; contracts -484, GPUs -182, obligations after month 23 -62)."
+  ]
+ },
+ "notes": [],
+ "actions": []
+}

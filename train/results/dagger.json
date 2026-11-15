@@ -6,7 +6,7 @@
  "sets": {
   "0-9": {
    "n": 10,
-   "mean_reward": 0.4173,
+   "mean_reward": 0.3556,
    "mean_net_cost": 1767.82,
    "all_milestones": 6,
    "error_rate": 0.0136,
@@ -14,7 +14,7 @@
   },
   "20000-20019": {
    "n": 20,
-   "mean_reward": 0.4061,
+   "mean_reward": 0.3419,
    "mean_net_cost": 1778.86,
    "all_milestones": 12,
    "error_rate": 0.018,
@@ -52,7 +52,7 @@
   "3": {
    "net_cost": 2298.0,
    "oracle_cost": 1092.91,
-   "reward": 0.4756,
+   "reward": 0.3171,
    "milestones_met": 2,
    "errors": 3,
    "forced_ends": 0,
@@ -70,7 +70,7 @@
   "5": {
    "net_cost": 1922.72,
    "oracle_cost": 755.03,
-   "reward": 0.3927,
+   "reward": 0.2618,
    "milestones_met": 2,
    "errors": 2,
    "forced_ends": 0,
@@ -79,7 +79,7 @@
   "6": {
    "net_cost": 1865.94,
    "oracle_cost": 1008.87,
-   "reward": 0.5407,
+   "reward": 0.3605,
    "milestones_met": 2,
    "errors": 2,
    "forced_ends": 0,
@@ -88,7 +88,7 @@
   "7": {
    "net_cost": 1968.69,
    "oracle_cost": 873.34,
-   "reward": 0.4436,
+   "reward": 0.2957,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -124,7 +124,7 @@
   "20001": {
    "net_cost": 2408.96,
    "oracle_cost": 1095.05,
-   "reward": 0.4546,
+   "reward": 0.1515,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -133,7 +133,7 @@
   "20002": {
    "net_cost": 2832.7,
    "oracle_cost": 929.6,
-   "reward": 0.3282,
+   "reward": 0.2188,
    "milestones_met": 2,
    "errors": 3,
    "forced_ends": 0,
@@ -151,7 +151,7 @@
   "20004": {
    "net_cost": 1962.77,
    "oracle_cost": 984.0,
-   "reward": 0.5013,
+   "reward": 0.3342,
    "milestones_met": 2,
    "errors": 7,
    "forced_ends": 0,
@@ -169,7 +169,7 @@
   "20006": {
    "net_cost": 1370.73,
    "oracle_cost": 660.52,
-   "reward": 0.4819,
+   "reward": 0.3212,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -178,7 +178,7 @@
   "20007": {
    "net_cost": 1483.65,
    "oracle_cost": 672.09,
-   "reward": 0.453,
+   "reward": 0.302,
    "milestones_met": 2,
    "errors": 0,
    "forced_ends": 0,
@@ -196,7 +196,7 @@
   "20009": {
    "net_cost": 2010.94,
    "oracle_cost": 955.52,
-   "reward": 0.4752,
+   "reward": 0.3168,
    "milestones_met": 2,
    "errors": 1,
    "forced_ends": 0,
@@ -232,7 +232,7 @@
   "20013": {
    "net_cost": 2168.18,
    "oracle_cost": 831.09,
-   "reward": 0.3833,
+   "reward": 0.2555,
    "milestones_met": 2,
    "errors": 3,
    "forced_ends": 0,
@@ -259,7 +259,7 @@
   "20016": {
    "net_cost": 2000.28,
    "oracle_cost": 634.18,
-   "reward": 0.317,
+   "reward": 0.2114,
    "milestones_met": 2,
    "errors": 1,
    "forced_ends": 0,
@@ -293,5 +293,6 @@
    "n_actions": 90
   }
  },
- "oracle_commit": "1bffa9f"
+ "oracle_commit": "1bffa9f",
+ "reward_commit": "e48e91a+dirty"
 }

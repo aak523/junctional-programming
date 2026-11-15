@@ -1,7 +1,10 @@
 """Export a GPU World run as month-by-month JSON for the globe.
 
-usage: python export_run.py <repo dir> <policy> <seed> <out.json>
-       python export_run.py <repo dir> <harbor verifier details.json> - <out.json>   (replay an agent's run)
+usage: python export_run.py <repo dir> <policy> <seed> <out.json> [rules label]
+       python export_run.py <repo dir> <harbor verifier details.json> - <out.json> [rules label]   (replay an agent's run)
+The repo dir's world.py and policies.py (in gpu_world/, or at the top level before it) play the run, so export a game with the code it was played under (e.g. a
+worktree of an older commit): an agent replay whose final net cost differs from the one Harbor recorded stops with an
+error instead of writing a different game. The rules label defaults to world.RULES (code before v5 has none: pass it).
 
 Each month (and start) also lists power: the power contracts not yet over after the month's commands
 ({site, mw, start, end (exclusive), ref: [month, command index] of the contract_power command, null for the
@@ -33,18 +36,23 @@ Money ($M): commands[i].cost is what each command cost (negative for income); ca
 commands; costs is spending so far by category; month_end is what the settlement took from cash at each site (power,
 contracts, spot; unserved inference counts towards the score but is never paid from cash) and in interest, and refunded at each supplier; deliveries[].value is what the delivered GPUs cost (the refund for a
 cancelled order, the shipping cost for a move); if_stopped is the final score if the agent stopped sending commands
-here (the game's own finish(): standing contracts run on, then settlement).
-The top level also carries the rules a player knows about demand and training (rules) and the state before any
+here (the game's own finish(): standing contracts run on, then settlement), with its score (world.score against the
+oracle's net cost on the same world; code before world.score used min(1, oracle / net cost)). month_end.funding is the
+funding paid at the month's end.
+The top level also carries the oracle's net cost (oracle), the score formula (score_rule), the rules label and the code commit (rules_version, code),
+the rules a player knows about money and hardware, and the rules a player knows about demand and training (rules) and the state before any
 command (start: sites with owned, powered and own compute, and waiting).
 """
 import copy
 import json
 import pathlib
+import subprocess
 import sys
 from collections import defaultdict
 
 repo, name, seed, out = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-sys.path.insert(0, repo)
+label = sys.argv[5] if len(sys.argv) > 5 else None
+sys.path.insert(0, str(pathlib.Path(repo) / "gpu_world") if (pathlib.Path(repo) / "gpu_world").is_dir() else repo)
 import policies  # noqa: E402
 import world as W  # noqa: E402
 
@@ -70,8 +78,24 @@ if name.endswith(".json"):
     name = pathlib.Path(name).resolve().parts[-4]   # the Harbor job, e.g. fable-5-v4
     POLICY = (replay, None)
 else:
+    details = None
     seed = int(seed)
     POLICY = policies.LADDER[name]
+RULES_VERSION = label or getattr(W, "RULES", None)
+if RULES_VERSION is None:
+    sys.exit("this code has no world.RULES: pass the rules label (e.g. v4) as the 5th argument")
+CODE = subprocess.run(["git", "-C", repo, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip() or None
+ORACLE = policies.play(policies.OracleMPC, seed)["net_cost"]   # the score's yardstick on this world, by this code
+
+
+SCORE_RULE = ("oracle's net cost / net cost (at most 1) x runs met / 3" if hasattr(W, "score")
+              else "oracle's net cost / net cost (at most 1)")
+
+
+def score(net_cost, met):
+    if hasattr(W, "score"):
+        return round(W.score(net_cost, ORACLE, met), 4)
+    return round(1.0 if net_cost <= ORACLE else max(0.0, ORACLE / net_cost), 4)   # the reward before world.score
 
 SUPPLIERS = ("vendor",) + tuple(W.BROKERS)
 
@@ -79,7 +103,8 @@ SUPPLIERS = ("vendor",) + tuple(W.BROKERS)
 def if_stopped(world):
     w2 = copy.deepcopy(world)
     st = w2.finish()
-    return {k: st[k] for k in ("net_cost", "spend", "mark_to_market", "obligations", "penalties", "milestones_met")}
+    return {**{k: st[k] for k in ("net_cost", "spend", "mark_to_market", "obligations", "penalties", "milestones_met")},
+            "score": score(st["net_cost"], st["milestones_met"])}
 
 
 def costs(world):
@@ -188,15 +213,22 @@ while w.t < W.T:
                    "month_end": {"sites": {s: round(x["power_mw"] * W.POWER_COST[s] + contract_cost[s]
                                                     + x["spot_filled"] * rep["spot_price"] * W.SITE_PRICE[s], 2)
                                            for s, x in rep["sites"].items()},
-                                 "interest": rep["interest"],
+                                 "interest": rep["interest"], "funding": rep.get("funding", W.FUNDING),
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
                                              for b in rep["broker"] if not b["delivered"]}},
                    "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), []),
                    "power": power, "prices": prices, "news": news, "options": round(w.options, 2)})
-rules = {"site_price": W.SITE_PRICE, "power_cost": W.POWER_COST, "unserved_cost": W.UNSERVED_INFERENCE, "option": {"premium": W.OPTION_PREMIUM, "strike": W.OPTION_STRIKE},
-         "demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
-         "milestones": [list(m) for m in W.MILESTONES]}
-json.dump({"policy": name, "seed": seed, "rules": rules, "start": start, "months": months}, open(out, "w"), separators=(",", ":"))
-print(f"{len(months)} months; deliveries {sum(len(m['deliveries']) for m in months)}, "
+final = months[-1]["if_stopped"]["net_cost"]
+if details is not None and abs(final - details["net_cost"]) > 0.01:
+    sys.exit(f"replay ends at net cost {final}, but Harbor recorded {details['net_cost']}: this code is not the code the game "
+             f"was played under (export it from that commit)")
+rules = {"site_price": W.SITE_PRICE, "power_cost": W.POWER_COST, "unserved_cost": W.UNSERVED_INFERENCE,
+         "option": {"premium": W.OPTION_PREMIUM, "strike": W.OPTION_STRIKE, "term": W.OPTION_TERM},
+         "demand_start": W.DEMAND0, "growth": list(W.GROWTH), "noise": W.DEMAND_NOISE, "share": W.INF_SHARE,
+         "milestones": [list(m) for m in W.MILESTONES], "funding": W.FUNDING, "credit": W.CREDIT,
+         "ops_per_month": W.OPS_PER_MONTH, "power_mw": W.POWER_MW, "compute": W.COMPUTE}
+json.dump({"policy": name, "seed": seed, "rules_version": RULES_VERSION, "code": CODE, "oracle": ORACLE, "score_rule": SCORE_RULE, "rules": rules,
+           "start": start, "months": months}, open(out, "w"), separators=(",", ":"))
+print(f"{name} seed {seed} (rules {RULES_VERSION}): net cost {final}, score {months[-1]['if_stopped']['score']}; {len(months)} months; deliveries {sum(len(m['deliveries']) for m in months)}, "
       f"cancelled {sum(1 for m in months for d in m['deliveries'] if not d['ok'])}, "
       f"peak vendor queue {max(sum(m['waiting']['vendor'].values()) for m in months):.1f}k")

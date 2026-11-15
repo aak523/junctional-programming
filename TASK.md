@@ -97,4 +97,6 @@ net cost = everything spent (GPUs net of broker refunds, power, contracts, spot,
 interest charged net of interest earned) - resale income - GPUs delivered, in transit or still queued, marked at 75% of their used-market value at
 month 24 + remaining contract and power obligations + training-run penalties.
 Broker orders still unconfirmed at the end are cancelled with the usual refund.
-Lower net cost is better. Your result is read from the server's ledger, not from anything you write.
+Lower net cost is better. Your score is a perfect-information planner's net cost on the same world divided by yours
+(capped at 1), times the share of the three training runs you met: miss one and you keep at most 2/3.
+Your result is read from the server's ledger, not from anything you write.

@@ -642,6 +642,7 @@ const RUN = __RUN__;
   const fmtUSD = (v) => `${v < 0 ? "−" : ""}$${Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
   const fmtDelta = (v) => `${v < 0 ? "−" : "+"}$${Math.abs(v).toFixed(1)}M`;
   // Gen N launch: the first month gen N is on sale.
+  document.title = `GPU World Globe: ${RUN.policy}, seed ${RUN.seed}, rules ${RUN.rules_version}`;
   const LAUNCH = (() => { const i = RUN.months.findIndex((m) => m.prices && m.prices.gpu.N != null); return i < 0 ? Infinity : i; })();
   let occBase = null, launchFx = null, launchedNow = false;
   // ---------------------------------------------------------------- 3D objects (ported from viz/*3d.js)
@@ -1151,7 +1152,8 @@ const RUN = __RUN__;
       }
     }
   };
-  // Rented capacity at each site this month: reserved contracts in force plus the standing spot request.
+  // Rented capacity at each site this month: reserved contracts in force plus the spot filled (the standing request,
+  // capped by the site's spot supply).
   const rentals = new THREE.Group();
   globe.add(rentals);
   const showRent = (k) => {
@@ -1159,11 +1161,11 @@ const RUN = __RUN__;
     flowRentG.replaceChildren();
     for (const site of Object.keys(SITES)) {
       const x = M(k).settle[site], id = `cloud-${site}`;
-      setBar(id, [["var(--cmd-rent)", 1, x.reserved, false, "Reserved cloud, kH"], ["var(--cmd-rent)", 1, x.spot_req, true, "Spot request, kH"]]);
-      if (x.reserved + x.spot_req < 0.005) continue;
+      setBar(id, [["var(--cmd-rent)", 1, x.reserved, false, "Reserved cloud, kH"], ["var(--cmd-rent)", 1, x.spot, true, "Spot filled, kH"]]);
+      if (x.reserved + x.spot < 0.005) continue;
       const a = cloudAnchors[id].position.clone().normalize(), b = anchors[site].position.clone().normalize();
       rentals.add(...withFlow(tipArc("rentals", arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat),
-        `Cloud → ${site}: ${fmt1(x.reserved)} kH reserved, ${fmt1(x.spot_req)} kH spot request`, "var(--cmd-rent)")));
+        `Cloud → ${site}: ${fmt1(x.reserved)} kH reserved, ${fmt1(x.spot)} kH spot filled (${fmt1(x.spot_req)} requested)`, "var(--cmd-rent)")));
       const from = flowNodes[site], to = flowNodes[id];
       svgEl("path", { d: `M${from.cx},${from.bottom} L${to.cx},${to.top}`, fill: "none", stroke: "var(--cmd-rent)", "stroke-width": 1.5, "stroke-opacity": 0.7 }, flowRentG);
     }
@@ -1219,7 +1221,7 @@ const RUN = __RUN__;
         for (const [key, label] of [["power", "power"], ["contracts", "reserved"], ["spot", "spot"], ["interest", "interest"]])
           rows.push([`${label} (month ${k - 1})`, -dc(key)]);
         rows.push([`broker refunds (month ${k - 1})`, Object.values(prev.month_end.refunds).reduce((t, v) => t + v, 0)]);
-        rows.push([`funding (end of month ${k - 1})`, 40]);
+        rows.push([`funding (end of month ${k - 1})`, prev.month_end.funding]);
       }
       rows.push([`commands (month ${k})`, -m.commands.reduce((t, c) => t + (c.cost || 0), 0)]);
       const rest = d - rows.reduce((t, [, v]) => t + v, 0);
@@ -1233,14 +1235,17 @@ const RUN = __RUN__;
     const sl = svgEl("text", { class: "chart-text", x: 0, y: 28 }, statusSvg);
     sl.textContent = "score if stopped now";
     const sv = svgEl("text", { class: "chart-num", x: 294, y: 28.5, "text-anchor": "end" }, statusSvg);
-    sv.textContent = `${fmtUSD(st.net_cost)} net cost`;
+    sv.textContent = `${st.score.toFixed(2)} · ${fmtUSD(st.net_cost)} net cost`;
     const ol = svgEl("text", { class: "chart-text", x: 0, y: 47 }, statusSvg);
     ol.textContent = "commands used";
     const ov = svgEl("text", { class: "chart-num", x: 294, y: 47.5, "text-anchor": "end" }, statusSvg);
-    ov.textContent = k < 0 ? "–" : `${m.commands.filter((c) => c.ok).length} / 15`;
-    ov.setAttribute("data-tip", "Commands sent this month, out of 15 a month");
-    // Hovering the score shows its parts: spend − mark-to-market + obligations + penalties.
+    ov.textContent = k < 0 ? "–" : `${m.commands.filter((c) => c.ok).length} / ${RUN.rules.ops_per_month}`;
+    ov.setAttribute("data-tip", `Commands sent this month, out of ${RUN.rules.ops_per_month} a month`);
+    // Hovering the score shows how it is made, then the net cost's parts: spend − mark-to-market + obligations + penalties.
     sv.setAttribute("data-tip", [
+      `score\t${st.score.toFixed(3)}`,
+      `= ${RUN.score_rule} (oracle ${fmtUSD(RUN.oracle)}, runs met ${st.milestones_met} of 3)`,
+      `run\t${RUN.policy}, seed ${RUN.seed}, rules ${RUN.rules_version}`,
       `spend\t${fmtUSD(st.spend)}`,
       `GPUs held, at 75% of value\t−${fmtUSD(st.mark_to_market)}`,
       `contracts past month 23\t+${fmtUSD(st.obligations)}`,
@@ -1248,26 +1253,28 @@ const RUN = __RUN__;
       `total\t${fmtUSD(st.net_cost)}`].join("\n"));
   };
   // Inference demand per site: what the agent has seen (months before this one, demand line with any unserved
-  // part shaded) and the range the rules allow from here on (growth between the two rates, noise either side).
+  // part shaded) and its likely range from here on: growth between the two rates, and two standard deviations of the
+  // monthly noise either side (about 95% of outcomes; from a seen month the noise counts twice, since that month's
+  // demand carries its own noise around the trend).
   const demandSvg = document.getElementById("demand");
   const DW = 274, DH = 62, MONTHS = RUN.months.length;
   const PL = 30, PB = 14, PT = 6;   // left gutter for the kH scale, bottom for month numbers
   const band = (k, site, m) => {
     const r = RUN.rules, share = r.share[site];
     const b = k > 0 ? k - 1 : 0, v = k > 0 ? RUN.months[k - 1].settle[site].demand : r.demand_start * share;
-    const dm = m - b, noise = dm === 0 && k > 0 ? 0 : r.noise;
-    return [v * Math.exp(r.growth[0] * dm) * (1 - noise), v * Math.exp(r.growth[1] * dm) * (1 + noise)];
+    const dm = m - b, z = dm === 0 && k > 0 ? 0 : 2 * r.noise * (k > 0 ? Math.SQRT2 : 1);
+    return [v * Math.exp(r.growth[0] * dm - z), v * Math.exp(r.growth[1] * dm + z)];
   };
   const demandMax = Math.max(...RUN.months.flatMap((m, k) => Object.keys(SITES).flatMap((s) => [m.settle[s].demand, band(k, s, MONTHS - 1)[1]])));
   const yTop = Math.ceil(demandMax / 4) * 4;   // round the scale up to a multiple of 4 kH
   const dx = (m) => PL + (m * (DW - PL - 2)) / (MONTHS - 1), dy = (v) => DH - PB - (v / yTop) * (DH - PB - PT);
   // This month at a glance, per site: compute by source (owned GPUs with power, owned GPUs idle for want of
-  // power, reserved, standing spot request) against the inference demand range the agent can expect. A thin
+  // power, reserved, spot filled this month) against the inference demand range the agent can expect. A thin
   // power line under each bar shows the MW behind the owned GPUs, drawn on the same scale (MW turned into the
   // compute it can run for that site's mix of GPUs): solid for contracts switched on, outlined for ones signed
   // but not yet on. The total row adds the training rate still needed to meet the current window.
   const computeSvg = document.getElementById("compute"), computeAllSvg = document.getElementById("compute-all");
-  const MW_PER = { H: 1.4, N: 1.6 }, KH_PER = { H: 1, N: 2 };   // per thousand GPUs
+  const MW_PER = RUN.rules.power_mw, KH_PER = RUN.rules.compute;   // per thousand GPUs
   const mwNeed = (o) => o.H * MW_PER.H + o.N * MW_PER.N;
   const ownedKH = (o) => o.H * KH_PER.H + o.N * KH_PER.N;
   const fmtMW = (v) => String(Math.round(v * 10) / 10);
@@ -1275,12 +1282,12 @@ const RUN = __RUN__;
   // Everything one site (or all of them) has this month, in kH and MW.
   const siteState = (k, sites) => {
     const m = stepAt(k), kk = Math.max(k, 0);
-    const z = { own: 0, idle: 0, reserved: 0, spot: 0, need: 0, ownedC: 0, on: [], soon: [] };
+    const z = { own: 0, idle: 0, reserved: 0, spot: 0, spotReq: 0, need: 0, ownedC: 0, on: [], soon: [] };
     for (const s of sites) {
       const x = m.settle ? m.settle[s] : null, o = m.sites[s].owned;
       const own = x ? x.own : m.sites[s].own;
       z.own += own; z.ownedC += ownedKH(o); z.idle += Math.max(0, ownedKH(o) - own);
-      z.reserved += x ? x.reserved : 0; z.spot += x ? x.spot_req : 0; z.need += mwNeed(o);
+      z.reserved += x ? x.reserved : 0; z.spot += x ? x.spot : 0; z.spotReq += x ? x.spot_req : 0; z.need += mwNeed(o);
       for (const p of m.power || []) if (p.site === s) (p.start <= kk ? z.on : z.soon).push(p);
     }
     z.on = z.on.filter((p) => kk < p.end); z.soon.sort((a, b) => a.start - b.start);
@@ -1318,8 +1325,8 @@ const RUN = __RUN__;
     svgEl("line", { x1: 0, x2: 0, y1: 0, y2: 4, stroke: color, "stroke-width": 1.6 }, pat);
     let x = X0, idleX = null;
     for (const [q, c, style, tip] of [[z.own, color, "solid", "Owned GPUs with power"], [z.reserved, "var(--cmd-rent)", "solid", "Reserved cloud"],
-      [z.spot, "var(--cmd-rent)", "hollow", "Spot request"], [z.idle, color, "hatch", "Owned GPUs idle, no power"]]) {
-      const w = sx(q) - X0, dt = `${tip}: ${fmt1(q)} kH`;
+      [z.spot, "var(--cmd-rent)", "hollow", "Spot filled"], [z.idle, color, "hatch", "Owned GPUs idle, no power"]]) {
+      const w = sx(q) - X0, dt = `${tip}: ${fmt1(q)} kH` + (tip === "Spot filled" ? ` (${fmt1(z.spotReq)} kH requested)` : "");
       if (style === "hatch") idleX = x;
       if (w > 0.2) svgEl("rect", style === "hollow" ? { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: "transparent", stroke: c, "data-tip": dt }
         : style === "hatch" ? { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: `url(#${hatch})`, stroke: c, "data-tip": dt }
@@ -1355,7 +1362,7 @@ const RUN = __RUN__;
     // Options held (all row): a thin outlined line under the power line, reserved capacity the agent can add any time.
     if (opts.options > 0.05) {
       svgEl("rect", { x: X0 + 0.5, y: y + 19.5, width: Math.max(0, sx(opts.options) - X0 - 1), height: 2.5, fill: "transparent", stroke: "var(--cmd-option)",
-        "stroke-width": 0.9, "data-tip": `Options held: ${fmt1(opts.options)} kH, each a 6-month reservation at $1.6M per kH-month` }, svg);
+        "stroke-width": 0.9, "data-tip": `Options held: ${fmt1(opts.options)} kH, each a ${RUN.rules.option.term}-month reservation at $${RUN.rules.option.strike}M per kH-month` }, svg);
     }
     // Need: a bracket over the expected range, with a wider invisible copy to hover.
     const d = `M${sx(lo)},${y + 13} V${y - 1} H${sx(hi)} V${y + 13}`;
@@ -1384,7 +1391,7 @@ const RUN = __RUN__;
   };
   // Money: cash now (with its bar and history), credit left, then spending so far by category.
   const moneySvg = document.getElementById("money");
-  const CREDIT = 500;
+  const CREDIT = RUN.rules.credit;
   const SPEND = [["capex", "GPUs", "var(--cmd-buy)"], ["power", "power", "var(--cmd-power)"], ["contracts", "reserved", "var(--cmd-rent)"],
     ["spot", "spot", "var(--cmd-rent)"], ["moves", "moves", "var(--cmd-stock)"], ["options", "options", "var(--cmd-option)"],
     ["interest", "interest", "var(--muted)"], ["unserved", "unserved", "var(--muted)"], ["resale", "resale", "var(--cmd-power)"]];
@@ -1477,7 +1484,7 @@ const RUN = __RUN__;
     svgEl("rect", { x: 0, y: 20, width: 274, height: 8, fill: "transparent", stroke: "var(--grid)",
       "data-tip": `Room up to this run's peak cash, ${fmtUSD(cashMax)}` }, moneySvg);
     svgEl("rect", { x: 0, y: 20, width: Math.max(0, bx(m.cash)), height: 8, fill: "var(--fg)", "fill-opacity": 0.85,
-      "data-tip": `Cash: ${fmtUSD(m.cash)}, counted up from −$500M (credit line used up)` }, moneySvg);
+      "data-tip": `Cash: ${fmtUSD(m.cash)}, counted up from −${fmtUSD(CREDIT)} (credit line used up)` }, moneySvg);
     svgEl("line", { x1: bx(0), x2: bx(0), y1: 17, y2: 31, stroke: "var(--muted)" }, moneySvg);
     svgEl("line", { x1: bx(0), x2: bx(0), y1: 17, y2: 31, stroke: "transparent", "stroke-width": 6, "data-tip": "$0: left of here is borrowing" }, moneySvg);
     // Spending so far, in two columns (five rows, then four); resale is money back.
@@ -1720,7 +1727,7 @@ const RUN = __RUN__;
       const x = m.settle[id.slice(6)];
       const rc = "var(--cmd-rent)";
       const pr = priceAt(month), f = SITE_PRICE[id.slice(6)], usd = (v) => `$${(v * f).toFixed(2)}M`;
-      return [[`cloud ${id.slice(6)}`, rc], [`reserved\t${fmt1(x.reserved)} kH`, rc], [`spot request\t${fmt1(x.spot_req)} kH`, rc],
+      return [[`cloud ${id.slice(6)}`, rc], [`reserved\t${fmt1(x.reserved)} kH`, rc], [`spot filled\t${fmt1(x.spot)} of ${fmt1(x.spot_req)} kH requested`, rc],
         [`spot price\t${usd(pr.spot)} per kH-month`, rc], [`reserve 6 / 12 / 24 m\t${usd(pr.reserve["6"])} / ${usd(pr.reserve["12"])} / ${usd(pr.reserve["24"])}`, rc]];
     }
     const w = m.waiting[id];
@@ -2180,8 +2187,8 @@ const RUN = __RUN__;
       "Headlines the agent saw at the start of this month."],
     training: [
       "Cash now and its change since last step (hover for the breakdown).",
-      "Score if stopped now: final net cost if the agent sent no more commands. Lower is better.",
-      "Commands used: this month's commands, out of 15."],
+      "Score if stopped now: the final score (0 to 1, higher is better) and net cost if the agent sent no more commands.",
+      "Commands used: this month's commands, out of the month's limit."],
   };
   const tip = document.getElementById("tip");
   // A paragraph with a tab in it is a row: label on the left, value on the right.

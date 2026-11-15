@@ -11,6 +11,7 @@ import math
 import operator
 import random
 
+RULES = "v5"                              # the rules' version, recorded with exported runs (bump it when a rule changes)
 T = 24
 OPS_PER_MONTH = 15
 SITES = ("us", "eu", "ap")
@@ -64,6 +65,13 @@ BULLISH = ["New CoWoS capacity comes online ahead of schedule.",
            "HBM supply loosens as a third memory vendor qualifies.",
            "Distributors report accelerator inventory building up.",
            "Cloud providers cut list prices for reserved GPU capacity."]
+
+
+def score(net_cost, oracle, milestones_met):
+    """The reward in [0, 1]: the oracle's net cost / the player's (capped at 1), times the share of training runs met.
+    Missing a run keeps at most 2/3, so doing nothing or stopping early earns (almost) nothing."""
+    efficiency = 1.0 if net_cost <= oracle else max(0.0, oracle / net_cost)
+    return efficiency * milestones_met / len(MILESTONES)
 
 
 class World:

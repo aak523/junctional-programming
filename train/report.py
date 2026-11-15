@@ -24,9 +24,10 @@ def main():
     res = {n: json.loads((RES / f"{n}.json").read_text()) for n in names}
     sets = list(next(iter(res.values()))["sets"])
     oracles = sorted({r.get("oracle_commit", r["world_commit"]) for r in res.values()})
-    L = ["# Fine-tuning results", "", "World v5 rules (commit 2303cc6; world.py, lp.py, TASK.md and service.py unchanged since). "
+    L = ["# Fine-tuning results", "", "World v5 rules (commit 2303cc6; the rules are unchanged since, the modules now in gpu_world/). "
          f"Rewards use the oracle of commit {', '.join(oracles)} (after the options fix in 466fcc7). Greedy decoding, one "
-         "episode per held-out seed; reward = oracle net cost / net cost, capped at 1 (the Harbor verifier's formula).", ""]
+         "episode per held-out seed; reward = (oracle net cost / net cost, capped at 1) x share of training runs met "
+         "(world.score, the Harbor verifier's formula since b954cad).", ""]
     for s in sets:
         L += [f"## Seeds {s}", "", "| policy | mean reward | mean net cost ($M) | all 3 runs met | command error rate | forced ends |",
               "|---|---|---|---|---|---|"]

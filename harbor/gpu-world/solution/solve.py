@@ -1,5 +1,8 @@
-"""Reference solution: the Bayesian LP reference policy, playing through the same server API as the agent."""
+"""Reference solution: the Bayesian LP reference policy, playing through the same server API as the agent.
+With STOP_AFTER=<months> (harbor run ... -a oracle --ae STOP_AFTER=3) it is the stop-early baseline: it plays the
+first months, then stops, and the remaining months run with no actions."""
 import json
+import os
 import urllib.request
 
 import policies
@@ -26,12 +29,13 @@ def act(line):
 
 
 pol = policies.LPPolicy()
+stop = int(os.environ.get("STOP_AFTER") or W.T)
 while True:
     obs = json.loads(urllib.request.urlopen(URL + "/observe", timeout=60).read().decode())
     if obs["prices"]:   # JSON turned integer dict keys into strings
         obs["prices"]["reserve"] = {int(k): v for k, v in obs["prices"]["reserve"].items()}
     obs["met"] = {int(k): v for k, v in obs["met"].items()}
-    if obs["month"] >= W.T:
+    if obs["month"] >= min(W.T, stop):
         break
     pol(obs, act)
     print(act("end_month").splitlines()[0])

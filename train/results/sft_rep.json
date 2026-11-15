@@ -7,7 +7,7 @@
  "sets": {
   "0-9": {
    "n": 10,
-   "mean_reward": 0.3776,
+   "mean_reward": 0.0699,
    "mean_net_cost": 2000.96,
    "all_milestones": 0,
    "error_rate": 0.0065,
@@ -15,7 +15,7 @@
   },
   "20000-20019": {
    "n": 20,
-   "mean_reward": 0.4006,
+   "mean_reward": 0.1038,
    "mean_net_cost": 1828.13,
    "all_milestones": 1,
    "error_rate": 0.0078,
@@ -26,7 +26,7 @@
   "0": {
    "net_cost": 1189.39,
    "oracle_cost": 511.62,
-   "reward": 0.4302,
+   "reward": 0.1434,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -35,7 +35,7 @@
   "1": {
    "net_cost": 1789.34,
    "oracle_cost": 811.5,
-   "reward": 0.4535,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -44,7 +44,7 @@
   "2": {
    "net_cost": 1018.63,
    "oracle_cost": 431.52,
-   "reward": 0.4236,
+   "reward": 0.2824,
    "milestones_met": 2,
    "errors": 1,
    "forced_ends": 0,
@@ -53,7 +53,7 @@
   "3": {
    "net_cost": 3153.12,
    "oracle_cost": 1092.91,
-   "reward": 0.3466,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -62,7 +62,7 @@
   "4": {
    "net_cost": 2444.95,
    "oracle_cost": 700.44,
-   "reward": 0.2865,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -71,7 +71,7 @@
   "5": {
    "net_cost": 2010.04,
    "oracle_cost": 755.03,
-   "reward": 0.3756,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -80,7 +80,7 @@
   "6": {
    "net_cost": 2900.58,
    "oracle_cost": 1008.87,
-   "reward": 0.3478,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -89,7 +89,7 @@
   "7": {
    "net_cost": 2073.26,
    "oracle_cost": 873.34,
-   "reward": 0.4212,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -98,7 +98,7 @@
   "8": {
    "net_cost": 1453.91,
    "oracle_cost": 596.51,
-   "reward": 0.4103,
+   "reward": 0.2735,
    "milestones_met": 2,
    "errors": 1,
    "forced_ends": 0,
@@ -107,7 +107,7 @@
   "9": {
    "net_cost": 1976.42,
    "oracle_cost": 554.99,
-   "reward": 0.2808,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -116,7 +116,7 @@
   "20000": {
    "net_cost": 2030.99,
    "oracle_cost": 883.27,
-   "reward": 0.4349,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 2,
    "forced_ends": 0,
@@ -125,7 +125,7 @@
   "20001": {
    "net_cost": 3076.18,
    "oracle_cost": 1095.05,
-   "reward": 0.356,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -134,7 +134,7 @@
   "20002": {
    "net_cost": 2517.5,
    "oracle_cost": 929.6,
-   "reward": 0.3693,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -143,7 +143,7 @@
   "20003": {
    "net_cost": 2098.56,
    "oracle_cost": 571.97,
-   "reward": 0.2726,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -152,7 +152,7 @@
   "20004": {
    "net_cost": 2246.63,
    "oracle_cost": 984.0,
-   "reward": 0.438,
+   "reward": 0.146,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -161,7 +161,7 @@
   "20005": {
    "net_cost": 1599.18,
    "oracle_cost": 488.54,
-   "reward": 0.3055,
+   "reward": 0.1018,
    "milestones_met": 1,
    "errors": 1,
    "forced_ends": 0,
@@ -170,7 +170,7 @@
   "20006": {
    "net_cost": 1540.66,
    "oracle_cost": 660.52,
-   "reward": 0.4287,
+   "reward": 0.1429,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -179,7 +179,7 @@
   "20007": {
    "net_cost": 1589.51,
    "oracle_cost": 672.09,
-   "reward": 0.4228,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -188,7 +188,7 @@
   "20008": {
    "net_cost": 1507.09,
    "oracle_cost": 569.99,
-   "reward": 0.3782,
+   "reward": 0.1261,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -197,7 +197,7 @@
   "20009": {
    "net_cost": 1864.17,
    "oracle_cost": 955.52,
-   "reward": 0.5126,
+   "reward": 0.3417,
    "milestones_met": 2,
    "errors": 1,
    "forced_ends": 0,
@@ -206,7 +206,7 @@
   "20010": {
    "net_cost": 1415.1,
    "oracle_cost": 610.8,
-   "reward": 0.4316,
+   "reward": 0.1439,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -215,7 +215,7 @@
   "20011": {
    "net_cost": 1362.42,
    "oracle_cost": 518.34,
-   "reward": 0.3805,
+   "reward": 0.1268,
    "milestones_met": 1,
    "errors": 0,
    "forced_ends": 0,
@@ -224,7 +224,7 @@
   "20012": {
    "net_cost": 1388.97,
    "oracle_cost": 674.27,
-   "reward": 0.4854,
+   "reward": 0.1618,
    "milestones_met": 1,
    "errors": 1,
    "forced_ends": 0,
@@ -233,7 +233,7 @@
   "20013": {
    "net_cost": 1937.77,
    "oracle_cost": 831.09,
-   "reward": 0.4289,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -242,7 +242,7 @@
   "20014": {
    "net_cost": 1763.01,
    "oracle_cost": 494.44,
-   "reward": 0.2805,
+   "reward": 0.0935,
    "milestones_met": 1,
    "errors": 2,
    "forced_ends": 0,
@@ -251,7 +251,7 @@
   "20015": {
    "net_cost": 1544.61,
    "oracle_cost": 628.7,
-   "reward": 0.407,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -260,7 +260,7 @@
   "20016": {
    "net_cost": 2322.88,
    "oracle_cost": 634.18,
-   "reward": 0.273,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -269,7 +269,7 @@
   "20017": {
    "net_cost": 1639.76,
    "oracle_cost": 566.69,
-   "reward": 0.3456,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 1,
    "forced_ends": 0,
@@ -278,7 +278,7 @@
   "20018": {
    "net_cost": 1987.85,
    "oracle_cost": 735.73,
-   "reward": 0.3701,
+   "reward": 0.0,
    "milestones_met": 0,
    "errors": 0,
    "forced_ends": 0,
@@ -294,5 +294,6 @@
    "n_actions": 77
   }
  },
- "oracle_commit": "a75ac70"
+ "oracle_commit": "a75ac70",
+ "reward_commit": "e48e91a+dirty"
 }

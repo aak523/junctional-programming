@@ -26,7 +26,7 @@ We fine-tune `Qwen/Qwen3-4B-Instruct-2507` with LoRA (r 32, all linear layers):
 Follow-up SFT variants test the recipe: another random half of the teacher data (run-to-run variance), a short system
 prompt, all the teacher data, Qwen3-8B, and teacher data from the reference after its options fix.
 
-Evaluation: greedy decoding, one episode per held-out seed, on seeds 0-9 (the README ladder) and 20000-20019. Training
+Evaluation: greedy decoding, one episode per held-out seed, on seeds 0-9 (the ladder's evaluation seeds) and 20000-20019. Training
 seeds never overlap evaluation seeds or the LP-tuning seeds (100+). Reward is the Harbor verifier's: oracle net cost /
 net cost, capped at 1.
 
@@ -64,7 +64,7 @@ the user message is built from the rendered screen, the finished-month table and
 - `gen_sft.py --verify`: replaying every stored reply through `Episode.step` reproduces the stored prompts and the
   reference's exact net cost, and equals `policies.play(LPPolicy, seed)`.
 - `relabel.py --check`: relabelling the reference's own episodes reproduces every reply exactly.
-- `eval_llm.py --model scripted:*` reproduces `results/ladder.json`.
+- `eval_llm.py --model scripted:*` reproduces `scripts/ladder.py`.
 - `sft.py` checks that the trained tokens of the first batch are exactly the assistant reply.
 
 ## Reproduce
@@ -80,7 +80,8 @@ bash train/cloud/run_box.sh sft        # SFT, merge, eval
 bash train/cloud/run_box.sh sample; bash train/cloud/run_box.sh relabel; bash train/cloud/run_box.sh round2
 bash train/cloud/run_box.sh round3     # unseen teacher months + relabels, continued from SFT
 python train/rescore.py base sft dagger dagger3   # if the oracle changes, re-score (net costs do not change)
-# follow-ups on a multi-GPU box, in a checkout with policies.py from 2303cc6 (the teacher these models learned from):
+# follow-ups on a multi-GPU box, in a checkout whose gpu_world/policies.py is 2303cc6's (the teacher these models learned
+# from): git show 2303cc6:policies.py > gpu_world/policies.py
 GPUS=3 bash train/cloud/exp.sh sft_rep    # also: short, short_full, qwen8b (GPUS=0,1,2), teacher first
 bash train/cloud/phase2.sh                # DAgger round 4 + DPO, after exp.sh dagger4 has sampled
 # locally:
@@ -91,48 +92,54 @@ bash train/cloud/sync_down.sh && python train/report.py && python train/cloud/bo
 
 Full tables (both seed sets, error rates, round statistics): `results/REPORT.md`. Per-seed rewards: `results/rewards.png`.
 
-Mean reward on the 30 held-out worlds (seeds 0-9 and 20000-20019), greedy, against the oracle after the options fix:
+Reward is the verifier's (`world.score`, since b954cad): the oracle's net cost / the model's (capped at 1), times the share
+of the three training runs met, so a missed run costs at least a third. Oracle after the options fix (466fcc7). The environment modules live in `gpu_world/` since 1028dd9; `llm_env.py` puts
+that folder on the import path. The
+models were trained and evaluated with TASK.md as of 2303cc6, before the sentence explaining this score was added; the
+rules are unchanged (`RULES = "v5"`), so every net cost stands and only the reward was recomputed (`rescore.py --keep-oracle`).
 
-| policy | seeds 0-9 | seeds 20000-20019 | worlds with all 3 runs met | commands rejected |
+Mean reward on the 30 held-out worlds, greedy decoding:
+
+| policy | seeds 0-9 | seeds 20000-20019 | all 30 | worlds with all 3 runs met | commands rejected |
+|---|---|---|---|---|---|
+| do nothing | 0.000 | 0.000 | 0.000 | 0 / 30 | - |
+| Qwen3-4B-Instruct-2507, untrained | 0.121 | 0.115 | 0.117 | 1 / 30 | 46.1% |
+| SFT on 4,800 teacher months | 0.269 | 0.214 | 0.232 | 5 / 30 | 1.0% |
+| + DAgger round 2 (relabels + own best episodes + 10% replay) | 0.356 | 0.342 | 0.346 | 18 / 30 | 1.7% |
+| + DAgger round 3 (the 4,800 unseen teacher months + 2,814 relabels) | 0.486 | 0.443 | 0.457 | 12 / 30 | 1.2% |
+| **+ DAgger round 4 (4,698 of its own states relabelled + 20% teacher replay)** | **0.552** | **0.578** | **0.569** | 21 / 30 | 1.3% |
+| round 3 + DPO (1,200 pairs: the reference's reply preferred over its own) | 0.354 | 0.372 | 0.366 | 23 / 30 | 13.9% |
+| teacher: the reference before the options fix (466fcc7) | 0.877 | 0.862 | 0.867 | 30 / 30 | - |
+| current reference | 0.922 | 0.920 | 0.921 | 30 / 30 | - |
+
+Follow-up SFT variants (same 30 worlds; compare with the first SFT):
+
+| variant | seeds 0-9 | seeds 20000-20019 | all 30 | missed runs (of 90) |
 |---|---|---|---|---|
-| do nothing | 0.214 | 0.215 | 0 / 30 | - |
-| Qwen3-4B-Instruct-2507, untrained | 0.246 | 0.250 | 1 / 30 | 46% |
-| SFT on 4,800 teacher months | 0.497 | 0.445 | 5 / 30 | 1.1% |
-| + DAgger round 2 (relabels + own best episodes + 10% replay) | 0.417 | 0.406 | 18 / 30 | 1.6% |
-| + DAgger aggregate, round 3 (the 4,800 unseen teacher months + 2,814 relabels) | 0.583 | 0.573 | 12 / 30 | 1.2% |
-| **+ DAgger round 4 (4,698 of its own states relabelled + 20% teacher replay)** | **0.624** | **0.634** | **21 / 30** | 1.3% |
-| round 3 + DPO (1,200 pairs: the reference's reply preferred over its own) | 0.380 | 0.401 | 23 / 30 | 13.9% |
-| teacher: the reference before the options fix (466fcc7) | 0.877 | 0.862 | 30 / 30 | 0% |
-| current reference | 0.922 | 0.920 | 30 / 30 | 0% |
-
-Follow-up SFT variants (same 30 worlds; compare with the first SFT, 0.462 over the 30 worlds):
-
-| variant | seeds 0-9 | seeds 20000-20019 | 30-world mean | missed runs (of 90) |
-|---|---|---|---|---|
-| first SFT (4,800 months, seed 0 subset) | 0.497 | 0.445 | 0.462 | 52 |
-| same recipe, another random 4,800 months | 0.378 | 0.401 | 0.393 | 72 |
-| short system prompt (task statement + reply rules, 45% fewer tokens) | 0.475 | 0.387 | 0.416 | 60 |
-| short prompt, all 9,600 months | 0.461 | 0.443 | 0.449 | 63 |
-| Qwen3-8B (thinking off), same 4,800 months | 0.392 | 0.348 | 0.363 | 68 |
-| 4,800 months of the current (fixed) reference | 0.372 | 0.375 | 0.374 | 63 |
+| first SFT (4,800 months, seed 0 subset) | 0.269 | 0.214 | 0.232 | 52 |
+| same recipe, another random 4,800 months | 0.070 | 0.104 | 0.093 | 72 |
+| short system prompt (task statement + reply rules, 45% fewer tokens) | 0.267 | 0.111 | 0.163 | 60 |
+| short prompt, all 9,600 months | 0.194 | 0.158 | 0.170 | 63 |
+| Qwen3-8B (thinking off), same 4,800 months | 0.131 | 0.086 | 0.101 | 68 |
+| 4,800 months of the current (fixed) reference | 0.138 | 0.114 | 0.122 | 63 |
 
 What the numbers say:
-- **Training works, and each DAgger round adds to it.** Untrained 0.25, SFT 0.46, round 3 0.58, round 4 0.63 (30-world
-  means). Round 3 beats SFT by 0.114 reward (standard error 0.025, better on 23 of 30 worlds); round 4 beats round 3 by
-  0.055 (standard error 0.024, better on 19 of 30). Mean net cost falls from $2,980M untrained to $1,716M (SFT), $1,319M
-  (round 3) and $1,174M (round 4); the teacher's is $830M.
-- **DAgger is where the gain is; SFT variants are within noise.** Two SFT runs with the same recipe on different random
-  halves of the teacher data differ by 0.07 (0.46 vs 0.39). Against that spread, the short prompt, twice the data, the
-  fixed reference as teacher and Qwen3-8B are no better than the first SFT. The short prompt trains 2.6x faster for a
-  similar result, so it is the cheaper setting for future rounds. The 8B model is the hybrid-thinking Qwen3-8B, not an
-  instruct-2507 model, and got one epoch at the 4B learning rate; it is not evidence that size does not help.
-- **DPO overshot.** Preferring the reference's reply over the round-3 model's own, in the model's own states, met more
-  training runs (23 of 30 worlds) but made 14% of its commands invalid and overspent: mean net cost $1,902M against
-  round 3's $1,319M (worse on 29 of 30 worlds). Pushing away from its own replies took it off its output distribution;
-  a smaller beta, fewer steps or an SFT term would be the next things to try.
-- **Self-imitation hurt.** Round 2 kept the student's own best-of-6 episodes when they beat its greedy play (51 of 60
-  worlds). It cut missed runs from 52 to 13 but more than doubled reserved-capacity spend ($596M to $1,334M against
-  the reference's $615M), so reward fell. Relabels plus teacher data only (rounds 3 and 4) fixed it.
+- **Training works, and each DAgger round adds to it.** Untrained 0.12, SFT 0.23, round 3 0.46, round 4 0.57 (all 30
+  worlds). Paired on the same worlds, round 3 beats SFT by 0.225 (standard error 0.044, better on 25 of 30) and round 4
+  beats round 3 by 0.112 (standard error 0.038, better on 20 of 30). Mean net cost falls from $2,980M untrained to
+  $1,716M (SFT), $1,319M (round 3) and $1,174M (round 4); the teacher's is $830M.
+- **Meeting the training runs is most of it.** SFT models miss half the runs (52-72 of 90); the round-4 model misses 10.
+  Under this reward each miss costs a third, which is why the DAgger rounds' gains are large.
+- **SFT variants are within noise.** Two SFT runs with the same recipe on different random halves of the teacher data
+  differ by 0.14 (0.23 vs 0.09). Against that spread, the short prompt, twice the data, the fixed reference as teacher
+  and Qwen3-8B are no better than the first SFT. The short prompt trains 2.6x faster for a similar result. The 8B model
+  is the hybrid-thinking Qwen3-8B, not an instruct-2507 model, and got one epoch at the 4B learning rate; it is not
+  evidence that size does not help.
+- **Self-imitation and DPO each fell short of plain relabelling.** Round 2 also trained on the student's own best-of-6
+  episodes: it met more runs than SFT (18 of 30 worlds) but over-leased ($1,334M of reservations against the
+  reference's $615M), and round 3, relabels and teacher data only, beat it. DPO on top of round 3 met the most runs (23
+  of 30) but made 14% of its commands invalid and overspent ($1,902M mean net cost), so it ended below round 3; a smaller
+  beta, fewer steps or an SFT term would be the next things to try.
 - **What the best model still gets wrong.** Round 4 misses 10 of 90 training runs (it fixed the first window: 3 misses,
   down from 13) and still rents too much: $775M of reservations and $162M of contracts running past month 23, against
   the reference's $615M and $91M, plus $82M of penalties per world.

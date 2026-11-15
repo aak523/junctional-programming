@@ -13,8 +13,8 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parent.parent           # TASK.md lives here
+sys.path.insert(0, str(ROOT / "gpu_world"))             # world, service, policies, lp (they import each other flat)
 import service  # noqa: E402
 import world as W  # noqa: E402
 
@@ -107,9 +107,7 @@ def parse(text):
     return out, info
 
 
-def score(net_cost, oracle):
-    """The Harbor verifier's reward (server.py)."""
-    return 1.0 if net_cost <= oracle else max(0.0, oracle / net_cost)
+score = W.score   # the verifier's reward: (oracle / net cost, capped at 1) x share of training runs met
 
 
 class Episode:

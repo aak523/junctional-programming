@@ -17,7 +17,7 @@ wait_for() { until grep -q "^STAGE_OK" train/logs/exp_$1.log 2>/dev/null; do
 name=$1
 run() {
   case $name in
-    teacher)  # the reference these models learned from (policies.py of 2303cc6), regenerated: deterministic
+    teacher)  # the reference these models learned from (run with gpu_world/policies.py = 2303cc6's policies.py)
               python train/gen_sft.py --seeds 10000 10400 --procs $P --out train/data/sft_ref.jsonl &&
               python train/gen_sft.py --verify train/data/sft_ref.jsonl --against-play 1 ;;
     sft_rep)  # same recipe as the first SFT, a different random 4,800 months: run-to-run variance
