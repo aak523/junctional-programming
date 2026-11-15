@@ -9,6 +9,7 @@ starting contracts}).
 Each month also carries prices: what the agent saw at the start of that month (spot and reserve per kH-month
 before the site multiplier, gpu list and broker prices per thousand GPUs, used-market value per thousand GPUs).
 Each month also carries news: the headlines the agent saw at the start of that month.
+Each month also carries options: kH of options held after the month's commands.
 A replayed agent run also carries notes: the agent's belief-log entries written during each month.
 
 Each month records the commands the policy sent ([{c, ok}], ok false when the world refused it) and,
@@ -191,8 +192,8 @@ while w.t < W.T:
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
                                              for b in rep["broker"] if not b["delivered"]}},
                    "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), []),
-                   "power": power, "prices": prices, "news": news})
-rules = {"site_price": W.SITE_PRICE, "option": {"premium": W.OPTION_PREMIUM, "strike": W.OPTION_STRIKE},
+                   "power": power, "prices": prices, "news": news, "options": round(w.options, 2)})
+rules = {"site_price": W.SITE_PRICE, "power_cost": W.POWER_COST, "unserved_cost": W.UNSERVED_INFERENCE, "option": {"premium": W.OPTION_PREMIUM, "strike": W.OPTION_STRIKE},
          "demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
          "milestones": [list(m) for m in W.MILESTONES]}
 json.dump({"policy": name, "seed": seed, "rules": rules, "start": start, "months": months}, open(out, "w"), separators=(",", ":"))

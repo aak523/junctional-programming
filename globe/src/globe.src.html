@@ -471,15 +471,16 @@ const RUN = __RUN__;
   // vendor on the Greenland ice sheet, broker A on the Changtang plateau (Tibet), broker B in the Beni savanna (Bolivia).
   const SUPPLIERS = { vendor: [-38.5, 72.6], A: [81.0, 34.5], B: [-65.0, -14.0] };
   const suppliers = {}, supplierAnchors = {};
-  const supPadMat = fatMat();
+  const supPadMat = fatMat(), vendorPadMat = fatMat();
   for (const [id, [lon, lat]] of Object.entries(SUPPLIERS)) {
     const anchor = new THREE.Group();
     const n = toVec(lon, lat, 1).normalize();
     anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
     anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
     addMask(anchor);
-    anchor.add(fatSegments(padGeo, supPadMat));
-    addGlow(anchor, supPadMat);
+    const mat = id === "vendor" ? vendorPadMat : supPadMat;   // the vendor takes the colour of the gen it sells
+    anchor.add(fatSegments(padGeo, mat));
+    addGlow(anchor, mat);
     const blocks = new THREE.Group();
     anchor.add(blocks);
     globe.add(anchor);
@@ -532,6 +533,9 @@ const RUN = __RUN__;
     anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
     anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
     anchor.add(fatSegments(stationGeo, powerPadMat));
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.04), new THREE.MeshBasicMaterial({ visible: false }));
+    hit.position.set(0.004, 0.02, 0);   // an invisible box over the station, for hovering
+    anchor.add(hit);
     globe.add(anchor);
     stationAnchors[site] = anchor;
   }
@@ -634,7 +638,12 @@ const RUN = __RUN__;
   // Money in $M: amounts, and signed changes to cash (− spent, + received).
   const fmtUSD = (v) => `${v < 0 ? "−" : ""}$${Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
   const fmtDelta = (v) => `${v < 0 ? "−" : "+"}$${Math.abs(v).toFixed(1)}M`;
-  const showMonth = (k) => { showSites(M(k)); showSuppliers(M(k).waiting); showFlow(M(k)); };
+  // Gen N launch: the first month gen N is on sale.
+  const LAUNCH = (() => { const i = RUN.months.findIndex((m) => m.prices && m.prices.gpu.N != null); return i < 0 ? Infinity : i; })();
+  let occBase = null, launchFx = null, launchedNow = false;
+  const showMonth = (k) => {
+    launchedNow = k >= LAUNCH;
+    vendorPadMat.color = new THREE.Color(css(launchedNow ? "--gen-n" : "--gen-h")); showSites(M(k)); showSuppliers(M(k).waiting); showFlow(M(k)); };
 
   // ---------------------------------------------------------------- flow pane
   // Suppliers in the top row, datacentres in the bottom row. Each node: name, total in thousands of GPUs,
@@ -1100,7 +1109,9 @@ const RUN = __RUN__;
     ALL.reduce((t, s) => t + band(k, s, k)[1], 0) + trainingNeed(k))));
   const fmt1 = (v) => (v < 0.05 ? "0" : v.toFixed(1));
   const ROW_H = 26;   // bar, power line, MW text
-  const computeRow = (svg, y, label, ent, labelColor, color, z, need, scale, needTip) => {
+  const POWER_COST = RUN.rules.power_cost, UNSERVED = RUN.rules.unserved_cost;
+  const perMonth = (p) => `$${(p.mw * POWER_COST[p.site]).toFixed(1)}M a month`;
+  const computeRow = (svg, y, label, ent, labelColor, color, z, need, scale, needTip, opts = {}) => {
     const X0 = 26, BW = 128, sx = (v) => X0 + (v / scale) * BW;
     const t = svgEl("text", { class: "chart-text", x: 0, y: y + 9, fill: labelColor, style: `fill:${labelColor}` }, svg);
     t.textContent = label;
@@ -1126,7 +1137,7 @@ const RUN = __RUN__;
     let px = X0;
     z.on.forEach((p, j) => {
       const w = sx(p.mw * z.khPerMW) - X0;
-      svgEl("rect", { x: px, y: y + 14, width: w, height: 3, fill: "var(--cmd-power)", "data-tip": `Power on: ${fmtMW(p.mw)} MW, until month ${p.end - 1}` }, svg);
+      svgEl("rect", { x: px, y: y + 14, width: w, height: 3, fill: "var(--cmd-power)", "data-tip": `Power on: ${fmtMW(p.mw)} MW, until month ${p.end - 1} · ${perMonth(p)}` }, svg);
       if (j > 0) svgEl("line", { x1: px, x2: px, y1: y + 14, y2: y + 17, stroke: "var(--bg)" }, svg);
       px += w;
     });
@@ -1134,11 +1145,26 @@ const RUN = __RUN__;
     for (const p of z.soon) {
       const w = sx(p.mw * z.khPerMW) - X0;
       svgEl("rect", { x: px + 0.5, y: y + 14.5, width: Math.max(0, w - 1), height: 2, fill: "transparent", stroke: "var(--cmd-power)", "stroke-width": 0.8,
-        "data-tip": `Power signed: ${fmtMW(p.mw)} MW, on from month ${p.start}` }, svg);
+        "data-tip": `Power signed: ${fmtMW(p.mw)} MW, on from month ${p.start} · ${perMonth(p)}` }, svg);
       px += w;
     }
+    // Shortfall (site rows): capacity below the expected demand leaves inference unserved, which the score charges.
+    // A dashed red outline, not a fill, from capacity up to the top of the range: it is demand, not capacity.
+    const [lo, hi] = need, cap = siteCap(z);
+    if (opts.shortfall && cap < hi - 0.05) {
+      const a = (lo - cap) * UNSERVED, b = (hi - cap) * UNSERVED;
+      svgEl("rect", { x: sx(cap), y: y + 0.5, width: sx(hi) - sx(cap), height: 11, fill: "transparent", stroke: "var(--alert)",
+        "stroke-dasharray": "2.5 1.5", "stroke-width": 1.2,
+        "data-tip": cap < lo ? `Short ${fmt1(lo - cap)}–${fmt1(hi - cap)} kH: unserved costs $${a.toFixed(1)}–${b.toFixed(1)}M`
+          : `May be short up to ${fmt1(hi - cap)} kH: unserved costs up to $${b.toFixed(1)}M` }, svg);
+    }
+    // Options held (all row): a thin outlined line under the power line, reserved capacity the agent can add any time.
+    if (opts.options > 0.05) {
+      svgEl("rect", { x: X0 + 0.5, y: y + 19.5, width: Math.max(0, sx(opts.options) - X0 - 1), height: 2.5, fill: "transparent", stroke: "var(--cmd-option)",
+        "stroke-width": 0.9, "data-tip": `Options held: ${fmt1(opts.options)} kH, each a 6-month reservation at $1.6M per kH-month` }, svg);
+    }
     // Need: a bracket over the expected range, with a wider invisible copy to hover.
-    const [lo, hi] = need, d = `M${sx(lo)},${y + 13} V${y - 1} H${sx(hi)} V${y + 13}`;
+    const d = `M${sx(lo)},${y + 13} V${y - 1} H${sx(hi)} V${y + 13}`;
     svgEl("path", { d, fill: "none", stroke: "var(--fg)", "stroke-width": 1.2 }, svg);
     svgEl("path", { d, fill: "none", stroke: "transparent", "stroke-width": 5, "data-tip": `${needTip}: ${fmt1(lo)}–${fmt1(hi)} kH` }, svg);
     const n = svgEl("text", { class: "chart-num", x: 274, y: y + 9.5, "text-anchor": "end" }, svg);
@@ -1154,13 +1180,13 @@ const RUN = __RUN__;
       const [l, h] = band(Math.max(k, 0), site, Math.max(k, 0));
       lo += l; hi += h;
       computeRow(computeSvg, i * ROW_H + 2, site, site, `var(--site-${site})`, `var(--site-${site})`, siteState(k, [site]),
-        [l, h], siteMax, "Expected inference demand");
+        [l, h], siteMax, "Expected inference demand", { shortfall: true });
     });
     const tr = trainingNeed(Math.max(k, 0));
     computeAllSvg.replaceChildren();
     svgEl("line", { x1: 0, x2: 274, y1: 0.5, y2: 0.5, stroke: "var(--grid)" }, computeAllSvg);
     computeRow(computeAllSvg, 6, "all", null, "var(--fg)", "var(--fg)", siteState(k, ALL),
-      [lo + tr, hi + tr], totalMax, "Expected inference demand plus training needed per month");
+      [lo + tr, hi + tr], totalMax, "Expected inference demand plus training needed per month", { options: k < 0 ? 0 : RUN.months[k].options || 0 });
   };
   // Money: cash now (with its bar and history), credit left, then spending so far by category.
   const moneySvg = document.getElementById("money");
@@ -1384,6 +1410,8 @@ const RUN = __RUN__;
     gridMat.color = new THREE.Color(css("--grid"));
     coastMat.color = new THREE.Color(css("--coast"));
     supPadMat.color = coastMat.color.clone();
+    vendorPadMat.color = new THREE.Color(css(launchedNow ? "--gen-n" : "--gen-h"));
+    occBase = bg.clone();
     rentPadMat.color = new THREE.Color(css("--cmd-rent"));
     rentLineMat.color = rentPadMat.color.clone();
     powerPadMat.color = new THREE.Color(css("--cmd-power"));
@@ -1408,8 +1436,10 @@ const RUN = __RUN__;
   // ---------------------------------------------------------------- camera
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   // Hovering a datacentre or supplier on the globe lights it there and in the summary pane.
-  const anchorOf = (id) => anchors[id] || supplierAnchors[id] || cloudAnchors[id];
-  const pickIds = new Map([...Object.entries(anchors), ...Object.entries(supplierAnchors), ...Object.entries(cloudAnchors)].map(([id, a]) => [a, id]));
+  const stationById = Object.fromEntries(Object.entries(stationAnchors).map(([s, a]) => [`power-${s}`, a]));
+  const anchorOf = (id) => anchors[id] || supplierAnchors[id] || cloudAnchors[id] || stationById[id];
+  const pickIds = new Map([...Object.entries(anchors), ...Object.entries(supplierAnchors), ...Object.entries(cloudAnchors), ...Object.entries(stationById)]
+    .map(([id, a]) => [a, id]));
   const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
   let hoverGlobe = null, pointerIn = false, lastFrame = 0;
   // Hovering a name in any pane (log, outstanding orders, demand chart) lights that entity everywhere.
@@ -1485,6 +1515,11 @@ const RUN = __RUN__;
         `demand expected\t${fmt1(l)}–${fmt1(h)} kH`,
         ...["H", "N"].filter((g) => o[g] > 0.005 && priceAt(month).market_value[g] != null)
           .map((g) => [`used value gen ${g}\t$${priceAt(month).market_value[g].toFixed(1)}M per 1k`, `var(--gen-${g.toLowerCase()})`])];
+    }
+    if (id.startsWith("power-")) {
+      const site = id.slice(6), z = siteState(month, [site]), pc = "var(--cmd-power)", c = POWER_COST[site];
+      return [[`power ${site}`, pc], [`on\t${fmtMW(z.mwOn)} MW`, pc], ...(z.mwSoon > 0 ? [[`signed\t${fmtMW(z.mwSoon)} MW`, pc]] : []),
+        [`price\t$${c}M per MW-month`, pc], [`cost now\t$${(z.mwOn * c).toFixed(1)}M a month`, pc]];
     }
     if (id.startsWith("cloud-")) {
       const x = m.settle[id.slice(6)];
@@ -1874,7 +1909,32 @@ const RUN = __RUN__;
       return true;
     });
   };
-  const goTo = (k, dur) => { const from = month; setMonth(k); spawnFlights(from, k, dur); if (from !== k) spawnPulses(k); if (k > from) spawnMoney(k); };
+  const goTo = (k, dur) => {
+    const from = month; setMonth(k); spawnFlights(from, k, dur); if (from !== k) spawnPulses(k); if (k > from) spawnMoney(k);
+    if (from < LAUNCH && k >= LAUNCH && !reduce) startLaunchFx();
+  };
+  // At the launch step: a gen N ring spreads out from the vendor across the ground, and the globe glows gen N once.
+  const startLaunchFx = () => {
+    if (launchFx) supplierAnchors.vendor.remove(launchFx.ring);
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(css("--gen-n")), transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.036, 64), mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.002;
+    supplierAnchors.vendor.add(ring);
+    launchFx = { ring, start: performance.now() };
+  };
+  const stepLaunchFx = (now) => {
+    if (!launchFx) return;
+    const t = (now - launchFx.start) / 1800;
+    if (t >= 1) {
+      supplierAnchors.vendor.remove(launchFx.ring); launchFx.ring.geometry.dispose(); launchFx.ring.material.dispose();
+      launchFx = null; if (occBase) occluderMat.color.copy(occBase); return;
+    }
+    const e = 1 - (1 - t) ** 2;
+    launchFx.ring.scale.setScalar(1 + e * 14);
+    launchFx.ring.material.opacity = 0.9 * (1 - t);
+    if (occBase) occluderMat.color.copy(occBase).lerp(launchFx.ring.material.color, 0.3 * Math.sin(Math.PI * Math.min(1, t * 1.6)));
+  };
   const setPlaying = (on) => {
     playing = on;
     play.dataset.state = on ? "playing" : "paused";
@@ -1980,6 +2040,7 @@ const RUN = __RUN__;
   (function loop(now) {
     stepFlow(now);
     stepTweens(now);
+    stepLaunchFx(now);
     if (tipEl && !tipEl.isConnected) { tipEl = null; hideTip(); }   // its pane redrew for another step
     anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
     // Light up both ends of every delivery in flight, rising and falling with the flight.
