@@ -68,7 +68,7 @@ on seeds 100 and up, never on the evaluation or judge worlds.
 
 ## Results: frontier agents
 
-Gemini 4 Hydrogen in the standard harness (Harbor + OpenCode), one game on each of five fixed worlds, with the
+Gemini 4 Hydrogen in the standard harness (Harbor + OpenCode), one game on each of three fixed worlds, with the
 reference played on the same worlds:
 
 | world seed | Gemini 4 Hydrogen | reference | Hydrogen as % of reference |
@@ -76,23 +76,21 @@ reference played on the same worlds:
 | 1001 | 0.792 | 0.928 | 85% |
 | 1002 | 0.821 | 0.966 | 85% |
 | 1003 | 0.693 | 0.889 | 78% |
-| 1004 | 0.814 | 0.918 | 89% |
-| 1005 | 0.890 | 0.922 | 97% |
-| **mean** | **0.802** | **0.925** | **87%** |
+| **mean** | **0.769** | **0.928** | **83%** |
 
-Hydrogen scores below the reference on all five worlds and meets all three training runs in each, so the gap comes from
+Hydrogen scores below the reference on all three worlds and meets all three training runs in each, so the gap comes from
 cost, not from missed runs. Per-game logs: [`harbor/jobs/hydrogen-v5-paired/`](harbor/jobs/hydrogen-v5-paired/PAIRED.md).
 Every verifier run attaches a mistake report that compares the agent's game with the reference's on the same world
-(`diagnosis` in `verifier/details.json`; `python gpu_world/compare.py harbor/jobs/<job>` prints it). Across the five
+(`diagnosis` in `verifier/details.json`; `python gpu_world/compare.py harbor/jobs/<job>` prints it). Across the three
 games:
 
-- **It buys a hardware pile early.** It spends $427–730M on GPUs where the reference spends
-  $49–231M, pays $26–97M more for power, and gets only part of that back from resale and the end-of-game mark.
-- **It over-fills the first training run.** It delivers 1.18–2.07× the compute that run 1 needs. The
-  reference delivers 1.02–1.05× on every run.
-- **It does not explore.** It never orders from broker B in 4 of 5 games (and from neither broker in 2), while its
-  own notes call the brokers untested for up to 23 months. The reference probes both brokers in month 0.
-- **It reads the market correctly.** Its notes name the supply regime correctly in 89 of the 101 months where they
+- **It buys a hardware pile early.** It spends $558–730M on GPUs where the reference spends
+  $49–214M, pays $26–97M more for power, and gets only part of that back from resale and the end-of-game mark.
+- **It over-fills the first training run.** It delivers 1.18–1.91× the compute that run 1 needs. The
+  reference delivers 1.03–1.05× on every run.
+- **It does not explore.** It never orders from broker B in any of the three games (and from neither broker in two),
+  while its own notes call the brokers untested for up to 23 months. The reference probes both brokers in month 0.
+- **It reads the market correctly.** Its notes name the supply regime correctly in 53 of the 56 months where they
   state one. The gap is in its decisions, not in missing information.
 
 ## Results: training a small open model
