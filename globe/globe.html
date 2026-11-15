@@ -1531,31 +1531,23 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
   // Pane explanations, shown on demand from each pane's info button.
   const INFO = {
     log: [
-      "Every command the run sent, month by month, in the order it was sent. Refused commands are struck through.",
-      "Italic lines at the top of a month are what arrived at the end of the month before: GPUs received, broker orders cancelled, moves arriving. Each arrow joins an order to where it arrived.",
-      "The first word is coloured by command type; sites, suppliers and GPU generations take their globe colours.",
-      "Shaded lines at the end of a month are the agent's belief log: what it wrote down that month about the market and its plans. Hover one for the full text."],
+      "Every command the agent sent, by month.",
+      "Italic: what arrived. Shaded: the agent's notes."],
     flow: [
-      "The globe flattened into rows. Top: suppliers, with the GPUs ordered from each and not yet delivered (outline). Middle: datacentres, with the GPUs they own; bright is powered, dim is idle, blue is gen H, amber gen N. Bottom: compute rented for each site, reserved contracts solid and the standing spot request as an outline.",
-      "Faint curves are what moved at the last step; a labelled curve is a move still in transit. Counts are thousands of GPUs (kH for rented compute)."],
+      "Suppliers, datacentres and rented cloud, in thousands of GPUs.",
+      "Curves: what moved at the last step."],
     pending: [
-      "Buy orders placed but not yet fully delivered: the command that placed each, and how many of its GPUs are still to arrive (thousands).",
-      "Vendor orders arrive in parts: none sooner than 3 months after ordering, then a capped amount each month, first come first served. Broker orders arrive in full or are cancelled.",
-      "Signed power contracts that have not switched on yet are listed too, with the month they do.",
-      "Click an order to find it in the log."],
+      "Orders not yet delivered, and power not yet switched on.",
+      "Click one to find it in the log."],
     compute: [
-      "This month's compute at each site against what it is expected to need. Bar: owned GPUs with power in the site's colour, owned GPUs idle for want of power faded, reserved compute solid yellow, the spot request as a yellow outline. Bracket: the range this month's inference demand can fall in; the actual figure is only revealed when the month ends. Inference must be served at its own site.",
-      "The green line under each bar is power, on the bar's scale (MW turned into the compute it can run for the GPUs at that site, gen N being powered first): solid for contracts switched on, one segment each, outlined for contracts signed but not yet on. Below it: MW on / MW the owned GPUs need, and the month the earliest contract in force ends.",
-      "The all row, at the bottom, adds up the sites, and its bracket adds the training still needed each month to meet the current window.",
-      "Training runs need a set amount of compute within each window of months: 60 kH-months in months 0–7, 140 in 8–15 and 320 in 16–23. The training bar shows the current window: what is done so far against the target (tick), with last month's spare capacity (compute left over after inference, all of which goes to training) in the lighter part. Green means the target is reached, red that the window was missed.",
-      "The chart is inference demand per site: what has been seen so far, and the range the rules allow from here on (3–7% growth a month, ±5% noise). Shading under a line is demand that went unserved."],
+      "This month's capacity against expected demand, per site.",
+      "Green line: power. Training: progress in the current window.",
+      "Chart: inference demand so far, and its possible range ahead."],
     money: [
-      "Cash after this month's commands, and how much of the $500M credit line is still free. Funding adds $40M at the end of every month; debt costs 2% a month in interest.",
-      "Bars: money spent so far by category. GPUs is net of broker refunds; unserved is the penalty for inference demand that could not be served, which counts towards the score but never comes out of cash; resale is money back from selling GPUs.",
-      "The chart is cash over the months so far; the dashed line is the bottom of the credit line."],
+      "Cash, credit left, spending so far, and cash over time."],
     training: [
-      "Cash: money held after this month's commands, and how much it moved since the previous step (this month's commands, plus last month's charges, refunds and funding).",
-      "Score if stopped now: the final net cost (the game's score, lower is better) if the agent sent no more commands from here. Standing contracts and spot requests run on to the end, then everything spent is added up, the GPUs still held are valued at resale, commitments past the end are charged, and missed training windows are penalised."],
+      "Cash now and its change since last step (hover for the breakdown).",
+      "Score if stopped now: final net cost if the agent sent no more commands. Lower is better."],
   };
   const tip = document.getElementById("tip");
   // A paragraph with a tab in it is a row: label on the left, value on the right.
