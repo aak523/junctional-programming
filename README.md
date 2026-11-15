@@ -51,9 +51,10 @@ Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
   needed on the credit line ($70M of interest against the reference's zero), then liquidated the surplus at a loss.
 - **Training a small open model on the environment's experience improves it, but not to the reference**
   ([train/README.md](train/README.md)). Qwen3-4B-Instruct-2507 with LoRA, one month per message, evaluated greedily on 30
-  held-out worlds: untrained 0.25, after behaviour cloning on the reference 0.46, after a DAgger round (the reference
-  relabels the states the student reached) 0.58. The reference scores 0.92. The trained model still misses 22 of 90
-  training runs and over-leases; letting it imitate its own best episodes cut missed runs but cost more than it saved.
+  held-out worlds: untrained 0.25, after behaviour cloning on the reference 0.46, after two DAgger rounds (the reference
+  relabels the states the student reached) 0.58 and then 0.63. The reference scores 0.92. The trained model still
+  misses 10 of 90 training runs and over-leases. SFT variants (a short prompt, twice the data, Qwen3-8B, the fixed
+  reference as teacher) were within run-to-run noise; letting the model imitate its own best episodes hurt.
 
 The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
 

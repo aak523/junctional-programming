@@ -7,11 +7,16 @@ import sys
 from pathlib import Path
 
 RES = Path(__file__).resolve().parent / "results"
-NAMES = ["do_nothing", "base", "sft", "dagger", "dagger3", "sft_v2", "teacher", "reference", "oracle"]
+NAMES = ["do_nothing", "base", "sft", "sft_rep", "sft_short", "sft_short_full", "sft_8b", "dagger", "dagger3", "dagger4",
+         "dpo", "sft_v2", "teacher", "reference", "oracle"]
 LABEL = {"do_nothing": "do nothing (scripted)", "base": "Qwen3-4B-Instruct, untrained", "sft": "SFT on 4,800 teacher months",
+         "sft_rep": "SFT repeat, another 4,800 months", "sft_short": "SFT, short system prompt",
+         "sft_short_full": "SFT, short prompt, all 9,600 months", "sft_8b": "SFT on Qwen3-8B (thinking off)",
          "dagger": "+ DAgger round 2 (relabels + own best episodes)", "dagger3": "+ DAgger aggregate (unseen teacher + relabels)",
+         "dagger4": "+ DAgger round 4 (its own states relabelled)", "dpo": "DAgger aggregate + DPO (reference over own reply)",
          "sft_v2": "SFT on 4,800 months of the current reference", "teacher": "teacher: the reference before the options fix",
          "reference": "current Bayesian-LP reference", "oracle": "perfect-information oracle"}
+PLOT = ["do_nothing", "base", "sft", "dagger3", "dagger4", "dpo", "reference", "oracle"]   # the main line; the table has all
 
 
 def main():
@@ -40,15 +45,16 @@ def main():
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    shown = [n for n in PLOT if n in names]
     fig, axes = plt.subplots(1, len(sets), figsize=(6 * len(sets), 4.2), squeeze=False)
     for ax, s in zip(axes[0], sets):
         a, b = map(int, s.split("-"))
-        for i, n in enumerate(names):
+        for i, n in enumerate(shown):
             per = res[n]["per_seed"]
             ys = [per[str(k)]["reward"] if str(k) in per else per[k]["reward"] for k in range(a, b + 1)]
             ax.scatter([i] * len(ys), ys, s=14, alpha=0.6)
             ax.hlines(sum(ys) / len(ys), i - 0.3, i + 0.3, color="black")
-        ax.set_xticks(range(len(names)), names, rotation=20)
+        ax.set_xticks(range(len(shown)), shown, rotation=20)
         ax.set_ylim(0, 1.05)
         ax.set_ylabel("reward")
         ax.set_title(f"held-out seeds {s}")

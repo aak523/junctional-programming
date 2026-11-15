@@ -1,0 +1,298 @@
+{
+ "name": "sft_short_full",
+ "model": "train/ckpt/sft_short_full-merged",
+ "world_commit": "a75ac70+dirty",
+ "system_sha": "a0f177b2ed4e",
+ "prompt": "short",
+ "sets": {
+  "0-9": {
+   "n": 10,
+   "mean_reward": 0.4611,
+   "mean_net_cost": 1771.87,
+   "all_milestones": 1,
+   "error_rate": 0.0099,
+   "forced_ends": 0
+  },
+  "20000-20019": {
+   "n": 20,
+   "mean_reward": 0.4431,
+   "mean_net_cost": 1724.93,
+   "all_milestones": 2,
+   "error_rate": 0.0039,
+   "forced_ends": 0
+  }
+ },
+ "per_seed": {
+  "0": {
+   "net_cost": 1133.7,
+   "oracle_cost": 511.62,
+   "reward": 0.4513,
+   "milestones_met": 1,
+   "errors": 2,
+   "forced_ends": 0,
+   "n_actions": 82
+  },
+  "1": {
+   "net_cost": 1281.36,
+   "oracle_cost": 811.5,
+   "reward": 0.6333,
+   "milestones_met": 2,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 72
+  },
+  "2": {
+   "net_cost": 956.32,
+   "oracle_cost": 431.52,
+   "reward": 0.4512,
+   "milestones_met": 2,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 82
+  },
+  "3": {
+   "net_cost": 3407.87,
+   "oracle_cost": 1092.91,
+   "reward": 0.3207,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 77
+  },
+  "4": {
+   "net_cost": 1789.97,
+   "oracle_cost": 700.44,
+   "reward": 0.3913,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 72
+  },
+  "5": {
+   "net_cost": 2363.79,
+   "oracle_cost": 755.03,
+   "reward": 0.3194,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 79
+  },
+  "6": {
+   "net_cost": 2993.51,
+   "oracle_cost": 1008.87,
+   "reward": 0.337,
+   "milestones_met": 0,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 86
+  },
+  "7": {
+   "net_cost": 1897.04,
+   "oracle_cost": 873.34,
+   "reward": 0.4604,
+   "milestones_met": 0,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 95
+  },
+  "8": {
+   "net_cost": 1115.29,
+   "oracle_cost": 596.51,
+   "reward": 0.5348,
+   "milestones_met": 2,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 73
+  },
+  "9": {
+   "net_cost": 779.82,
+   "oracle_cost": 554.99,
+   "reward": 0.7117,
+   "milestones_met": 3,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 83
+  },
+  "20000": {
+   "net_cost": 1593.05,
+   "oracle_cost": 883.27,
+   "reward": 0.5545,
+   "milestones_met": 1,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 55
+  },
+  "20001": {
+   "net_cost": 2183.1,
+   "oracle_cost": 1095.05,
+   "reward": 0.5016,
+   "milestones_met": 0,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 50
+  },
+  "20002": {
+   "net_cost": 2003.83,
+   "oracle_cost": 929.6,
+   "reward": 0.4639,
+   "milestones_met": 0,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 83
+  },
+  "20003": {
+   "net_cost": 1743.11,
+   "oracle_cost": 571.97,
+   "reward": 0.3281,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 79
+  },
+  "20004": {
+   "net_cost": 2763.06,
+   "oracle_cost": 984.0,
+   "reward": 0.3561,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 88
+  },
+  "20005": {
+   "net_cost": 737.02,
+   "oracle_cost": 488.54,
+   "reward": 0.6629,
+   "milestones_met": 3,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 85
+  },
+  "20006": {
+   "net_cost": 1886.03,
+   "oracle_cost": 660.52,
+   "reward": 0.3502,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 71
+  },
+  "20007": {
+   "net_cost": 2169.82,
+   "oracle_cost": 672.09,
+   "reward": 0.3097,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 77
+  },
+  "20008": {
+   "net_cost": 1068.57,
+   "oracle_cost": 569.99,
+   "reward": 0.5334,
+   "milestones_met": 2,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 83
+  },
+  "20009": {
+   "net_cost": 3073.74,
+   "oracle_cost": 955.52,
+   "reward": 0.3109,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 63
+  },
+  "20010": {
+   "net_cost": 1181.69,
+   "oracle_cost": 610.8,
+   "reward": 0.5169,
+   "milestones_met": 2,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 77
+  },
+  "20011": {
+   "net_cost": 1262.54,
+   "oracle_cost": 518.34,
+   "reward": 0.4106,
+   "milestones_met": 1,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 79
+  },
+  "20012": {
+   "net_cost": 1060.52,
+   "oracle_cost": 674.27,
+   "reward": 0.6358,
+   "milestones_met": 2,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 72
+  },
+  "20013": {
+   "net_cost": 2096.86,
+   "oracle_cost": 831.09,
+   "reward": 0.3963,
+   "milestones_met": 0,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 85
+  },
+  "20014": {
+   "net_cost": 968.46,
+   "oracle_cost": 494.44,
+   "reward": 0.5105,
+   "milestones_met": 3,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 71
+  },
+  "20015": {
+   "net_cost": 1566.79,
+   "oracle_cost": 628.7,
+   "reward": 0.4013,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 81
+  },
+  "20016": {
+   "net_cost": 2182.76,
+   "oracle_cost": 634.18,
+   "reward": 0.2905,
+   "milestones_met": 0,
+   "errors": 1,
+   "forced_ends": 0,
+   "n_actions": 96
+  },
+  "20017": {
+   "net_cost": 1480.44,
+   "oracle_cost": 566.69,
+   "reward": 0.3828,
+   "milestones_met": 1,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 85
+  },
+  "20018": {
+   "net_cost": 2200.53,
+   "oracle_cost": 735.73,
+   "reward": 0.3343,
+   "milestones_met": 0,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 77
+  },
+  "20019": {
+   "net_cost": 1276.62,
+   "oracle_cost": 781.31,
+   "reward": 0.612,
+   "milestones_met": 2,
+   "errors": 0,
+   "forced_ends": 0,
+   "n_actions": 73
+  }
+ },
+ "oracle_commit": "a75ac70"
+}

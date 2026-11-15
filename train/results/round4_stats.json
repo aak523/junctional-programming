@@ -1,0 +1,12 @@
+{
+ "relabelled_states": 4698,
+ "kept_episodes": 0,
+ "kept_states": 0,
+ "replay_states": 1920,
+ "total": 6618,
+ "seeds": 100,
+ "mean_reward_samples": 0.5621,
+ "mean_reward_best_of_k": 0.6926,
+ "mean_reward_kept": null,
+ "note": "no greedy pass: samples only"
+}
