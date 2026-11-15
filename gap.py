@@ -2,8 +2,9 @@
 
 usage: python gap.py [first_seed] [n_seeds] [workers]
 Plays the reference and `Committer` (the reference made to buy a fixed early fleet) on the same worlds and prints
-each one's net cost, the committer's cost as a share of the reference's (the frontier agent scored 82-112% in the
-v5 paired games, where this proxy scored 85-99%), the oracle's, and missed runs. Develop on the tuning seeds (100..)
+each one's net cost, the committer's cost as a share of the reference's (on the five v5 paired worlds, Gemini 4
+Hydrogen's games re-scored against the current reference are at 78-97% and this proxy at 85-99%), the oracle's,
+and missed runs. Develop on the tuning seeds (100..)
 and confirm on the evaluation seeds (0..)."""
 import statistics
 import sys

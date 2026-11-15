@@ -37,7 +37,7 @@ Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
   Hydrogen's games do not depend on this code, so re-scoring them is exact: 87% of the reference, below it in all 5.
 - **An offline stand-in measures the gap without model credits.** `Committer` is the reference made to buy
   Hydrogen's early fleet (9k gen H in months 0–2, 9k gen N at launch, at one site) and plan everything else around
-  it. On the five paired worlds it scores 85–99% of the reference where Hydrogen scored 82–112%. `gap.py` plays it
+  it. On the five paired worlds it scores 85–99% of the reference where Hydrogen's re-scored games are at 78–97%. `gap.py` plays it
   against the reference: on tuning seeds 100–139 it was at 90.0% of the reference (above it on 6 of 40) before the fix
   and 86.5% (standard error 1.4%, above it on 1) after; on evaluation seeds 0–9 it is at 87.2% (above it on none).
 - **What is left between the reference and the oracle is mostly unknowable.** Revealing one hidden factor at a time
@@ -109,6 +109,7 @@ harbor run -p paired -a opencode -m gemini/gemini-4-hydrogen --api-key-name GEMI
 # Local tools
 python ladder.py 0 10 results/ladder.json   # scripted ladder + LP bound on seeds 0..9 (a few minutes)
 python gap.py 100 40                        # committer vs reference on tuning seeds 100..139: the offline gap (~15 min)
+python tune_lp.py 12 7                      # one reference knob at a time on tuning seeds 100..111 (~20 min)
 python compare.py                           # where each Harbor trial's money went, vs the reference on the same world
 python trace.py reference 3                 # month-by-month trajectory of a ladder policy
 python build_harbor.py                      # regenerate harbor/gpu-world from the sources
@@ -126,9 +127,9 @@ do-nothing scores for that world, the agent's belief notes and actions).
 | `service.py`, `server.py` | the command interface and the Harbor sidecar server |
 | `TASK.md` | the rules the agent reads |
 | `build_harbor.py`, `harbor/gpu-world/` | the Harbor task and its generator |
+| `ladder.py`, `gap.py`, `tune_lp.py`, `compare.py`, `trace.py` | local tools (see Run it); `gap.py` is the offline proxy for a frontier agent's gap |
 | `harbor/jobs/` | v4 and v5 Harbor runs (reference solution, Gemini 4 Hydrogen, Claude Fable 5) |
 | `results/ladder.json` | the v5 ladder |
 | `results/fable5_v4.md` | the Claude Fable 5 game: cost breakdown against the reference on its world |
-| `gap.py` | the committer-vs-reference gap over many seeds (the offline proxy for a frontier agent) |
 | `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
 | `docs/HANDOFF.md` | the original challenge brief and design notes |
