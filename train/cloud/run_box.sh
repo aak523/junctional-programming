@@ -1,7 +1,7 @@
 #!/bin/bash
 # One pipeline stage on the box, logged to train/logs/<stage>.log; prints STAGE_OK / STAGE_FAILED at the end.
 # usage (on the box, in /root/jp, inside tmux): bash train/cloud/run_box.sh <stage>
-# stages: gen baselines base_smoke base mask sft sft_full sample relabel round2
+# stages: gen baselines base_smoke base mask sft sft_full sample relabel round2 round3
 set -o pipefail
 cd /root/jp
 . /root/venv/bin/activate
@@ -42,6 +42,13 @@ run() {
     round2)     python train/sft.py --data train/data/round2.jsonl --init-adapter train/ckpt/sft --lr 5e-5 --liger --out train/ckpt/dagger \
                   --merge-out train/ckpt/dagger-merged &&
                 python train/eval_llm.py --model train/ckpt/dagger-merged $EVAL --name dagger ;;
+    round3)     # textbook DAgger aggregate continued from the SFT adapter: unseen teacher examples + every expert relabel,
+                # no self-imitation (round 2's kept student episodes coincided with over-reservation)
+                python train/aggregate.py --sft train/data/sft_ref.jsonl --seen $SFT_LIMIT --relabel train/data/dagger_relabel.jsonl \
+                  --out train/data/round3.jsonl &&
+                python train/sft.py --data train/data/round3.jsonl --init-adapter train/ckpt/sft --lr 1e-4 --liger \
+                  --out train/ckpt/dagger3 --merge-out train/ckpt/dagger3-merged &&
+                python train/eval_llm.py --model train/ckpt/dagger3-merged $EVAL --name dagger3 ;;
     *)          echo "unknown stage $stage"; return 1 ;;
   esac
 }
