@@ -11,7 +11,7 @@ import policies
 
 SEEDS = range(100, 100 + (int(sys.argv[1]) if len(sys.argv) > 1 else 12))
 WORKERS = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-SWEEP = {"margin": [0.03, 0.1], "shared": [1, 3], "spot_q": [0.5, 0.9], "shortfall": [20.0, 80.0]}
+SWEEP = {"margin": [0.0, 0.06], "shared": [0, 2], "spot_q": [0.5, 0.9], "shortfall": [20.0, 80.0], "guard": [False]}
 
 
 def score(kw):

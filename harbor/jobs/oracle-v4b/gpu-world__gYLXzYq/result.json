@@ -1,0 +1,124 @@
+{
+    "schema_version": 1,
+    "id": "dac4a644-1123-4ae3-a434-62da1fe567c7",
+    "task_name": "junctional/gpu-world",
+    "trial_name": "gpu-world__gYLXzYq",
+    "trial_uri": "file:///home/lorand/Coding/junction/junctional-programming/harbor/jobs/podman-smoke/gpu-world__gYLXzYq",
+    "task_id": {
+        "path": "harbor/gpu-world"
+    },
+    "source": null,
+    "task_checksum": "48bf8544f1ec7cd492f459c5ec60d0ba48baac3af22d8390a579c6d5fbe21f0c",
+    "config": {
+        "schema_version": 1,
+        "task": {
+            "path": "harbor/gpu-world",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": null
+        },
+        "trial_name": "gpu-world__gYLXzYq",
+        "trials_dir": "harbor/jobs/podman-smoke",
+        "install_only": false,
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "oracle",
+            "import_path": null,
+            "model_name": null,
+            "base_url": null,
+            "model_api_key_name": null,
+            "model_api_format": null,
+            "skip_model_parsing": false,
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {},
+            "mcp_servers": []
+        },
+        "user_agent": null,
+        "environment": {
+            "type": "podman",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "stream": false,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "override_error_policy": {},
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "extra_instructions": [],
+        "job_id": "2ad4c54a-526d-4fe4-aee8-7b4967467688",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "oracle",
+        "version": "1.0.0",
+        "model_info": null
+    },
+    "agent_result": {
+        "n_input_tokens": null,
+        "n_cache_tokens": null,
+        "n_output_tokens": null,
+        "cost_usd": null,
+        "model_usage": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 0.7166
+        }
+    },
+    "verifier_environment_mode": "shared",
+    "exception_info": null,
+    "started_at": "2026-11-14T15:44:52.508582Z",
+    "finished_at": "2026-11-14T15:48:15.507644Z",
+    "environment_setup": {
+        "started_at": "2026-11-14T15:44:52.552802Z",
+        "finished_at": "2026-11-14T15:47:43.262212Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-11-14T15:47:43.262274Z",
+        "finished_at": "2026-11-14T15:47:43.262338Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-11-14T15:47:43.262445Z",
+        "finished_at": "2026-11-14T15:47:49.111972Z"
+    },
+    "verifier": {
+        "started_at": "2026-11-14T15:47:49.659484Z",
+        "finished_at": "2026-11-14T15:47:55.159560Z"
+    },
+    "step_results": null,
+    "reward_valid": true
+}

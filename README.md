@@ -7,22 +7,48 @@ allocated) or two brokers (fast, possibly unreliable), reserves cloud capacity, 
 rents spot, signs power, moves and resells hardware, and manages cash on a credit line. The rules the agent gets are in
 [TASK.md](TASK.md).
 
-## Status (14 Nov 2026)
+## Status (15 Nov 2026)
 
 | Model | World | Games | Model reward | Reference reward, same worlds | Model as % of reference |
 |---|---|---|---|---|---|
+| Gemini 4 Hydrogen, v5 games re-scored against the fixed reference and oracle | v5 | 5 | 0.69–0.89 (mean 0.80) | 0.89–0.97 (mean 0.92) | 78–97% (mean 87%) |
+| Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v5 | 5 | 0.69–1.00 (mean 0.85) | 0.84–0.92 (mean 0.88) | 82–110% (mean 96%, standard error 4.5%) |
+| Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v4 | 5 | 0.79–0.97 | 0.87–0.99 | 89–98% (mean 92%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
-| Gemini 4 Hydrogen (Harbor + OpenCode) | v3 | 3 | 0.74–0.93 | 0.91–0.98 | 82–95% (mean ~90%) |
+| Claude Fable 5 (Harbor + OpenCode) | v4 | 1 | 0.64 | 0.97 | 65% |
 | Gemini 4 Carbon (Harbor + OpenCode) | v3 | 5 | 0.25–0.37 | 0.80–0.94 | too slow to finish 24 months in 30 min |
 
 Reward = oracle net cost / agent net cost (1 = as good as the perfect-information oracle; doing nothing scores about 0.2).
+Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
 
-- **Gemini 4 Hydrogen is close to the reference**: on v4 it beat it once (0.899 vs 0.891) and averaged 94% of it. v4's
-  extra sites and options did not widen that gap. Hydrogen still over-provisions the early windows (91–108 kH-months
-  vs 60 needed; 185–207 vs 140), buys and then dumps hardware ($275M of resales in one game), and skipped the brokers
-  entirely in 2 of 3 games. But those mistakes cost it less than uncertainty costs the reference.
-- The levers left: strengthen the reference (its long commitments past month 23 cost it about $47M in the game
-  Hydrogen won), and run more games and models.
+- **v5 changed the rules to price Hydrogen's hedge.** Inference grows 4% or 8% a month, gen N launches in months 9–15,
+  used gen H loses 50% at launch, GPUs lose 4% of their value a month and positive cash earns 0.75% a month. Replaying
+  Hydrogen's 8 recorded v4 games in the same worlds with only the cost changes dropped it from 91% to 84% of the reference.
+- **The gap did not widen in play.** Hydrogen still buys a hardware pile early ($430–730M of GPUs vs the reference's
+  $50–260M), over-fills the first window (71–124 kH-months vs 60) and never tries broker B, and it is below the
+  reference in 4 of 5 games. But the same rules pushed the reference into leasing almost everything: in seed 1005
+  (tight supply for 21 of 24 months, 8% growth) it bought $93M of GPUs, left $258M of contracts running past month 23,
+  and lost to both Hydrogen and the oracle (which bought $265M).
+- **Most of that was a bug in the planners, not the rules.** When the LP planned to buy capacity options and exercise
+  them in the same month, the reference and the oracle exercised before buying, so the exercise slipped a month, and in
+  tight supply the lost month had to be bought back at a premium. With options bought first, the oracle on seed 1005
+  costs 1075 instead of 1226 (its LP bound is 1044) and the reference 1130 instead of 1354. The guard that exercised
+  options a month before a deadline was patching the same bug; it is gone (on seed 1003 it cost $50M for nothing).
+  Hydrogen's games do not depend on this code, so re-scoring them is exact: 87% of the reference, below it in all 5.
+- **An offline stand-in measures the gap without model credits.** `Committer` is the reference made to buy
+  Hydrogen's early fleet (9k gen H in months 0–2, 9k gen N at launch, at one site) and plan everything else around
+  it. On the five paired worlds it scores 85–99% of the reference where Hydrogen scored 82–112%. `gap.py` plays it
+  against the reference: on tuning seeds 100–139 it was at 90.0% of the reference (above it on 6 of 40) before the fix
+  and 86.5% (standard error 1.4%, above it on 1) after; on evaluation seeds 0–9 it is at 87.2% (above it on none).
+- **What is left between the reference and the oracle is mostly unknowable.** Revealing one hidden factor at a time
+  to the reference (tuning seeds 100–111, a $50M gap): everything its filter estimates (the current regime, launch
+  month, growth and broker reliability) together saves under $3M; the future supply path saves $30M (59% of the gap)
+  and the future demand path $8M (15%). Re-tuned after the fix, sharing decisions across the sampled futures for 2
+  months instead of 3 saves $8M (better on 11 of 12 seeds). A scenario tree (futures sharing their history and
+  decisions in groups up to a branch month), 48 futures instead of 24, and the other knobs did not help.
+- **Claude Fable 5 lost by the most so far**, at 65% of the reference in its one v4 game ([results/fable5_v4.md](results/fable5_v4.md)):
+  it met all three windows with no penalties and finished in 13 of its 30 minutes, but bought 2.15x the compute window 1
+  needed on the credit line ($70M of interest against the reference's zero), then liquidated the surplus at a loss.
 
 The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
 
@@ -45,9 +71,9 @@ The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gi
   and broker reliability and its silent decay. The structure and priors are all in TASK.md; only the realised values are hidden.
 - **Reference, oracle and bound** (`policies.py`, `lp.py`):
   - **reference:** a Bayesian filter over every hidden factor feeds a linear programme. Each month it solves the LP
-    over 24 futures sampled from the posterior, keeps the next 3 months of decisions common to all of them, and plays
-    this month's. A guard covers the cliff of a missed training run: in a window's last two months it tops up spot
-    and, if tight spot caps could not close the gap, exercises capacity options. It sees exactly what the agent sees,
+    over 24 futures sampled from the posterior, keeps this month's and next month's decisions common to all of them, and plays
+    this month's. A guard covers the cliff of a missed training run: in a window's last month it tops up spot to the
+    gap that capacity already certain leaves. It sees exactly what the agent sees,
     and its knobs were tuned on seeds 100+ only.
   - **oracle:** the same LP given the true future, played in the real world. It is a strong benchmark, not a strict
     bound (the reference occasionally beats it).
@@ -57,13 +83,14 @@ The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gi
 
 ## Ladder (v5, mean net cost over evaluation seeds 0–9, $M; lower is better)
 
-| do_nothing | stop_early | spot_only | exploiter | **reference** | oracle | LP bound |
-|---|---|---|---|---|---|---|
-| 3,401 | 3,073 | 2,391 | 1,407 | **838** | 796 | 703 |
+| do_nothing | stop_early | spot_only | exploiter | committer | **reference** | oracle | LP bound |
+|---|---|---|---|---|---|---|---|
+| 3,401 | 3,134 | 2,391 | 1,460 | 896 | **790** | 734 | 703 |
 
-The reference meets all three training runs on every seed and scores 0.92 on average (0.83 at worst). Doing nothing
-scores 0.23 and stopping after 3 months 0.26. Every baseline costs at least 2.4x the reference on every seed, and the
-exploiter at least 1.39x (1.68x on average). The exploits tried were buy-and-flip GPUs,
+The reference meets all three training runs on every seed and scores 0.92 on average (0.85 at worst). Doing nothing
+scores 0.21 and stopping after 3 months 0.23. Every baseline costs at least 2.5x the reference on every seed, the
+exploiter at least 1.59x (1.86x on average), and the committer (early fleet, otherwise the reference) at least 1.05x
+(1.16x on average). The exploits tried were buy-and-flip GPUs,
 contracts past the horizon, options bought and never used, undelivered orders at the end, and stopping after 3 months.
 
 ## Run it
@@ -81,6 +108,7 @@ harbor run -p paired -a opencode -m gemini/gemini-4-hydrogen --api-key-name GEMI
 
 # Local tools
 python ladder.py 0 10 results/ladder.json   # scripted ladder + LP bound on seeds 0..9 (a few minutes)
+python gap.py 100 40                        # committer vs reference on tuning seeds 100..139: the offline gap (~15 min)
 python compare.py                           # where each Harbor trial's money went, vs the reference on the same world
 python trace.py reference 3                 # month-by-month trajectory of a ladder policy
 python build_harbor.py                      # regenerate harbor/gpu-world from the sources
@@ -98,7 +126,9 @@ do-nothing scores for that world, the agent's belief notes and actions).
 | `service.py`, `server.py` | the command interface and the Harbor sidecar server |
 | `TASK.md` | the rules the agent reads |
 | `build_harbor.py`, `harbor/gpu-world/` | the Harbor task and its generator |
-| `harbor/jobs/` | v4 Harbor runs (reference solution, Gemini 4 Hydrogen) |
-| `results/ladder.json` | the v4 ladder |
+| `harbor/jobs/` | v4 and v5 Harbor runs (reference solution, Gemini 4 Hydrogen, Claude Fable 5) |
+| `results/ladder.json` | the v5 ladder |
+| `results/fable5_v4.md` | the Claude Fable 5 game: cost breakdown against the reference on its world |
+| `gap.py` | the committer-vs-reference gap over many seeds (the offline proxy for a frontier agent) |
 | `results/v3/` | v3 Gemini Harbor logs and ladder (code: tag `gpu-world-v3`) |
 | `docs/HANDOFF.md` | the original challenge brief and design notes |

@@ -1,0 +1,40 @@
+{
+    "schema_version": 1,
+    "id": "3fd690a1-f41b-4a96-9c56-98886d192340",
+    "started_at": "2026-11-14T16:31:04.413180",
+    "updated_at": "2026-11-14T16:44:39.656288",
+    "finished_at": "2026-11-14T16:44:39.656288",
+    "n_total_trials": 1,
+    "stats": {
+        "n_completed_trials": 1,
+        "n_errored_trials": 0,
+        "n_running_trials": 0,
+        "n_pending_trials": 0,
+        "n_cancelled_trials": 0,
+        "n_retries": 0,
+        "evals": {
+            "opencode__claude-fable-5__adhoc": {
+                "n_trials": 1,
+                "n_errors": 0,
+                "metrics": [
+                    {
+                        "mean": 0.6362
+                    }
+                ],
+                "pass_at_k": {},
+                "reward_stats": {
+                    "reward": {
+                        "0.6362": [
+                            "gpu-world__BpnMWA6"
+                        ]
+                    }
+                },
+                "exception_stats": {}
+            }
+        },
+        "n_input_tokens": 1428268,
+        "n_cache_tokens": 1428214,
+        "n_output_tokens": 6452,
+        "cost_usd": 4.746379
+    }
+}

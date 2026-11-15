@@ -1,0 +1,195 @@
+{
+ "reward": 0.8898,
+ "seed": 1002,
+ "net_cost": 1135.1,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1146.2,
+  "mark_to_market": 84.47,
+  "obligations": 73.37,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 1135.1,
+  "costs": {
+   "capex": 730.0,
+   "power": 160.56,
+   "contracts": 428.25,
+   "spot": 2.6,
+   "unserved": 0.0,
+   "resale": -183.85,
+   "interest": -26.36,
+   "moves": 0.0,
+   "options": 35.0
+  }
+ },
+ "scale": {
+  "oracle": 1010.01,
+  "reference": 1098.89,
+  "do_nothing": 3529.15,
+  "reference_reward": 0.9191,
+  "do_nothing_reward": 0.2862
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0: supply ~85% loose (spot 1.827/1.60=1.14x despite bearish news), growth unknown (50/50 4%/8%), launch m9..15 uniform, brokers untested. Plan: power us+ap, order 4k H vendor to ap, reserve 2kH ap (1x24m+1x12m), spot 1.5 ap for m0 inf + regime probe."
+  },
+  {
+   "month": 1,
+   "text": "M1: M0 was LOOSE (ap spot filled 1.5, vendor shipped 4kH). M1 ~90% loose (news loosening + spot/idx=1.73x matches 1.1x1.5=1.65 rival month). Growth still 50/50 (m0 inf=5.67). Launch m9..15 uniform. Brokers untested. Plan: zero spot in rival month, buy 6k H to ap + 9MW ap power for W2/W3 deficit."
+  },
+  {
+   "month": 2,
+   "text": "M2: M1 was ~90% loose (spot/idx=1.02x now, m0->m1 inf 5.67->6.16 slightly favors 8% growth ~60/40). Launch m9..15 uniform, brokers untested. Plan: order 4k H vendor to ap + 5MW ap power to build W2/W3 base at lowest power cost."
+  },
+  {
+   "month": 3,
+   "text": "M3: M2 was LOOSE (vendor shipped 4kH"
+  },
+  {
+   "month": 4,
+   "text": "M4: M3 was LOOSE (4.51k shipped, idx -2.8% to 1.615, spot/idx=1.12x in rival month -> ~98% loose). Growth >99% likely 8% initially (may switch to 4% in m8..15). Launch rumour around m15 -> true launch m13..15. Brokers untested. Plan: buy 4k H to ap + 6MW ap power since late Gen N (m13..15) makes Gen H cheaper/useful for W2+W3."
+  },
+  {
+   "month": 5,
+   "text": "M5: M4 was LOOSE (4.67k shipped, idx -2.2% to 1.579, spot/idx=0.55x + loose news -> >99% loose). Growth >99% likely 8% initially (m0..4: 5.67,6.16,7.38,7.81,8.40), watching m8..15 for possible switch to 4%. Gen N launch m13..15. Brokers untested. Plan: hold cash for Gen N & replacement power, finish W1 training this month."
+  },
+  {
+   "month": 6,
+   "text": "M6: M5 was LOOSE (0.82k shipped, idx -2.2%). M6 supply ~50/50 loose/tight (loose news vs high spot/idx=1.54x). Growth >99% likely 8% (m5 inf 9.04, watching m8..15 for switch). Gen N rumours m15 & m11 -> true launch ~m13. Brokers untested. Plan: hold cash for Gen N & replacement power, await #5 (4kH) & 6MW ap power at m7."
+  },
+  {
+   "month": 7,
+   "text": "M7: M6 was LOOSE (vendor shipped all 4kH). M7 ~95% loose (spot/idx=0.71x despite tight HBM news). Growth 8% initially (watching m8..15 for switch to 4%). Gen N rumours m15, m11, m11 -> true launch ~m13. Brokers untested. Plan: hold cash for Gen N & m10-12 power, enter W2 with 34 kH/mo capacity."
+  },
+  {
+   "month": 8,
+   "text": "M8: M7 was LOOSE (idx -0.7% to 1.635, spot/idx=0.93x -> ~95% loose). Growth 8% so far (m7 inf 11.42, watching m8..15 for switch to 4%). Gen N launch rumours m15, m11, m11, m15 -> true launch ~100% m13. Brokers untested. Plan: hold cash for Gen N & m10+ power, monitor eu inf (3.43 vs 4.0 cap) and demand switch."
+  },
+  {
+   "month": 9,
+   "text": "M9: M8 was LOOSE (idx -4.7% to 1.558). M9 ~85% TIGHT (spot/idx=2.74x with no rival buying news). Growth still ~8% (m8 inf 12.15, watching m8..15 for switch). Gen N launch m13. Brokers untested. Plan: reserve 2 6 eu (covers eu m10..15 inf and probes reserve cap), wait until m10 to size Gen N power."
+  },
+  {
+   "month": 10,
+   "text": "M10: M9 was 100% TIGHT (eu reserve capped 1/2, idx +8.7% to 1.694). M10 ~95% TIGHT (CoWoS tight news + spot/idx=1.68x). Growth m9 inf=12.13 (~60% switched to 4% at m8-9 vs 40% still 8%). Gen N launch ~100% m13. Brokers untested. Plan: sign 16MW ap + 10MW us power now so Gen N arriving m16+ has guaranteed power."
+  },
+  {
+   "month": 11,
+   "text": "M11: M10 was TIGHT (idx +4.9% to 1.777). M11 ~99% TIGHT (rival buying + spot/idx=2.77x). Growth ~90% still 8% (m10 inf 14.08), watching m11..15 for switch. Gen N launch ~100% m13 (expect vendor confirmation m12). Brokers untested (plan to test Broker A with 1k Gen N at m13). Plan: hold cash (95M+) for m13 Gen N orders & m13 post-launch eu reserve."
+  },
+  {
+   "month": 12,
+   "text": "M12: M11 was TIGHT (idx flat at 1.776). M12 ~85% TIGHT (spot/idx=1.56x with no rival news). Growth ~90% still 8% (m11 inf 14.82), watching m12..15 for switch. Gen N launch CONFIRMED for m13! Brokers untested. Plan: hold cash (25M+) for m13 Gen N launch orders, post-launch eu reserve, and options/broker evaluation."
+  },
+  {
+   "month": 13,
+   "text": "M13: M12 was TIGHT (idx +6% net of -25% launch drop to 1.412). M13 ~98% TIGHT (spot/idx=2.25x). Growth m12 inf=14.34 (~50/50 still 8% vs switched to 4% around m11-12). Gen N launched m13! Brokers untested (options at 1.77/mo beat Broker A). Plan: order 7k N vendor (ap+us) onto pre-signed power, reserve 1 6 eu for m14..19 inf."
+  },
+  {
+   "month": 14,
+   "text": "M14: M13 was TIGHT (idx +10.3% to 1.558). M14 ~85% TIGHT (tight hyperscaler news + spot/idx=1.39x). Growth ~90% still 8% (m13 inf 16.07). Gen N launched m13 (7k N ordered). Brokers untested (options at 1.77/mo beat Broker A and bypass tight reserve caps). Plan: buy 15kH options now to prepare W3 m16..21 and m18..23 waves."
+  },
+  {
+   "month": 15,
+   "text": "M15: M14 was TIGHT (idx +8.3% to 1.688). M15 ~98% TIGHT (HBM tight news + spot/idx=1.88x). Growth ~95% still 8% (m14 inf 17.08, W2 already 141.3/140 MET). Brokers untested (1.77/mo options beat Broker A and cloud). Plan: exercise 15kH options (4 us, 4 eu, 7 ap) for m16..21 wave 1"
+  },
+  {
+   "month": 16,
+   "text": "M16: M15 was TIGHT (1.23k N shipped, idx -1.5% to 1.663). M16 ~80% TIGHT (spot/idx=1.59x). Growth m15 inf=17.90 (could be 8% with -5% noise or m14-15 switch to 4%, will see m16 inf before wave 2). Brokers untested (options beat cloud and bypass caps). Plan: buy 12kH options now for m17 wave 2 (m18..23), then size exact wave 2 at m17."
+  },
+  {
+   "month": 17,
+   "text": "M17: M16 was TIGHT (1.91k N shipped, idx +5.3% to 1.751). M17 ~98% TIGHT (tight news + spot/idx=1.76x). Growth ~98% 8% always (m16 inf=19.72). Brokers untested (options beat cloud and bypass caps). Plan: buy 8kH options and exercise 20kH wave 2 (8 us, 11 eu, 1 ap) for m18..23 to secure 320 training and m20..23 us/eu inference with zero post-23 overhang."
+  },
+  {
+   "month": 18,
+   "text": "M18: M17 was TIGHT (1.55k N shipped, idx +5.8% to 1.853). M18 ~75% TIGHT (spot/idx=2.71x vs loose inventory news). Growth m17 inf=20.08 (~85% 8% always vs ~15% m15 switch). Brokers untested. Plan: hold and let wave 1+2 options and vendor N queue run"
+  },
+  {
+   "month": 19,
+   "text": "M19: M18 was TIGHT (1.93k N shipped, idx +3.7% to 1.795). M19 ~90% TIGHT (spot/idx=1.77x). Growth switched to 4% around m15 (m16..18 inf=19.72,20.08,20.21), giving +55 kH-mo W3 surplus. Brokers untested. Plan: resell 3k H from eu at m19 before eu 6MW power expires, then resell remaining 1k eu and surplus ap H in m20..22."
+  },
+  {
+   "month": 20,
+   "text": "M20: M19 was TIGHT (0.38k N shipped, idx flat at 1.798). M20 ~95% TIGHT (HBM tight news + spot/idx=2.25x). Growth 4% confirmed (m19 inf 20.86), giving +53 kH-mo W3 surplus. Brokers untested. Plan: resell last unpowered 1k H in eu and 3k surplus N in ap for depreciation savings while keeping ~29 kH-mo W3 buffer."
+  },
+  {
+   "month": 21,
+   "text": "M21: M20 was TIGHT (idx flat at 1.771). M21 ~95% TIGHT (hyperscaler tight news + spot/idx=2.12x). Growth 4% confirmed (m20 inf 21.55, training 233.98/320). Brokers untested. Plan: resell 2k surplus N in ap while keeping ~18 kH-mo W3 training buffer, then resell final surplus in m22-23."
+  },
+  {
+   "month": 22,
+   "text": "M22: M21 was TIGHT (idx +7.5% to 1.903). M22 ~60% TIGHT (spot/idx=1.71x vs loose inventory news). Growth 4% (m21 inf 22.72, training 279.26/320). Brokers untested. Plan: resell final 1k N ap and 3k H ap while keeping +7.1 kH-mo buffer for 320 target, then finalize m23 resales."
+  },
+  {
+   "month": 23,
+   "text": "M23: M22 was TIGHT (idx -2.4% to 1.857, M23 spot/idx=3.05x -> ~95% tight). Growth 4% (m22 inf 23.87, training 303.39/320, need 16.61 in m23). Brokers untested. Plan: resell 1k N us and 1k H ap while leaving 45.0 kH capacity (+14% safety margin over expected m23 inf) to lock in all 3 training runs and zero unserved inference."
+  }
+ ],
+ "actions": [
+  "set_spot 1.5 ap",
+  "contract_power 6 us",
+  "contract_power 6 ap",
+  "buy_gpus 4 H vendor ap",
+  "reserve 1 24 ap",
+  "reserve 1 12 ap",
+  "end_month",
+  "set_spot 0 ap",
+  "buy_gpus 6 H vendor ap",
+  "contract_power 9 ap",
+  "end_month",
+  "buy_gpus 4 H vendor ap",
+  "contract_power 5 ap",
+  "end_month",
+  "end_month",
+  "buy_gpus 4 H vendor ap",
+  "contract_power 6 ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "reserve 2 6 eu",
+  "end_month",
+  "contract_power 16 ap",
+  "contract_power 10 us",
+  "end_month",
+  "end_month",
+  "end_month",
+  "buy_gpus 4 N vendor ap",
+  "buy_gpus 1 N vendor us",
+  "buy_gpus 2 N vendor ap",
+  "reserve 1 6 eu",
+  "end_month",
+  "buy_option 15",
+  "end_month",
+  "exercise_option 4 us",
+  "exercise_option 4 eu",
+  "exercise_option 7 ap",
+  "end_month",
+  "buy_option 12",
+  "end_month",
+  "buy_option 8",
+  "exercise_option 8 us",
+  "exercise_option 11 eu",
+  "exercise_option 1 ap",
+  "end_month",
+  "end_month",
+  "resell_gpus 3 H eu",
+  "end_month",
+  "resell_gpus 1 H eu",
+  "resell_gpus 3 N ap",
+  "end_month",
+  "resell_gpus 2 N ap",
+  "end_month",
+  "resell_gpus 1 N ap",
+  "resell_gpus 3 H ap",
+  "end_month",
+  "resell_gpus 1 N us",
+  "resell_gpus 1 H ap",
+  "end_month"
+ ]
+}

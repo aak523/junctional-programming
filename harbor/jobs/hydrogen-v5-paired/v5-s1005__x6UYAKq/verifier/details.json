@@ -1,0 +1,214 @@
+{
+ "reward": 1.0,
+ "seed": 1005,
+ "net_cost": 1207.08,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1328.47,
+  "mark_to_market": 188.79,
+  "obligations": 67.4,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 1207.08,
+  "costs": {
+   "capex": 426.75,
+   "power": 144.36,
+   "contracts": 738.7,
+   "spot": 3.46,
+   "unserved": 3.31,
+   "resale": 0.0,
+   "interest": -45.54,
+   "moves": 3.43,
+   "options": 54.0
+  }
+ },
+ "scale": {
+  "oracle": 1226.45,
+  "reference": 1354.07,
+  "do_nothing": 3745.78,
+  "reference_reward": 0.9058,
+  "do_nothing_reward": 0.3274
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "m0: regime=tight(100%, ap cap=1)"
+  },
+  {
+   "month": 1,
+   "text": "m1: regime=tight(100%, ap cap=1, CoWoS news), launch=9..13(rumour m11), brokers=50/50(A result end of m1), inf_growth=50/50(m0=6.64), plan=moved 0.45k H us->ap, res 1k 12m ap+us, 6MW ap(m4), lower ap spot to 0.6"
+  },
+  {
+   "month": 2,
+   "text": "m2: regime=tight(100%, ap cap=1, spot/idx=2.45 despite -5.4% idx dip), launch=9..13(mean 11), brokers=A 13% reliable(cancelled)/B 50%, inf_growth=50/50(m0=6.64,m1=6.27), plan=zero ap spot, move 1.87k idle H us->ap, res 1k 12m ap+us at low idx 1.526, wait 1mo before ordering more H"
+  },
+  {
+   "month": 3,
+   "text": "m3: regime=tight(100%, ap cap=1, idx +4.6%, spot/idx=1.62), launch=9..13(mean 11), brokers=A 13% reliable/B 50%, inf_growth=65% 8% vs 35% 4%(m0=6.64,m1=6.27,m2=7.13), plan=move 0.54k H us->ap, res 1k 12m ap+us+eu for m4..15, order 3k H vendor ap to fill 14MW ap power for Run 2"
+  },
+  {
+   "month": 4,
+   "text": "m4: regime=tight(100%, ap cap=1, idx +4.2%, spot/idx=2.74), launch=9..13(mean 11), brokers=A 13%/B 50%(testing B 1k H to us), inf_growth=99% 8% vs 1% 4%(m3=7.55), plan=res 1k 12m ap+us(m5..16), test B 1k H, Run 1 finishes m4"
+  },
+  {
+   "month": 5,
+   "text": "m5: regime=75% tight vs 25% loose(news loose, idx +7.6%, spot/idx=1.34), launch=9..13(mean 11), brokers=A 13%/B 50%(result end of m5), inf_growth=>99% 8%(m4=8.43), plan=Run 1 done(61.3/60), hold off cloud until m7 so new res starts m8 for Run 2, wait for B result and #4 H delivery"
+  },
+  {
+   "month": 6,
+   "text": "m6: regime=tight(98%, idx +4.6% to 1.873, spot/idx=4.04), launch=9..13(mean 11), brokers=A 13%/B 13%(B cancelled), inf_growth=>99% 8%(m5=8.32), plan=no more H(options .767M/mo beat new H), wait until m7 to buy/exercise options or res starting m8 for Run 2"
+  },
+  {
+   "month": 7,
+   "text": "m7: regime=tight(98%, idx +0.5% to 1.882, spot/idx=1.24, hyperscaler news, export-control rumour), launch=9..13(mean 11), brokers=A 13%/B 13%, inf_growth=>99% 8%(m6=9.31), plan=bought+exercised 2 options in us(m8..13) for Run 2, signed 8MW ap(m10) for Gen N"
+  },
+  {
+   "month": 8,
+   "text": "m8: regime=75% tight vs 25% loose(idx +5.5% to 1.985, spot/idx=1.05), launch=12 or 13(intersection of m11 and m14 rumours), brokers=A 13%/B 13%, inf_growth=>99% 8%(m7=11.73), plan=signed 10MW ap(m14) for Gen N, wait until m9 to see m8 demand before exercising options for m10..15"
+  },
+  {
+   "month": 9,
+   "text": "m9: regime=tight(95%, idx -5.2% to 1.882, spot/idx=1.71, hyperscaler news), launch=12 or 13(intersection of m11 and m14), brokers=A 13%/B 13%, inf_growth=8%(m8=10.83, watching for 4% switch), plan=buy+exercise 1 option in eu(m10..15) for Run 2 and eu inf, check m9 demand in m10 before adding 1 more option for Run 2"
+  },
+  {
+   "month": 10,
+   "text": "m10: regime=tight(99%, idx +6.2% to 1.998, spot/idx=2.26, CoWoS news), launch=12 or 13(intersection of m11 and m14), brokers=A 13%/B 13%, inf_growth=8%(m9=12.67), plan=buy+exercise 1 option in us(m11..16) for Run 2+us inf, signed 10MW us(m14) for Gen N and m20 replacement"
+  },
+  {
+   "month": 11,
+   "text": "m11: regime=tight(99%, idx +7.1% to 2.139, spot/idx=2.84, distributor lead-time news), launch=12 or 13(no m11 confirmation yet), brokers=A 13%/B 13%, inf_growth=70% 8% vs 30% switched 4%(m10=12.63), plan=Run 2 locked in(164 vs 151 needed), hold cash(~00M) for Gen N launch in m12-13 and post-launch 25% cloud drop"
+  },
+  {
+   "month": 12,
+   "text": "m12: regime=tight(99%, idx +3.3% to 2.210, spot/idx=1.67), launch=13 CONFIRMED by vendor, brokers=A 13%/B 13%, inf_growth=8%(m11=14.76), plan=buy+exercise 1 option in us(m13..18) for Run 2 margin and early Run 3, hold ~70M cash for Gen N launch order in m13"
+  },
+  {
+   "month": 13,
+   "text": "m13: regime=75% tight vs 25% loose(news loose, spot/idx=1.04, post-drop idx 1.787), launch=13 HAPPENED, brokers=A 13%/B 13%, inf_growth=8%(m12=15.60), plan=order 6k Gen N vendor ap(40M) into sunk ap power, Run 2 on track to finish m15, will use options/post-launch cloud for Run 3"
+  },
+  {
+   "month": 14,
+   "text": "m14: regime=tight(99.8%, idx +10.7% to 1.978, spot/idx=1.86, CoWoS news), launch=13(done), brokers=A 13%/B 13%, inf_growth=8%(m13=17.35), plan=Run 2 finishes m15(126.16/140), hold off exercising Run 3 options until m15 so they cover m16..21 with zero wasted m15"
+  },
+  {
+   "month": 15,
+   "text": "m15: regime=50/50 tight vs loose(idx +0.8% to 1.994, rival-adj spot/idx=0.91), launch=13(done), brokers=A 13%/B 13%, inf_growth=8%(m14=19.93, last switch window m15), plan=set_spot 0.5 eu for m15 safety only, buy+exercise 20 options(4 eu, 6 us, 10 ap) for m16..21(120 kH-mo for Run 3), wait for m15 Gen N shipment and demand before sizing m17 options"
+  },
+  {
+   "month": 16,
+   "text": "m16: regime=75% loose vs 25% tight(m15 shipped 5.01k N and idx dropped 5.8% to 1.878, m16 news tight), launch=13(done), brokers=A 13%/B 13%, inf_growth=60% 8% vs 40% switched 4%(m15=18.18), plan=Run 2 MET(148.55/140), zero eu spot, buy 8 options now(M) to bypass 20/mo cap in m17 when exercising ~19-26 options for m18..23"
+  },
+  {
+   "month": 17,
+   "text": "m17: regime=90% loose vs 10% tight(idx -3.7% to 1.808, spot/idx=1.23, inventory news), launch=13(done), brokers=A 13%/B 13%, inf_growth=50% 8% vs 50% switched 4% at m14-15(m16=20.84), plan=buy 16 options(24 held) and exercise 12 eu + 12 us for m18..23(144 kH-mo), covers eu/us inference and hits Run 3 if 4% switch, will check m17-18 demand to add 3-4 more if 8% continues"
+  },
+  {
+   "month": 18,
+   "text": "m18: regime=75% loose vs 25% tight(idx -8.2% to 1.659, spot/idx=1.95), launch=13(done), brokers=A 13%/B 13%, inf_growth=96% 8% constant(m17=24.24), plan=buy+exercise 5 options(3 us, 2 eu) for m19..24(+25 kH-mo for Run 3 and m22-23 us/eu inf buffer), will move 4k H eu->ap in m19 before eu power expires at end of m19"
+  },
+  {
+   "month": 19,
+   "text": "m19: regime=75% loose vs 25% tight(idx -1.5% to 1.634, spot/idx=1.74), launch=13(done), brokers=A 13%/B 13%, inf_growth=97% 8% constant(m18=24.22), plan=move 4k H eu->ap before eu 6MW expires at end of m19 so all 21k H stay powered in m20..23, Run 3 on track for ~327/320"
+  },
+  {
+   "month": 20,
+   "text": "m20: regime=60% loose vs 40% tight(idx +7% to 1.748, rival spot, inventory news), launch=13(done), brokers=A 13%/B 13%, inf_growth=98% 8% constant(m19=27.02), plan=4k H arrived in ap cleanly, Run 3 has 288 kH-mo left vs ~130.6 inf + 151.3 needed(+6.1 buffer), hold cash and watch m20-21 demand before deciding if any m22-23 spot needed"
+  },
+  {
+   "month": 21,
+   "text": "m21: regime=tight(idx +9.3% to 1.911, spot/idx=1.69), launch=13(done), brokers=A 13%/B 13%, inf_growth=>99% 8% constant(m20=27.90), plan=Run 3 at 222.81/320 with 206 kH-mo left across m21..23 vs ~101 inf + 97.2 needed(+8 buffer), hold and verify in m22"
+  },
+  {
+   "month": 22,
+   "text": "m22: regime=tight(idx +6.6% to 2.037, spot/idx=1.66), launch=13(done), brokers=A 13%/B 13%, inf_growth=>99% 8% constant(m21=31.30), plan=Run 3 at 273.51/320 with 124 kH-mo left across m22..23 vs ~70.3 inf + 46.5 needed(+7.2 buffer), hold and verify in m23"
+  },
+  {
+   "month": 23,
+   "text": "m23: regime=60% loose vs 40% tight(idx -1.9% to 1.998, spot/idx=1.47, loose news), launch=13(done), brokers=A 13%/B 13%, inf_growth=>99% 8% constant(m22=32.37), plan=Run 3 at 303.15/320 with 62 kH cap vs ~36 inf + 16.85 needed(+9 buffer), keep all GPUs for safety and close out m23"
+  }
+ ],
+ "actions": [
+  "set_spot 1.5 ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 ap",
+  "contract_power 6 us",
+  "contract_power 8 ap",
+  "buy_gpus 4 H vendor ap",
+  "buy_gpus 1 H A us",
+  "reserve 1 12 us",
+  "end_month",
+  "set_spot 0.6 ap",
+  "move_gpus 0.45 H us ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 us",
+  "contract_power 6 ap",
+  "end_month",
+  "set_spot 0 ap",
+  "move_gpus 1.87 H us ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 us",
+  "end_month",
+  "move_gpus 0.54 H us ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 us",
+  "buy_gpus 3 H vendor ap",
+  "reserve 1 12 eu",
+  "end_month",
+  "reserve 1 12 ap",
+  "reserve 1 12 ap",
+  "reserve 1 12 us",
+  "buy_gpus 1 H B us",
+  "end_month",
+  "end_month",
+  "end_month",
+  "buy_option 2",
+  "exercise_option 2 us",
+  "contract_power 8 ap",
+  "end_month",
+  "contract_power 10 ap",
+  "end_month",
+  "buy_option 1",
+  "exercise_option 1 eu",
+  "end_month",
+  "buy_option 1",
+  "exercise_option 1 us",
+  "contract_power 10 us",
+  "end_month",
+  "end_month",
+  "buy_option 1",
+  "exercise_option 1 us",
+  "end_month",
+  "buy_gpus 6 N vendor ap",
+  "end_month",
+  "end_month",
+  "set_spot 0.5 eu",
+  "buy_option 20",
+  "exercise_option 4 eu",
+  "exercise_option 6 us",
+  "exercise_option 10 ap",
+  "end_month",
+  "set_spot 0 eu",
+  "buy_option 8",
+  "end_month",
+  "buy_option 16",
+  "exercise_option 12 eu",
+  "exercise_option 12 us",
+  "end_month",
+  "buy_option 5",
+  "exercise_option 3 us",
+  "exercise_option 2 eu",
+  "end_month",
+  "move_gpus 4 H eu ap",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month",
+  "end_month"
+ ]
+}

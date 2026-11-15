@@ -1,0 +1,205 @@
+{
+ "reward": 0.6932,
+ "seed": 1003,
+ "net_cost": 1019.51,
+ "months_played": 24,
+ "milestones_met": 3,
+ "settlement": {
+  "spend": 1129.17,
+  "mark_to_market": 196.01,
+  "obligations": 86.35,
+  "milestones_met": 3,
+  "missed": [],
+  "penalties": 0.0,
+  "net_cost": 1019.51,
+  "costs": {
+   "capex": 557.5,
+   "power": 183.14,
+   "contracts": 424.32,
+   "spot": 3.41,
+   "unserved": 3.03,
+   "resale": -11.0,
+   "interest": -40.15,
+   "moves": 5.93,
+   "options": 3.0
+  }
+ },
+ "scale": {
+  "oracle": 706.75,
+  "reference": 840.78,
+  "do_nothing": 3749.26,
+  "reference_reward": 0.8406,
+  "do_nothing_reward": 0.1885
+ },
+ "notes": [
+  {
+   "month": 0,
+   "text": "M0: spot/index=1.753 suggests tight regime (~70% tight)"
+  },
+  {
+   "month": 1,
+   "text": "M1: tight regime (~99% sure - ap res cap 1, spot cap 0.5, index +2.75%, shipment 1.59k), gen N launch ~M10 (9..12), broker A 1k confirms at end of M1, growth unknown (M0 demand 6.29 vs ~6 start). Moved 0.28k idle H us->eu, reserved 1kH 12m in ap and us for M2..13, set ap spot 0.5."
+  },
+  {
+   "month": 2,
+   "text": "M2: tight regime (~99% sure - index +1.0%, shipment 2.39k, spot .081M, ap spot cap 0.5), gen N launch likely M9 or M10 (intersection of M10 and M8 rumours with [9,15]), broker A delivered 1k (72% reliable), growth ~5.2% M0->M1 (4% or 8% still uncertain). Cancelled ap spot (ap has 2kH reserved vs ~1.4kH demand), holding cash for Gen N launch."
+  },
+  {
+   "month": 3,
+   "text": "M3: tight regime (~90% sure - M2 index +3.5%, spot .951M, shipment 2.34k, news cut prices likely 25% false headline), gen N launch likely M9 or M10, broker A 72% reliable, inference growth likely 8%/mo (M0->M2 +22%). Signed 16MW ap power for Gen N capacity, holding cash and waiting to see M3 demand and launch."
+  },
+  {
+   "month": 4,
+   "text": "M4: tight regime (~99% sure - index +7.9%, shipment 1.84k, spot .16M, tight news), gen N launch likely M9 or M10 (M9 rumour), broker A 72% reliable, inference growth confirmed 8%/mo (M0->M3 +33%). Signed 8MW eu power for eu inference growth and M20..23, ordered 4k H vendor to us using us spare M5 power to bridge M8..15 training."
+  },
+  {
+   "month": 5,
+   "text": "M5: regime likely switched to LOOSE (~80% sure - index -1.1%, spot 1.43x index, loose news), gen N launch likely M9 or M10, broker A 72% reliable, inference M4 dipped to 7.62 (4% vs 8% growth uncertain - watching M5/M6). All M5 power online, 4k H in queue for M7/M8, holding cash for Gen N launch."
+  },
+  {
+   "month": 6,
+   "text": "M6: LOOSE regime (~95% sure - index -1.0%, spot 1.16x index), gen N launch almost certainly M10 (intersection of M10 M8 M9 M12 rumours with [9,15]), broker A 72% reliable, inference growth confirmed 8%/mo (M5 9.68). Holding cash in M6, will evaluate M8..15 bridge (options vs reserves) in M7 once 4k H delivers."
+  },
+  {
+   "month": 7,
+   "text": "M7: LOOSE regime (~85% sure - index -11.5%, 4k H delivered in 1mo, spot 1.35x even with rival buying, tight headline likely 25% false), gen N launch M10, broker A 72% reliable, inference growth 8%/mo (M6 9.82). Run 1 done (69.11/60). Reserved 3kH 6m ap + bought/exercised 3kH options (1 eu, 2 ap) for M8..13 bridge."
+  },
+  {
+   "month": 8,
+   "text": "M8: LOOSE regime (~95% sure - index -11.9%, spot 1.0x index), gen N launch M10 (confirmed by M10 rumour), broker A 72% reliable, inference growth 8%/mo (M7 10.89). Signed 16MW ap power for Gen N scaling, holding 73M cash for M10 Gen N launch and post-launch 25%-cheaper contracts."
+  },
+  {
+   "month": 9,
+   "text": "M9: regime uncertain (index -2.6% suggests loose in M8, but M9 spot 1.95x and tight news suggest possible switch to tight), gen N launch CONFIRMED for M10, broker A 72% reliable, inference growth 8%/mo (M8 11.55). Keeping all 25k Gen H and waiting for M10 Gen N launch to order Gen N and post-launch contracts."
+  },
+  {
+   "month": 10,
+   "text": "M10: Gen N LAUNCHED. Regime uncertain (M9 index fell -6.4% pre-launch drop but M10 spot .532M is high -> watching res caps to tell loose vs tight), broker A 72% reliable, inference growth may have switched 8%->4% at M8/9 (M9 11.97). Ordered 7k Gen N vendor to ap (80M) and reserved 12m ap/us at post-launch /usr/bin/bash.92-/usr/bin/bash.97M/kH-mo."
+  },
+  {
+   "month": 11,
+   "text": "M11: regime tight in M10 (res caps 1) but M11 index -4.3% and spot 2.36x with rival buying (still likely tight or switched loose), broker A 72% reliable, inference M10 12.78 suggests likely switch 8%->4% at M8/9. Reserved max 12m (M12..23) in ap/us/eu at /usr/bin/bash.88-.02M/kH-mo"
+  },
+  {
+   "month": 12,
+   "text": "M12: regime likely switched LOOSE in M12 (index -2.6%, CoWoS loose news, spot 2.01x with rival buying) - M12 Gen N shipment will confirm, Gen N launched M10, broker A 72% reliable, inference growth likely switched 8%->4% at M8/9 (M11 13.24). Holding cash and waiting for M13 Gen N shipment before planning M15..17 6m contracts for M16..23."
+  },
+  {
+   "month": 13,
+   "text": "M13: TIGHT regime (~95% sure - M12 Gen N shipment 1.09k and M13 spot 1.89x index), Gen N launched M10, broker A 72% reliable, inference M12 14.75 suggests 8%/mo may still be active (or late switch). Stopping new Gen N capex since 12m/6m cloud (/usr/bin/bash.95-.43M/M16..23 mo) beats late Gen N (.6M+/mo). Reserving 12m across ap/us/eu."
+  },
+  {
+   "month": 14,
+   "text": "M14: regime was TIGHT in M13 (1.62k Gen N shipment, res caps 1, index +1.4%, spot 3.51x) - M14 loose news may be 25% false or switch (testing via 2 kH ap res), Gen N launched M10, broker A 72% reliable, inference 8%/mo still active at M13 (16.40). Reserving 12m in ap/us/eu before M15..17 6m contracts and options for M16..23."
+  },
+  {
+   "month": 15,
+   "text": "M15: M14 was tight (1.68k Gen N shipment, res caps 1, index +3.2%) though M15 spot 1.05x suggests possible switch to loose, Gen N launched M10, broker A 72% reliable, inference still 8%/mo at M14 (18.39). Run 2 MET (151.48/140). Reserving 6m (M16..21) across ap/us/eu at /usr/bin/bash.99-.15M/kH-mo for Run 3."
+  },
+  {
+   "month": 16,
+   "text": "M16: LOOSE regime (~95% sure - all 10kH M15 reserves filled, index -2.5%, spot 1.11x index), Gen N launched M10, broker A 72% reliable, inference growth confirmed 8%/mo through M15 (20.15) with no switch. Run 2 MET (176.1/140). Reserved 10kH 6m (M17..22) across ap/us/eu for Run 3."
+  },
+  {
+   "month": 17,
+   "text": "M17: LOOSE regime (~95% sure - index -8.4%, spot 1.22x index), Gen N launched M10, broker A 72% reliable, inference M16 20.34 (either 8% with -noise or M15 switch to 4% - watching M17). Reserved 10kH 6m (M18..23) across ap/us/eu at /usr/bin/bash.89-.03M/kH-mo for Run 3."
+  },
+  {
+   "month": 18,
+   "text": "M18: regime likely switched TIGHT in M18 (index +7.3%, spot 1.97x index), Gen N launched M10, broker A 72% reliable, inference growth confirmed 8%/mo through M17 (24.69). Reserved 1kH 6m us (M19..24) for extra Run 3 margin and M23 us inference peak."
+  },
+  {
+   "month": 19,
+   "text": "M19: TIGHT regime (~90% sure - index +6.9%, spot 1.46x), Gen N launched M10, broker A 72% reliable, inference 8%/mo confirmed (M18 24.21). Run 3 at 140.75/320 on track. Holding cash and waiting for M20 power expiration to resell or move idle us Gen H."
+  },
+  {
+   "month": 20,
+   "text": "M20: TIGHT regime (~95% sure - index +8.3%, spot 2.27x, CoWoS tight news), Gen N launched M10, broker A 72% reliable, inference 8%/mo confirmed (M19 27.86). us 10MW expired leaving 6.58k H idle, moving 5k idle H us->ap for M21..23 Run 3 compute."
+  },
+  {
+   "month": 21,
+   "text": "M21: regime likely switched LOOSE in M21 (index -2.5%, spot 0.95x index), Gen N launched M10, broker A 72% reliable, inference 8%/mo confirmed (M20 27.10). Run 3 at 241.21/320 on track. Moving remaining 1.57k idle us Gen H to ap for M22..23."
+  },
+  {
+   "month": 22,
+   "text": "M22: regime likely LOOSE (HBM loose news, spot 1.36x with rival buying, M21 index -2.5%), Gen N launched M10, broker A 72% reliable, inference 8%/mo confirmed (M21 31.25). Run 3 at 289.39/320 with 30.61 left. Moving 4.2k N ap->us and 0.8k N ap->eu for M23 us/eu inference coverage."
+  },
+  {
+   "month": 23,
+   "text": "M23: LOOSE regime (~95% sure - index -8.7%, spot 1.00x index), Gen N launched M10, broker A 72% reliable, inference 8%/mo confirmed (M22 34.0). Reselling 3k idle us Gen H, setting 0.6 kH spot in us for M23 inference buffer"
+  }
+ ],
+ "actions": [
+  "contract_power 12 ap",
+  "contract_power 10 us",
+  "buy_gpus 6 H vendor ap",
+  "buy_gpus 1 H A ap",
+  "reserve 2 6 ap",
+  "set_spot 1.5 ap",
+  "end_month",
+  "move_gpus 0.28 H us eu",
+  "reserve 1 12 ap",
+  "reserve 1 12 us",
+  "set_spot 0.5 ap",
+  "end_month",
+  "set_spot 0 ap",
+  "end_month",
+  "contract_power 16 ap",
+  "end_month",
+  "contract_power 8 eu",
+  "buy_gpus 4 H vendor us",
+  "end_month",
+  "end_month",
+  "end_month",
+  "reserve 3 6 ap",
+  "buy_option 3",
+  "exercise_option 1 eu",
+  "exercise_option 2 ap",
+  "end_month",
+  "contract_power 16 ap",
+  "end_month",
+  "end_month",
+  "buy_gpus 7 N vendor ap",
+  "reserve 3 12 ap",
+  "reserve 3 12 us",
+  "end_month",
+  "reserve 3 12 ap",
+  "reserve 4 12 us",
+  "reserve 3 12 eu",
+  "end_month",
+  "end_month",
+  "reserve 2 12 ap",
+  "reserve 2 12 us",
+  "reserve 2 12 eu",
+  "end_month",
+  "reserve 2 12 ap",
+  "reserve 1 12 us",
+  "reserve 1 12 eu",
+  "end_month",
+  "reserve 3 6 ap",
+  "reserve 4 6 us",
+  "reserve 3 6 eu",
+  "end_month",
+  "reserve 3 6 ap",
+  "reserve 4 6 us",
+  "reserve 3 6 eu",
+  "end_month",
+  "reserve 3 6 ap",
+  "reserve 4 6 us",
+  "reserve 3 6 eu",
+  "end_month",
+  "reserve 1 6 us",
+  "end_month",
+  "end_month",
+  "move_gpus 5 H us ap",
+  "end_month",
+  "move_gpus 1.57 H us ap",
+  "end_month",
+  "move_gpus 4.2 N ap us",
+  "move_gpus 0.8 N ap eu",
+  "end_month",
+  "resell_gpus 3 H us",
+  "set_spot 0.6 us",
+  "end_month"
+ ]
+}
