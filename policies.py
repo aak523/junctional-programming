@@ -16,7 +16,8 @@ import world as W
 from world import T, MILESTONES, SITES
 
 
-def play(policy, seed, stop_after=None):
+def run(policy, seed, stop_after=None):
+    """Play a policy on the world of a seed; returns the finished World."""
     w = W.World(seed)
     act = w.command
     pol = policy(w) if getattr(policy, "needs_world", False) else policy()
@@ -27,7 +28,11 @@ def play(policy, seed, stop_after=None):
             except ValueError:
                 pass
         w.end_month()
-    return w.settlement
+    return w
+
+
+def play(policy, seed, stop_after=None):
+    return run(policy, seed, stop_after).settlement
 
 
 def do_nothing():
@@ -450,5 +455,7 @@ LADDER = {"do_nothing": (do_nothing, None), "stop_early": (StopEarly, 3), "spot_
 
 def ladder(seed):
     out = {name: play(pol, seed, stop) for name, (pol, stop) in LADDER.items()}
+    for s in out.values():
+        s["reward"] = round(W.score(s["net_cost"], out["oracle"]["net_cost"], s["milestones_met"]), 4)
     out["lp_bound"] = {"net_cost": round(lp.oracle(seed), 2), "milestones_met": None}
     return out

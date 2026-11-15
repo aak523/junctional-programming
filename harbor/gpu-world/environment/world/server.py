@@ -15,8 +15,10 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+import compare
 import policies
 import service
+import world as W
 
 TOKEN = os.environ["VERIFY_TOKEN"]
 STATE = Path(os.environ.get("STATE_FILE", "/state/episode.json"))
@@ -31,25 +33,24 @@ SEED = META["seed"]
 RESULT = None
 
 
-def score(net_cost, oracle):
-    return 1.0 if net_cost <= oracle else max(0.0, oracle / net_cost)
-
-
 def settle():
-    """Final score in [0, 1]: the oracle's net cost / the agent's net cost, i.e. the fraction of perfect-information
-    efficiency achieved (the oracle is LP-MPC on the true future; doing nothing scores about 0.2)."""
+    """Final score in [0, 1] (world.score): the oracle's net cost / the agent's, capped at 1, times the share of
+    training runs met. The oracle is LP-MPC on the true future; the scale also plays the reference, do-nothing and
+    stop-early (the reference for 3 months, then nothing) on the same world, and the diagnosis compares the agent's
+    game with the reference's."""
     global RESULT
     if RESULT is None:
         months_played = WORLD.t
         s = WORLD.finish()
-        dn = policies.play(policies.do_nothing, SEED)["net_cost"]
         oracle = policies.play(policies.OracleMPC, SEED)["net_cost"]
-        reference = policies.play(policies.LPPolicy, SEED)["net_cost"]
-        reward = score(s["net_cost"], oracle)
-        RESULT = {"reward": round(reward, 4), "seed": SEED, "net_cost": s["net_cost"], "months_played": months_played,
-                  "milestones_met": s["milestones_met"], "settlement": s,
-                  "scale": {"oracle": oracle, "reference": reference, "do_nothing": dn,
-                            "reference_reward": round(score(reference, oracle), 4), "do_nothing_reward": round(score(dn, oracle), 4)},
+        ref_world = compare.reference(SEED)
+        base = {"reference": ref_world.settlement, "do_nothing": policies.play(policies.do_nothing, SEED),
+                "stop_early": policies.play(policies.StopEarly, SEED, stop_after=3)}
+        scale = {"oracle": oracle} | {k: v["net_cost"] for k, v in base.items()}
+        scale |= {f"{k}_reward": round(W.score(v["net_cost"], oracle, v["milestones_met"]), 4) for k, v in base.items()}
+        RESULT = {"reward": round(W.score(s["net_cost"], oracle, s["milestones_met"]), 4), "seed": SEED,
+                  "net_cost": s["net_cost"], "months_played": months_played, "milestones_met": s["milestones_met"],
+                  "settlement": s, "scale": scale, "diagnosis": compare.diagnose(WORLD, ref_world, META.get("notes", [])),
                   "notes": META.get("notes", []), "actions": META["actions"]}
     return RESULT
 

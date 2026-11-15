@@ -12,6 +12,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SIM = ["world.py", "lp.py", "policies.py", "service.py"]
+SERVER = ["server.py", "compare.py"]   # the sidecar also runs the verifier's settlement and mistake report
 PINS = "numpy==2.1.3 scipy==1.14.1"
 
 TASK_TOML = '''schema_version = "1.4"
@@ -25,8 +26,9 @@ keywords = ["planning", "supply-chain", "partial-observability", "long-horizon"]
 category = "planning"
 difficulty_explanation = """The agent must hit three training-run windows and serve growing inference demand at the lowest settled
 net cost while the supply regime, next-gen launch, export controls, inference growth and broker reliability are hidden and
-can change silently. Rules and priors are fully documented; only realised values are hidden. Reward 0 = do-nothing,
-1 = a perfect-information LP oracle; a Bayesian LP reference that sees exactly what the agent sees scores about 0.9."""
+can change silently. Rules and priors are fully documented; only realised values are hidden. Reward = the perfect-information
+oracle's net cost / the agent's (capped at 1) times the share of training runs met, so doing nothing scores 0; a Bayesian
+LP reference that sees exactly what the agent sees scores about 0.9."""
 
 [verifier]
 timeout_sec = 600.0
@@ -125,6 +127,8 @@ res = json.loads(urllib.request.urlopen(req, timeout=500).read().decode())
 open("/logs/verifier/details.json", "w").write(json.dumps(res, indent=1))
 open("/logs/verifier/reward.txt", "w").write(f"{{res['reward']:.4f}}\\n")
 print(json.dumps({{k: res[k] for k in ("reward", "net_cost", "months_played", "milestones_met", "scale")}}, indent=1))
+print("Mistake report (the agent's game vs the reference's on this world):")
+print("\\n".join("- " + x for x in res["diagnosis"]["findings"]))
 '''
 
 SOLVE_SH = '''#!/bin/bash
@@ -133,8 +137,11 @@ cd /solution
 python3 solve.py
 '''
 
-SOLVE_PY = '''"""Reference solution: the Bayesian LP reference policy, playing through the same server API as the agent."""
+SOLVE_PY = '''"""Reference solution: the Bayesian LP reference policy, playing through the same server API as the agent.
+With STOP_AFTER=<months> (harbor run ... -a oracle --ae STOP_AFTER=3) it is the stop-early baseline: it plays the
+first months, then stops, and the remaining months run with no actions."""
 import json
+import os
 import urllib.request
 
 import policies
@@ -153,12 +160,13 @@ def act(line):
 
 
 pol = policies.LPPolicy()
+stop = int(os.environ.get("STOP_AFTER") or W.T)
 while True:
     obs = json.loads(urllib.request.urlopen(URL + "/observe", timeout=60).read().decode())
     if obs["prices"]:   # JSON turned integer dict keys into strings
         obs["prices"]["reserve"] = {int(k): v for k, v in obs["prices"]["reserve"].items()}
     obs["met"] = {int(k): v for k, v in obs["met"].items()}
-    if obs["month"] >= W.T:
+    if obs["month"] >= min(W.T, stop):
         break
     pol(obs, act)
     print(act("end_month").splitlines()[0])
@@ -204,7 +212,7 @@ def main():
     seed_line = "" if a.seed is None else f'\n      WORLD_SEED: "{a.seed}"'
     write(out / "environment" / "docker-compose.yaml", COMPOSE.format(seed_line=seed_line, token=token))
     write(out / "environment" / "world" / "Dockerfile", WORLD_DOCKERFILE)
-    for f in SIM + ["server.py"]:
+    for f in SIM + SERVER:
         shutil.copy(HERE / f, out / "environment" / "world" / f)
     for f in SIM:
         shutil.copy(HERE / f, out / "solution" / f)
