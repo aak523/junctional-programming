@@ -20,7 +20,7 @@ import llm_env as E  # noqa: E402
 BASE = "Qwen/Qwen3-4B-Instruct-2507"
 
 
-def dataset(paths, limit=None):
+def dataset(paths, limit=None, shuffle_seed=0):
     from datasets import Dataset
     rows = []
     for p in paths:
@@ -31,7 +31,7 @@ def dataset(paths, limit=None):
                 rows.append({"prompt": [{"role": "system", "content": E.SYSTEM}, {"role": "user", "content": r["user"]}],
                              "completion": [{"role": "assistant", "content": r["completion"]}]})
     if limit:   # a random subset across all episodes, not the first episodes in the file
-        random.Random(0).shuffle(rows)
+        random.Random(shuffle_seed).shuffle(rows)
     return Dataset.from_list(rows[:limit] if limit else rows)
 
 
@@ -60,6 +60,7 @@ def main():
     ap.add_argument("--max-steps", type=int, default=-1)
     ap.add_argument("--max-length", type=int, default=8192)
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--shuffle-seed", type=int, default=0, help="which random subset --limit takes")
     ap.add_argument("--gc", action=argparse.BooleanOptionalAction, default=False, help="activation checkpointing")
     ap.add_argument("--liger", action="store_true", help="Liger fused kernels (no full-vocab logits)")
     a = ap.parse_args()
@@ -69,7 +70,8 @@ def main():
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import SFTConfig, SFTTrainer
 
-    ds = dataset(a.data, a.limit)
+    ds = dataset(a.data, a.limit, a.shuffle_seed)
+    print(f"system prompt: {E.PROMPT} ({len(E.SYSTEM)} chars), {len(ds)} examples")
     tok = AutoTokenizer.from_pretrained(a.base)
     cuda = torch.cuda.is_available()
     try:

@@ -33,6 +33,8 @@ def main():
     ap.add_argument("--max-forced", type=int, default=2)
     ap.add_argument("--out", required=True)
     ap.add_argument("--stats")
+    ap.add_argument("--keep-student", action=argparse.BooleanOptionalAction, default=True,
+                    help="also train on the student's best episodes (round 2); off = relabels + replay only")
     a = ap.parse_args()
     rng = random.Random(0)
     greedy = {seed: recs[0]["episode"]["reward"] for (seed, _), recs in episodes(load(a.greedy)).items()}
@@ -43,7 +45,7 @@ def main():
     for seed, group in by_seed.items():
         best = max(group, key=lambda recs: recs[0]["episode"]["reward"])
         e = best[0]["episode"]
-        if e["reward"] > greedy[seed] and e["errors"] <= a.max_errors and e["forced_ends"] <= a.max_forced:
+        if a.keep_student and e["reward"] > greedy[seed] and e["errors"] <= a.max_errors and e["forced_ends"] <= a.max_forced:
             kept.append(best)
     relabel = load(a.relabel)
     sft = load(a.sft)

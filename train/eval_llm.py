@@ -75,7 +75,7 @@ def main():
                 e = r["episode"]
                 per_seed[r["seed"]] = {**{k: e[k] for k in ("net_cost", "oracle_cost", "reward", "milestones_met", "errors", "forced_ends")},
                                        "n_actions": sum(len(x["executed"]) for x in recs if x["seed"] == r["seed"])}
-    res = {"name": a.name, "model": a.model, "world_commit": world_commit(), "system_sha": E.SYSTEM_SHA,
+    res = {"name": a.name, "model": a.model, "world_commit": world_commit(), "system_sha": E.SYSTEM_SHA, "prompt": E.PROMPT,
            "sets": summarise(per_seed, a.seeds), "per_seed": per_seed}
     out = HERE / "results" / f"{a.name}.json"
     out.parent.mkdir(exist_ok=True)

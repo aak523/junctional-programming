@@ -37,7 +37,8 @@ def play(llm, seeds, k, temperature, policy, max_tokens=300, procs=8, oracle=Non
         msgs = [ep.messages() for _, _, ep in eps]
         params = [SamplingParams(temperature=temperature, max_tokens=max_tokens,
                                  seed=None if temperature == 0 else seed * 1000 + j * 24 + month) for seed, j, _ in eps]
-        outs = llm.chat(msgs, params, use_tqdm=False)
+        # Qwen3 hybrid models: no thinking block (the 2507 instruct template ignores the switch)
+        outs = llm.chat(msgs, params, use_tqdm=False, chat_template_kwargs={"enable_thinking": False})
         for (seed, j, ep), m, o in zip(eps, msgs, outs):
             st = ep.step(o.outputs[0].text)
             recs[seed, j].append({"seed": seed, "policy": policy, "sample": j, "month": month, "system_sha": E.SYSTEM_SHA,

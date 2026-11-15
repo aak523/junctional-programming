@@ -8,6 +8,7 @@ every reply plays exactly one month. Reward is read from the world's own settlem
 This module imports no LLM library. The world object stays private: callers only get strings and dicts.
 """
 import hashlib
+import os
 import re
 import sys
 from pathlib import Path
@@ -47,8 +48,19 @@ def _system():
     return t.rstrip() + "\n" + REPLY_RULES
 
 
-SYSTEM = _system()
-SYSTEM_SHA = hashlib.sha1(SYSTEM.encode()).hexdigest()[:12]
+def _short():
+    """The rules cut to the task statement: for a trained model, which no longer needs them (half the tokens per example)."""
+    t = (ROOT / "TASK.md").read_text(encoding="utf-8")
+    head = t.split("You act only through")[0].strip()
+    return head + "\n" + REPLY_RULES
+
+
+SYSTEM_FULL = _system()
+# data-format tag stored in every record: the user message is the same under either system prompt
+SYSTEM_SHA = hashlib.sha1(SYSTEM_FULL.encode()).hexdigest()[:12]
+PROMPT = os.environ.get("GPUW_PROMPT", "full")
+assert PROMPT in ("full", "short"), PROMPT
+SYSTEM = _short() if PROMPT == "short" else SYSTEM_FULL
 REMINDER = "Reply with one line: note ...; <actions>; end_month"
 FREE_CMDS = ("status", "history", "help", "calc")
 MAX_SEGMENTS = 25
