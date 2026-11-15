@@ -28,10 +28,11 @@ if __name__ == "__main__":
     first, n = (int(sys.argv[1]), int(sys.argv[2])) if len(sys.argv) > 2 else (100, 40)
     workers = int(sys.argv[3]) if len(sys.argv) > 3 else 6
     with ProcessPoolExecutor(workers) as ex:
-        rows = list(ex.map(row, range(first, first + n)))
-    for seed, r in rows:
-        print(f"{seed:>5} " + " ".join(f"{k} {c:6.0f} ({m} missed)" for k, (c, m) in r.items()) + " | " +
-              ", ".join(f"{k} at {r['reference'][0] / r[k][0]:.0%}" for k in CHALLENGERS) + " of the reference")
+        rows = []
+        for seed, r in ex.map(row, range(first, first + n)):   # printed as each world finishes, so a stop keeps them
+            rows.append((seed, r))
+            print(f"{seed:>5} " + " ".join(f"{k} {c:6.0f} ({m} missed)" for k, (c, m) in r.items()) + " | " +
+                  ", ".join(f"{k} at {r['reference'][0] / r[k][0]:.0%}" for k in CHALLENGERS) + " of the reference", flush=True)
     print(f"reference at {statistics.mean(r['oracle'][0] / r['reference'][0] for _, r in rows):.1%} of the oracle; missed runs: "
           + ", ".join(f"{k} {sum(r[k][1] for _, r in rows)}" for k in rows[0][1]))
     for k in CHALLENGERS:
