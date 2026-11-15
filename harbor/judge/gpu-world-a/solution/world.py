@@ -11,6 +11,7 @@ import math
 import operator
 import random
 
+RULES = "v5"                              # the rules' version, recorded with exported runs (bump it when a rule changes)
 T = 24
 OPS_PER_MONTH = 15
 SITES = ("us", "eu", "ap")

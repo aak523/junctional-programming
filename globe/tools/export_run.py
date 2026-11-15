@@ -2,7 +2,7 @@
 
 usage: python export_run.py <repo dir> <policy> <seed> <out.json> [rules label]
        python export_run.py <repo dir> <harbor verifier details.json> - <out.json> [rules label]   (replay an agent's run)
-The repo dir's world.py and policies.py play the run, so export a game with the code it was played under (e.g. a
+The repo dir's world.py and policies.py (in gpu_world/, or at the top level before it) play the run, so export a game with the code it was played under (e.g. a
 worktree of an older commit): an agent replay whose final net cost differs from the one Harbor recorded stops with an
 error instead of writing a different game. The rules label defaults to world.RULES (code before v5 has none: pass it).
 
@@ -52,7 +52,7 @@ from collections import defaultdict
 
 repo, name, seed, out = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 label = sys.argv[5] if len(sys.argv) > 5 else None
-sys.path.insert(0, repo)
+sys.path.insert(0, str(pathlib.Path(repo) / "gpu_world") if (pathlib.Path(repo) / "gpu_world").is_dir() else repo)
 import policies  # noqa: E402
 import world as W  # noqa: E402
 
