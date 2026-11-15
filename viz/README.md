@@ -26,16 +26,16 @@ works offline.
 
 | On screen | What it is |
 |---|---|
-| Solid towers on a pad | GPUs you own at that site, one tower per thousand. Lit = powered, dark = idle for want of power. A white band on top marks gen N (2 kH each, so they are twice as tall). |
-| Floating slab | active reserved cloud capacity at that site |
-| Amber slab | capacity from an exercised option (outside the reservation caps) |
+| The shed on a pad | one site. Its length is the compute you own there; the lit vent band along it is the part of that fleet with power, and the rest is idle in the dark. Rooftop plant appears as gen N moves in. |
 | Thin pillars at the pad rim | spot capacity actually filled this month |
 | Bar in front of the pad | inference served, then training, then any unserved demand in red; the white tick is demand |
-| Box behind the pad | energised power (MW); the amber wireframe is power contracted but not yet live |
 | Gems moving the arcs | orders in transit, coloured by destination; they arrive the month the order clears, so a vendor order stuck behind the queue visibly crawls |
 | Ring burst at a pad | a broker order confirmed (green) or cancelled (red) |
+| The fab in Taiwan | a factory with two lines out front, one per generation. Every thousand GPUs is a block; orders stand in the order they were placed, and the month's realised allocation lies over the line as a green rail, reaching exactly as far as it got |
+| The brokers | a shop each, with the price on the sign — `$` at 1.10x, `$$` at 1.25x. What you just bought stands on the forecourt, what resolves tonight on the counter, and the month's stamps out front: green standing, red tipped over |
 
-The vendor hub turns red while export controls are in force, and relabels itself at the gen N launch.
+The fab's chimneys band red and smoke red while export controls are in force, and it relabels itself
+at the gen N launch. Each of these objects has its own bench — see [benches.html](benches.html).
 
 Controls: drag to spin the globe, scroll to zoom, right-drag to pan, **fly to** to drop onto a
 campus or the fab, hover a pad for its numbers, space to play/pause, arrow keys to step. **truth** reveals the state the player never sees — the supply regime,

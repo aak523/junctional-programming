@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU World — the capacity option object</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+  html,body{overflow:hidden}
+  #stage{position:fixed;inset:0}
+  #stage canvas{width:100%;height:100%;display:block;cursor:grab}
+  #stage canvas:active{cursor:grabbing}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./option.js"></script>
+</body>
+</html>

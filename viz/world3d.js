@@ -5,7 +5,9 @@ import { EffectComposer } from './vendor/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from './vendor/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
-import { Campus as CampusObject, PAD_R, PAD_TOP, FLOOR_H, KH, STATUS } from './campus3d.js';
+import { Campus as CampusObject, STATUS } from './campus3d.js';
+import { Vendor } from './vendor3d.js';
+import { Broker } from './broker3d.js';
 import { useTheme } from './theme3d.js';
 
 // ---------------------------------------------------------------- theme
@@ -244,10 +246,10 @@ const trim = v => (Math.round(v * 10) / 10).toString();
 // here it only has to stand on the sphere and carry its labels.
 class Campus extends CampusObject {
   constructor(site, slots) {
-    super({ theme: T, color: SITE_COLOR[site], slots, metal });
+    super({ theme: T, color: SITE_COLOR[site], metal });
     this.site = site;
     this.pad.userData.site = site;
-    standOn(this.group, SITE_POS[site]);
+    standOn(this.group, SITE_POS[site], 1.3);   // the shed is long: sink it into the curve
     scene.add(this.group);
 
     const name = labelSprite(SITE_NAME[site], { color: hexCss(this.color), size: 64, weight: 700 });
@@ -263,32 +265,27 @@ class Campus extends CampusObject {
 
 // ---------------------------------------------------------------- sources & routes
 const sources = {};
+const BROKER_MARKUP = { A: 1.10, B: 1.25 };
+// the fab and the two shops are the same objects their benches show (vendor3d.js,
+// broker3d.js); here they only have to stand on the sphere and carry their labels.
+const PLACE_SCALE = { vendor: 0.62, A: 0.78, B: 0.78 };
 function buildSources() {
   for (const k of Object.keys(SRC_POS)) {
-    const g = new THREE.Group();
-    standOn(g, SRC_POS[k], 1.4);
+    const obj = k === 'vendor'
+      ? new Vendor({ theme: T, metal })
+      : new Broker({ theme: T, metal, markup: BROKER_MARKUP[k] });
+    const g = obj.group;
+    g.scale.setScalar(PLACE_SCALE[k]);
+    standOn(g, SRC_POS[k], 0.9);
     scene.add(g);
-    const big = k === 'vendor';
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(big ? 17 : 10, big ? 6 : 4.5, big ? 9 : 7),
-      new THREE.MeshStandardMaterial({ color: T.hub, roughness: 0.65, metalness: metal(0.55) })
-    );
-    body.position.y = big ? 3.0 : 2.25;
-    body.castShadow = true; body.receiveShadow = true;
-    g.add(body);
-    const strip = new THREE.Mesh(
-      new THREE.BoxGeometry(big ? 17.4 : 10.2, 0.5, big ? 9.4 : 7.2),
-      new THREE.MeshStandardMaterial({ color: STEEL, emissive: STEEL, emissiveIntensity: 0.8 * T.emissive })
-    );
-    strip.position.y = big ? 6.1 : 4.6;
-    g.add(strip);
+
+    const lift = k === 'vendor' ? 10 : 7;
     const name = labelSprite(SRC_LABEL[k], { color: T.ink, size: 54, weight: 700 });
-    track(name, 4.2, g, new THREE.Vector3(0, big ? 6 : 4.5, 0), 17);
-
+    track(name, 4.2, g, new THREE.Vector3(0, lift, 0), 17);
     const sub = labelSprite(SRC_SUB[k], { color: T.muted, size: 36, weight: 500 });
-    track(sub, 2.3, g, new THREE.Vector3(0, big ? 6 : 4.5, 0), 11.5);
+    track(sub, 2.3, g, new THREE.Vector3(0, lift, 0), 11.5);
 
-    sources[k] = { group: g, strip, name, sub, body };
+    sources[k] = { group: g, obj, name, sub };
   }
 }
 buildSources();
@@ -538,19 +535,27 @@ function sceneUpdate(time) {
     t.opacity += (want - t.opacity) * 0.08;
   }
 
-  // vendor state: export controls choke it, gen N relabels it
-  const vs = sources.vendor.strip.material;
-  const choke = A.export_active;
-  vs.color.lerp(new THREE.Color(choke ? STATUS.critical : STEEL), 0.08);
-  vs.emissive.lerp(new THREE.Color(choke ? STATUS.critical : STEEL), 0.08);
+  // the fab: its queue is the vendor orders standing in the yard, and the month's
+  // realised shipments are the allocation it actually poured
+  sources.vendor.obj.update({
+    month: A.month,
+    launched: A.launched,
+    exportActive: A.export_active,
+    budget: A.shipped || { H: 0, N: 0 },
+    queue: A.queue.filter(o => o.src === 'vendor'),
+  }, time);
+
+  // the shops: bought this month on the forecourt, resolving tonight on the counter,
+  // and this month's stamps standing or tipped out front
   for (const b of ['A', 'B']) {
-    const m = sources[b].strip.material;
-    let c = STEEL;
-    if (state.truth) c = RUN.truth.broker_reliable[b] && !(RUN.truth.broker_decay[b] !== null && A.month >= RUN.truth.broker_decay[b])
-      ? STATUS.good : STATUS.critical;
-    m.color.lerp(new THREE.Color(c), 0.1);
-    m.emissive.lerp(new THREE.Color(c), 0.1);
+    const mine = A.queue.filter(o => o.src === b);
+    sources[b].obj.update({
+      intake: mine.filter(o => o.placed === A.month),
+      hold: mine.filter(o => o.placed === A.month - 1),
+      resolved: (A.broker || []).filter(e => e.src === b),
+    }, time);
   }
+
   if (launchRing.visible) {
     launchRing.userData.t += 0.02;
     launchRing.scale.setScalar(1 + launchRing.userData.t * 42);

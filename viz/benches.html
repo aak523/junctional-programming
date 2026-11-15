@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU World — the state, object by object</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+  body{overflow-y:auto}
+  main{max-width:1320px;margin:0 auto;padding:46px 28px 90px}
+  h1{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px}
+  .sub{color:var(--ink-2);font-size:13px;line-height:1.55;margin:0;max-width:64ch}
+  .sub a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ring)}
+  header{border-bottom:1px solid var(--ring);padding-bottom:22px;margin-bottom:26px;
+         display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(470px,1fr));gap:1px;
+        background:var(--ring);border:1px solid var(--ring)}
+  .o{background:var(--plane);display:flex;flex-direction:column}
+
+  /* the object itself: a live bench, lazily mounted, inert until you click into it */
+  .view{position:relative;aspect-ratio:16/9;background:var(--surface-1);
+        border-bottom:1px solid var(--ring);overflow:hidden}
+  .view iframe{position:absolute;inset:0;width:100%;height:100%;border:0;
+               pointer-events:none;opacity:0;transition:opacity .45s}
+  .view.up iframe{opacity:1}
+  .view.live iframe{pointer-events:auto}
+  .shield{position:absolute;inset:0;cursor:grab}
+  .view.live .shield{display:none}
+  .hint{position:absolute;right:7px;bottom:6px;font-family:var(--mono);font-size:8.5px;
+        letter-spacing:.16em;text-transform:uppercase;color:var(--muted);opacity:0;transition:opacity .15s}
+  .view:hover .hint{opacity:1}
+  .view.live .hint{opacity:1;color:var(--ink-2)}
+
+  .body{padding:13px 15px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .top{display:flex;align-items:baseline;gap:9px}
+  .nm{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .nm a{color:var(--ink);text-decoration:none}
+  .nm a:hover{border-bottom:1px solid var(--ink)}
+  .sec{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-left:auto}
+  .what{font-size:12px;line-height:1.5;color:var(--ink-2);margin:0;flex:1}
+  .ps{display:flex;gap:4px;flex-wrap:wrap}
+  .ps button{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:var(--muted);
+             border:1px solid var(--ring);border-radius:2px;padding:3px 6px;text-transform:none}
+  .ps button:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+  .ps button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--plane)}
+
+  footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--ring);
+         font-size:12px;line-height:1.6;color:var(--muted);max-width:76ch}
+  code{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>The state, object by object</h1>
+    <p class="sub">Every piece of state in <code>world.py</code>, each drawn as the thing it actually is.
+      The panes are the real benches, running — pick a state to restage one, click into a pane to orbit it,
+      or open it full size. The map is <a href="../docs/STATE.md">docs/STATE.md</a>;
+      the globe that assembles them is <a href="./index.html">here</a>.</p>
+  </div>
+  <div class="row">
+    <button type="button" id="key">theme</button>
+    <a href="./index.html" style="text-decoration:none"><button type="button">the globe</button></a>
+  </div>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<footer>
+  Each object is a module (<code>&lt;name&gt;3d.js</code>) that takes the real state fields and nothing else,
+  plus a bench page with no chrome — state, theme and spin are URL parameters. The states are the
+  component's real range, including the ones that cost money: a starved queue, a stranded site, a
+  contract whose tail is all obligation, a pool of options about to expire worthless. Panes mount as
+  they scroll into view and are released when they leave, so only a few hold a drawing context at once.
+</footer>
+</main>
+
+<script type="module">
+/* name · STATE.md section · what it is · states, hero first · extra URL params */
+const OBJECTS = [
+  ['campus', '§3', 'A site. One long shed on its apron: it grows with the fleet, its vent band lights along the part under power, rooftop plant appears as gen N moves in.',
+    ['full', 'empty', 'start', 'stranded', 'unserved', 'genN'], '&gauges=1'],
+  ['vendor', '§5', 'A factory with two lines out front, one per generation. Every thousand GPUs is a block, orders stand in the order they were placed, and the month’s allocation reaches only as far as it reaches.',
+    ['starved', 'idle', 'start', 'tight', 'export', 'postlaunch', 'both']],
+  ['broker', '§6', 'A shop: a lit window, a door, and the price on the sign — $ for A, $$ for B. What it holds stands out front in blocks, one to the thousand, green delivered and red voided.',
+    ['cancelled', 'idle', 'pending', 'delivered', 'decayed', 'reliable'], '&broker=B'],
+  ['gen', '§4', 'The unit you buy, as a block — one block per kH, so gen H is one and gen N is two. Lit while the generation is on sale, matte once discontinued; the small blocks out front are what a unit is worth, $5M each.',
+    ['launch', 'early', 'export', 'last', 'after', 'late']],
+  ['order', '§5', 'An order in transit. A vendor order is a train that moves only as allocation drains it; a broker order is a sealed pod that crosses in one month and is then opened or voided.',
+    ['stuck', 'start', 'fresh', 'eligible', 'half', 'landed', 'inflight', 'delivered', 'cancelled']],
+  ['move', '§11', 'Hardware between sites. A dark crated load under a loading gauge, leaving an outlined hole at the origin for the one month it is powered nowhere.',
+    ['stripped', 'depart', 'transit', 'arriving', 'cap', 'genN']],
+  ['contract', '§7', 'A sheet of paper, floating, turning to face you. Filled squares are the kH you got and red ones what the month’s cap refused; the row beneath is every month it runs, amber where it outlives the game and is only ever settled.',
+    ['late24', 'start', 'loose12', 'short6', 'tight', 'refused']],
+  ['option', '§8', 'The placeless pool: ingots slung from a gantry trolley over three site lanes, dropped into one when exercised, tipped out grey when they expire unused.',
+    ['tails', 'empty', 'bought', 'split', 'tight', 'expiring', 'lapsed']],
+  ['spot', '§9', 'A rising-stem gate valve. The collar holds the setting you left it at; the fill is what got up the bore, the shortfall a red sleeve, the price a plain rail.',
+    ['stacked', 'shut', 'filled', 'starved', 'spike', 'export'], '&truth=1'],
+  ['power', '§10', 'An electrical tower and the line off it. Only an outline while the lead time runs, with a block per month of the wait; then it goes up and the line comes alive — and bills you every month whether or not you have hardware for it to carry.',
+    ['live', 'signed', 'soon', 'dead', 'expiring', 'late']],
+  ['training', '§13', 'Three sand timers, one per window, each holding exactly what it needs — 60, 140 and 320 kH-months at one scale. The sand still in the glass is what the window still needs; it turns over and locks green or red the month the window closes.',
+    ['missed2', 'cold', 'window1', 'sealed1', 'behind', 'overshot', 'end']],
+];
+
+const light = () => document.documentElement.dataset.theme === 'light';
+// the panes keep spinning, so a card is never a still life; the key follows the page
+const src = (name, state, extra = '') =>
+  `./${name}.html?state=${state}${extra}${light() ? '&theme=light' : ''}`;
+
+const grid = document.getElementById('grid');
+const cards = [];
+
+function build() {
+  grid.innerHTML = '';
+  cards.length = 0;
+  for (const [name, sec, what, states, extra = ''] of OBJECTS) {
+    const card = document.createElement('div');
+    card.className = 'o';
+    card.innerHTML =
+      `<div class="view"><div class="shield"></div><div class="hint">click to orbit</div></div>` +
+      `<div class="body">` +
+        `<div class="top"><span class="nm"><a href="${src(name, states[0], extra)}">${name}</a></span>` +
+        `<span class="sec">STATE.md ${sec}</span></div>` +
+        `<p class="what">${what}</p>` +
+        `<div class="ps">${states.map((s, i) =>
+          `<button type="button" data-state="${s}" aria-pressed="${i === 0}">${s}</button>`).join('')}</div>` +
+      `</div>`;
+    grid.appendChild(card);
+
+    const view = card.querySelector('.view');
+    const rec = { name, extra, view, state: states[0], frame: null, link: card.querySelector('.nm a') };
+    cards.push(rec);
+
+    // a state button restages this pane in place, and retargets the full-size link with it
+    card.querySelectorAll('.ps button').forEach(b => {
+      b.onclick = () => {
+        rec.state = b.dataset.state;
+        card.querySelectorAll('.ps button').forEach(o => o.setAttribute('aria-pressed', o === b));
+        rec.link.href = src(rec.name, rec.state, rec.extra);
+        if (rec.frame) { view.classList.remove('up'); rec.frame.src = src(rec.name, rec.state, rec.extra); }
+        else mount(rec);
+      };
+    });
+
+    // inert until asked for, so the page scrolls over the panes instead of into them
+    view.querySelector('.shield').onclick = () => view.classList.add('live');
+    view.addEventListener('pointerleave', () => view.classList.remove('live'));
+  }
+  sync();
+}
+
+// mount what is near the viewport, release what is not: a WebGL context per pane is too many
+function mount(rec) {
+  if (rec.frame) return;
+  const f = document.createElement('iframe');
+  f.setAttribute('scrolling', 'no');
+  f.setAttribute('title', rec.name);
+  f.onload = () => rec.view.classList.add('up');
+  f.src = src(rec.name, rec.state, rec.extra);
+  rec.view.appendChild(f);
+  rec.frame = f;
+}
+function release(rec) {
+  if (!rec.frame) return;
+  rec.frame.remove();
+  rec.frame = null;
+  rec.view.classList.remove('up', 'live');
+}
+
+/* Keep the panes nearest the viewport running and let the rest go. A browser allows only
+   so many drawing contexts at once, and fifteen benches is past it — so this is a cap, not
+   just an economy. Measured straight off the layout rather than observed, so the first
+   screen is mounted on the same tick the page is built. */
+const MAX_LIVE = 12, MARGIN = 300;   // browsers cap drawing contexts around sixteen
+function sync() {
+  const vh = innerHeight, mid = vh / 2;
+  const near = [];
+  for (const c of cards) {
+    const r = c.view.getBoundingClientRect();
+    if (r.bottom > -MARGIN && r.top < vh + MARGIN)
+      near.push({ c, d: Math.abs((r.top + r.bottom) / 2 - mid) });
+  }
+  near.sort((a, b) => a.d - b.d);
+  const keep = new Set(near.slice(0, MAX_LIVE).map(x => x.c));
+  for (const c of cards) keep.has(c) ? mount(c) : release(c);
+}
+let queued = false;
+const resync = () => {
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; sync(); });
+};
+addEventListener('scroll', resync, { passive: true });
+addEventListener('resize', resync);
+
+if (new URLSearchParams(location.search).get('theme') === 'light')
+  document.documentElement.dataset.theme = 'light';
+document.getElementById('key').onclick = () => {
+  document.documentElement.dataset.theme = light() ? 'dark' : 'light';
+  build();           // every pane rebuilds in the new key, since materials are built at load
+};
+build();
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@
    The page has no chrome; everything is a URL parameter:
      ?theme=light|dark   the key            ?site=us|eu|ap      whose colour it wears
      ?state=<preset>     empty · start · stranded · unserved · genN · full
+     ?gauges=1           add the site furniture the globe shows around the building
      ?spin=0             stop the auto-orbit
 */
 import * as THREE from 'three';
@@ -61,9 +62,12 @@ key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
 Object.assign(key.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 140 });
 scene.add(key);
-const fill = new THREE.DirectionalLight(T.fillHue, T.fillLight);
+const fill = new THREE.DirectionalLight(T.fillHue, T.fillLight * (LIGHT ? 1 : 2.2));
 fill.position.set(-30, 14, -24);
 scene.add(fill);
+const back = new THREE.DirectionalLight(0xffffff, LIGHT ? 0.1 : 0.35);
+back.position.set(-18, 20, 26);
+scene.add(back);
 
 let composer = null;
 if (!LIGHT) {
@@ -74,12 +78,12 @@ if (!LIGHT) {
 }
 
 const site = ['us', 'eu', 'ap'].includes(Q.get('site')) ? Q.get('site') : 'us';
-const campus = new Campus({ theme: T, color: T.site[site], slots: 16, metal });
+const campus = new Campus({ theme: T, color: T.site[site], metal, gauges: Q.get('gauges') === '1' });
 scene.add(campus.group);
 
 // ---------------------------------------------------------------- orbit
-const view = { r: 42, theta: 0.72, phi: 1.02, auto: Q.get('spin') !== '0', drag: 0 };
-const target = new THREE.Vector3(0, 4.5, 0);
+const view = { r: 32, theta: 0.72, phi: 1.02, auto: Q.get('spin') !== '0', drag: 0 };
+const target = new THREE.Vector3(0, 3.0, 0);
 {
   const dom = renderer.domElement;
   let last = { x: 0, y: 0 };

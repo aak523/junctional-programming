@@ -1,158 +1,176 @@
 /* The campus: one site's data centre, as an object.
 
-   Everything the globe knows about a site is encoded in this one piece of geometry —
-   how much silicon is on the ground, how much of it is lit, what is rented beside it,
-   how many megawatts are under it and how the month's demand was met. It is built here,
-   on its own, so it can be studied on its own (viz/campus.html) and dropped onto the
-   sphere by the caller (viz/world3d.js), which positions it and owns its labels.
+   It is a single long shed with a pitched roof, standing on its apron — the shape these
+   buildings actually are. It grows along its length as the site's fleet grows, its vent
+   band lights along the part of that fleet that has power, and rooftop plant appears as
+   gen N moves in. The two site gauges that are not the building itself (spot fills and
+   the month's demand bar) hang off the apron and can be left off entirely with
+   `gauges: false`.
+
+   Built here, on its own, so it can be worked on alone (viz/campus.html) and dropped onto
+   the sphere by the caller (viz/world3d.js), which positions it and owns its labels.
 
    Read it as a gauge:
-     tower height  = compute (FLOOR_H world units per kH)   · lit = powered
-     crown         = gen N                                   · taller per unit, 2 kH each
-     slabs         = rented capacity, left reserved, right an exercised option
-     pillars       = spot fills this month
-     substation    = energised MW, its wireframe ghost = contracted but not yet live
-     ground bar    = served | training | unserved, with a tick at demand            */
+     building length = owned compute        · vent band = the part of it under power
+     rooftop plant   = gen N on site        · pillars    = spot fills this month
+     apron bar       = served | training | unserved, with a tick at demand
+
+   `reserved`, `option`, `mw` and `mwPending` are still accepted and still shape the bar
+   through capacity; they simply have no object of their own on the campus any more.    */
 import * as THREE from 'three';
 
-export const PAD_R = 8;        // campus platform radius
-export const PAD_TOP = 1.9;    // local height of the platform deck
-export const FLOOR_H = 3.0;    // world units of tower per kH of compute
-export const KH = 0.34;        // world units per kH on the ground gauge
+export const SHED_W = 7.0;        // across the building
+export const WALL_H = 3.0;        // eaves height above the deck
+export const ROOF_RISE = 2.0;     // ridge above the eaves
+export const EAVE = 0.45;         // roof overhang
+export const DECK = 0.5;          // apron thickness: the building's floor
+export const LEN_BASE = 9.0;      // length at an empty site
+export const LEN_PER_KH = 0.7;    // and how it grows
+export const LEN_MAX = 26.0;
+export const PAD_R = LEN_MAX / 2; // the footprint a site needs, for callers that space things out
+export const KH = 0.34;           // world units per kH on the apron bar
 export const STATUS = { good: 0x0ca30c, warning: 0xfab219, serious: 0xec835a, critical: 0xd03b3b };
 
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+export const shedLength = kh => clamp(LEN_BASE + kh * LEN_PER_KH, LEN_BASE, LEN_MAX);
+
+// --- geometry built once and shared by every campus -----------------------------------
+// The shell is the walls and both gable ends in one extrusion: a pentagon profile pulled
+// along a unit length, so the length is a scale and never a rebuild.
+const shellGeo = (() => {
+  const w = SHED_W / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-w, 0); s.lineTo(w, 0); s.lineTo(w, WALL_H); s.lineTo(0, WALL_H + ROOF_RISE); s.lineTo(-w, WALL_H);
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, -0.5);          // centre the extrusion
+  g.rotateY(Math.PI / 2);           // and lay its length along x
+  return g;
+})();
+
+const HW = SHED_W / 2 + EAVE;                                   // half width at the eaves
+const SLOPE = Math.hypot(HW, ROOF_RISE);                        // length of one roof plane
+const PITCH = Math.atan2(ROOF_RISE, HW);
+const roofGeo = new THREE.BoxGeometry(1, 0.26, SLOPE);
+const ridgeGeo = new THREE.BoxGeometry(1, 0.22, 0.5);
+const aprGeo = new THREE.BoxGeometry(1, DECK, 1);
+aprGeo.translate(0, DECK / 2, 0);
+const doorGeo = new THREE.BoxGeometry(1.7, 2.1, 0.12);
+doorGeo.translate(0, 1.05, 0);
+const ventGeo = new THREE.BoxGeometry(1, 0.42, 0.12);
+ventGeo.translate(0.5, 0, 0);                                   // grows from its left end
+const plantGeo = new THREE.BoxGeometry(1.5, 0.75, 1.9);
+plantGeo.translate(0, 0.375, 0);
 const towerGeo = new THREE.BoxGeometry(1, 1, 1);
 towerGeo.translate(0, 0.5, 0);
-const crownGeo = new THREE.BoxGeometry(1, 1, 1);
-crownGeo.translate(0, 0.5, 0);
 
 export class Campus {
-  /* theme: the key's colours (pad, towerOff, crown, sub, tick, emissive)
-     color: the site's own colour · slots: how many tower pads to lay out
-     metal: v => v, so a paper key can flatten every metalness in one place      */
-  constructor({ theme, color, slots = 9, metal = v => v }) {
+  /* theme: the key's colours · color: the site's own · metal: v => v, so a paper key can
+     flatten every metalness at once · gauges: the site furniture around the building */
+  constructor({ theme, color, metal = v => v, gauges = true }) {
     const T = this.theme = theme;
     this.color = color;
+    this.len = LEN_BASE;
     this.group = new THREE.Group();
+    const add = m => { this.group.add(m); return m; };
 
-    const pad = new THREE.Mesh(
-      new THREE.CylinderGeometry(PAD_R, PAD_R - 1.2, 2.6, 64),
-      new THREE.MeshStandardMaterial({ color: T.pad, roughness: 0.75, metalness: metal(0.25) })
-    );
-    pad.position.y = PAD_TOP - 1.3; pad.receiveShadow = true;
-    this.group.add(pad);
-    this.pad = pad;
+    // apron: the slab the shed stands on, and the site's hit target
+    this.pad = add(new THREE.Mesh(aprGeo, new THREE.MeshStandardMaterial({
+      color: T.pad, roughness: 0.92, metalness: metal(0.1) })));
+    this.pad.receiveShadow = true;
 
-    const rim = new THREE.Mesh(
-      new THREE.TorusGeometry(PAD_R + 0.2, 0.11, 8, 96),
-      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.4 * T.emissive, roughness: 0.4 })
-    );
-    rim.rotation.x = Math.PI / 2; rim.position.y = PAD_TOP + 0.05;
-    this.group.add(rim);
-    this.rim = rim;
+    // the shed
+    this.shell = add(new THREE.Mesh(shellGeo, new THREE.MeshStandardMaterial({
+      color: T.shed, roughness: 0.78, metalness: metal(0.18) })));
+    this.shell.position.y = DECK;
+    this.shell.castShadow = true; this.shell.receiveShadow = true;
 
-    // tower grid
-    const n = Math.max(9, slots);
-    const cols = Math.ceil(Math.sqrt(n));
-    const span = (PAD_R * 1.42);
-    const step = span / cols;
-    this.step = step;
-    this.towers = [];
-    for (let i = 0; i < cols * cols; i++) {
-      const cx = (i % cols - (cols - 1) / 2) * step;
-      const cz = (Math.floor(i / cols) - (cols - 1) / 2) * step;
-      const mat = new THREE.MeshStandardMaterial({ color: T.towerOff, emissive: 0x000000, roughness: 0.45, metalness: metal(0.35) });
-      const m = new THREE.Mesh(towerGeo, mat);
-      m.position.set(cx, PAD_TOP, cz);
-      m.scale.set(step * 0.52, 0.001, step * 0.52);
-      m.castShadow = true; m.receiveShadow = true;
-      m.visible = false;
-      const crown = new THREE.Mesh(crownGeo, new THREE.MeshStandardMaterial({
-        color: T.crown, emissive: T.crown, emissiveIntensity: 0.5 * T.emissive, roughness: 0.4 }));
-      crown.scale.set(1.12, 0.05, 1.12);
-      crown.position.y = 1;        // sits on top in local (scaled) space
-      crown.visible = false;
-      m.add(crown);
-      m.userData.crown = crown;
-      this.group.add(m);
-      this.towers.push(m);
+    const roofMat = new THREE.MeshStandardMaterial({ color: T.roof, roughness: 0.62, metalness: metal(0.3) });
+    this.roofs = [-1, 1].map(sign => {
+      const r = add(new THREE.Mesh(roofGeo, roofMat));
+      r.position.set(0, DECK + WALL_H + ROOF_RISE / 2, sign * HW / 2);
+      r.rotation.x = sign * PITCH;
+      r.castShadow = true;
+      return r;
+    });
+    this.ridge = add(new THREE.Mesh(ridgeGeo, roofMat));
+    this.ridge.position.y = DECK + WALL_H + ROOF_RISE + 0.02;
+
+    // loading bays along the front
+    this.doors = [];
+    {
+      const mat = new THREE.MeshStandardMaterial({ color: T.roof, roughness: 0.5, metalness: metal(0.4) });
+      for (let i = 0; i < 9; i++) {
+        const d = add(new THREE.Mesh(doorGeo, mat));
+        d.position.set(0, DECK, SHED_W / 2 + 0.05);
+        d.visible = false;
+        this.doors.push(d);
+      }
     }
 
-    // floating rented slabs
-    const slab = (c, y, op) => {
-      const mm = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 0.55, 6),
-        new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.5 * T.emissive,
-          transparent: true, opacity: op, roughness: 0.3 })
-      );
-      mm.position.set(0, y, 0); mm.visible = false;
-      this.group.add(mm);
-      return mm;
-    };
-    this.resSlab = slab(color, 7.5, 0.34);
-    this.optSlab = slab(STATUS.warning, 7.5, 0.40);
+    // the vent band: how much of the shed is actually under power
+    this.vents = [-1, 1].map(sign => {
+      const v = add(new THREE.Mesh(ventGeo, new THREE.MeshStandardMaterial({
+        color: T.trim, emissive: 0x000000, roughness: 0.4 })));
+      v.position.set(0, DECK + WALL_H - 0.5, sign * (SHED_W / 2 + 0.03));
+      return v;
+    });
 
-    // spot pillars
+    // rooftop plant: gen N moving in
+    this.plant = [];
+    {
+      const mat = new THREE.MeshStandardMaterial({ color: T.trim, roughness: 0.45, metalness: metal(0.35) });
+      for (let i = 0; i < 9; i++) {
+        const p = add(new THREE.Mesh(plantGeo, mat));
+        p.position.y = DECK + WALL_H + ROOF_RISE - 0.1;
+        p.visible = false;
+        this.plant.push(p);
+      }
+    }
+
+    // ---- site furniture: everything that is not the building ----
+    this.gauges = gauges;
+    this.extras = new THREE.Group();
+    this.extras.visible = gauges;
+    this.group.add(this.extras);
+
     this.spots = [];
     for (let i = 0; i < 6; i++) {
       const p = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.16, 7, 8, 1, true),
-        new THREE.MeshStandardMaterial({ color, emissive: color,
-          emissiveIntensity: 1.1 * T.emissive, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
-      );
-      const a = -0.95 + i * 0.38;
-      p.position.set(Math.sin(a) * (PAD_R - 1.0), PAD_TOP + 3.5, Math.cos(a) * (PAD_R - 1.0));
+        new THREE.CylinderGeometry(0.14, 0.14, 6, 8, 1, true),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.1 * T.emissive,
+          transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+      p.position.set(-(LEN_BASE / 2 + 2.2), DECK + 3, -(SHED_W / 2 + 1.4) + i * 1.1);
       p.visible = false;
-      this.group.add(p);
+      this.extras.add(p);
       this.spots.push(p);
     }
 
-    // substation: height = energised MW, ghost box = contracted but not yet live
-    const sub = new THREE.Mesh(towerGeo, new THREE.MeshStandardMaterial({
-      color: T.sub, emissive: STATUS.warning, emissiveIntensity: 0.14, roughness: 0.6, metalness: metal(0.5) }));
-    sub.position.set(0, PAD_TOP, -(PAD_R + 2.6));
-    sub.scale.set(2.8, 0.001, 2.8);
-    sub.castShadow = true;
-    this.group.add(sub);
-    this.sub = sub;
-    const ghost = new THREE.Mesh(towerGeo, new THREE.MeshBasicMaterial({
-      color: STATUS.warning, wireframe: true, transparent: true, opacity: 0.35 }));
-    ghost.position.copy(sub.position);
-    ghost.scale.set(3.0, 0.001, 3.0);
-    ghost.visible = false;
-    this.group.add(ghost);
-    this.ghost = ghost;
-
-    // ground bar: served | training | unserved, with a demand tick
+    // the month, on the apron: served | training | unserved, tick at demand
     this.bar = new THREE.Group();
-    this.bar.position.set(0, PAD_TOP + 0.1, PAD_R + 2.0);
-    this.group.add(this.bar);
+    this.extras.add(this.bar);
     const seg = (c, op, emi) => {
-      const g2 = new THREE.BoxGeometry(1, 0.4, 3.0);
-      g2.translate(0.5, 0, 0);
-      const mm = new THREE.Mesh(g2, new THREE.MeshStandardMaterial({
+      const g = new THREE.BoxGeometry(1, 0.3, 2.2);
+      g.translate(0.5, 0, 0);
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
         color: c, emissive: c, emissiveIntensity: emi * T.emissive, transparent: op < 1, opacity: op, roughness: 0.5 }));
-      mm.visible = false;
-      this.bar.add(mm);
-      return mm;
+      m.visible = false;
+      this.bar.add(m);
+      return m;
     };
     this.segServed = seg(color, 1, 0.75);
     this.segTrain = seg(color, 0.42, 0.3);
     this.segUnserved = seg(STATUS.critical, 1, 1.0);
-    this.tick = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 1.1, 3.9),
-      new THREE.MeshStandardMaterial({ color: T.tick, emissive: T.tick, emissiveIntensity: 0.9 * T.emissive })
-    );
+    this.tick = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 2.9),
+      new THREE.MeshStandardMaterial({ color: T.tick, emissive: T.tick, emissiveIntensity: 0.9 * T.emissive }));
     this.bar.add(this.tick);
 
     // event ring pool (broker delivered / cancelled)
     this.rings = [];
     for (let i = 0; i < 3; i++) {
-      const r = new THREE.Mesh(
-        new THREE.TorusGeometry(1, 0.22, 8, 64),
-        new THREE.MeshBasicMaterial({ color: STATUS.good, transparent: true, opacity: 0 })
-      );
-      r.rotation.x = Math.PI / 2; r.position.y = PAD_TOP + 0.3; r.visible = false;
+      const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 8, 64),
+        new THREE.MeshBasicMaterial({ color: STATUS.good, transparent: true, opacity: 0 }));
+      r.rotation.x = Math.PI / 2; r.position.y = DECK + 0.3; r.visible = false;
       this.group.add(r);
       this.rings.push(r);
     }
@@ -171,61 +189,71 @@ export class Campus {
     const T = this.theme;
     const { ownedH, ownedN, poweredH, poweredN, reserved, option, spot, mw, mwPending,
             served, training, unserved, demand } = d;
-    // towers: H first, then N
-    const nH = Math.ceil(ownedH - 1e-6), nN = Math.ceil(ownedN - 1e-6);
-    for (let i = 0; i < this.towers.length; i++) {
-      const t = this.towers[i];
-      let gen = null, frac = 0, lit = 0;
-      if (i < nH) { gen = 'H'; frac = Math.min(1, ownedH - i); lit = Math.min(1, Math.max(0, poweredH - i)); }
-      else if (i < nH + nN) { const j = i - nH; gen = 'N'; frac = Math.min(1, ownedN - j); lit = Math.min(1, Math.max(0, poweredN - j)); }
-      if (!gen) { t.visible = false; continue; }
-      t.visible = true;
-      const compute = gen === 'N' ? 2 : 1;
-      const target = Math.max(0.15, frac * compute * FLOOR_H);
-      t.scale.y += (target - t.scale.y) * 0.16;
-      const m = t.material;
-      const want = lit > 0.5 ? this.color : T.towerOff;
-      m.color.lerp(new THREE.Color(want), 0.12);
-      m.emissive.lerp(new THREE.Color(lit > 0.5 ? this.color : 0x000000), 0.12);
-      const pulse = 0.55 + 0.16 * Math.sin(time * 1.7 + i * 0.9);
-      m.emissiveIntensity += ((lit > 0.5 ? pulse * T.emissive : 0) - m.emissiveIntensity) * 0.15;
-      t.userData.crown.visible = gen === 'N';
+
+    // --- the shed grows with the fleet, and lights along what has power
+    const fleet = ownedH + ownedN * 2;
+    const live = poweredH + poweredN * 2;
+    this.len += (shedLength(fleet) - this.len) * 0.12;
+    const L = this.len;
+
+    this.shell.scale.x = L;
+    for (const r of this.roofs) r.scale.x = L + EAVE * 2;
+    this.ridge.scale.x = L + EAVE * 2 + 0.1;
+    this.pad.scale.set(L + 3.0, 1, SHED_W + 5);
+
+    for (let i = 0; i < this.doors.length; i++) {
+      const x = (i - (this.doors.length - 1) / 2) * 2.9;
+      const on = Math.abs(x) < L / 2 - 1.3;
+      this.doors[i].visible = on;
+      if (on) this.doors[i].position.x = x;
     }
-    // reserved / option slabs
-    const slabW = (kh) => Math.max(0.001, kh * 0.8);
-    this.resSlab.visible = reserved > 0.01;
-    this.resSlab.scale.x += (slabW(reserved) - this.resSlab.scale.x) * 0.15;
-    this.resSlab.position.set(-(PAD_R + 2.5 + this.resSlab.scale.x / 2), 7.5 + Math.sin(time * 0.8) * 0.4, 0);
-    this.optSlab.visible = option > 0.01;
-    this.optSlab.scale.x += (slabW(option) - this.optSlab.scale.x) * 0.15;
-    this.optSlab.position.set(PAD_R + 2.5 + this.optSlab.scale.x / 2, 7.5 + Math.sin(time * 0.8 + 1.2) * 0.4, 0);
-    // spot pillars
+
+    const litFrac = fleet > 0.01 ? Math.min(1, live / fleet) : 0;
+    const pulse = 0.55 + 0.16 * Math.sin(time * 1.7);
+    for (const v of this.vents) {
+      v.scale.x = Math.max(0.001, litFrac * (L - 1.2));
+      v.position.x = -(L - 1.2) / 2;
+      v.visible = litFrac > 0.01;
+      v.material.color.lerp(new THREE.Color(litFrac > 0 ? this.color : T.trim), 0.12);
+      v.material.emissive.lerp(new THREE.Color(litFrac > 0 ? this.color : 0x000000), 0.12);
+      v.material.emissiveIntensity += ((litFrac > 0 ? pulse * T.emissive : 0) - v.material.emissiveIntensity) * 0.15;
+    }
+
+    // rooftop plant: one unit per thousand gen N on site
+    const units = Math.min(this.plant.length, Math.ceil(ownedN - 1e-6));
+    for (let i = 0; i < this.plant.length; i++) {
+      const on = i < units;
+      this.plant[i].visible = on;
+      if (on) this.plant[i].position.x = (i - (units - 1) / 2) * 2.6;
+    }
+
+    if (!this.gauges) return this.spin();
+
+    // --- the site around it
     for (let i = 0; i < this.spots.length; i++) {
       const on = spot > i * 0.9;
       this.spots[i].visible = on;
+      this.spots[i].position.x = -(L / 2 + 2.2);
       if (on) this.spots[i].material.opacity = 0.28 + 0.3 * Math.abs(Math.sin(time * 3 + i));
     }
-    // power
-    const target = Math.max(0.001, mw * 0.22);
-    this.sub.scale.y += (target - this.sub.scale.y) * 0.14;
-    this.ghost.visible = mwPending > 0.01;
-    if (this.ghost.visible) {
-      const g = Math.max(0.001, (mw + mwPending) * 0.22);
-      this.ghost.scale.y += (g - this.ghost.scale.y) * 0.14;
-    }
-    // ground bar
+
     const put = (mesh, x, w) => {
       mesh.visible = w > 0.02;
       mesh.position.x = x;
       mesh.scale.x += (Math.max(0.02, w) - mesh.scale.x) * 0.2;
     };
-    this.bar.position.x = -(served + training + Math.max(0, unserved)) * KH / 2;
+    this.bar.position.set(-(served + training + Math.max(0, unserved)) * KH / 2, DECK + 0.06, SHED_W / 2 + 3.4);
     put(this.segServed, 0, served * KH);
     put(this.segTrain, served * KH, training * KH);
     put(this.segUnserved, (served + training) * KH, unserved * KH);
     this.tick.position.x = demand * KH;
     this.tick.material.emissiveIntensity = (unserved > 0.01 ? 1.6 : 0.8) * T.emissive;
-    // rings
+
+    this.spin();
+  }
+
+  // the event rings, which run on their own clock
+  spin() {
     for (const r of this.rings) {
       if (!r.visible) continue;
       r.userData.t += 0.022;
