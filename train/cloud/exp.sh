@@ -1,7 +1,7 @@
 #!/bin/bash
 # Follow-up experiments on a multi-GPU box, one per tmux session, pinned with GPUS (e.g. GPUS=0,1,2).
 # usage: GPUS=3 bash train/cloud/exp.sh <name>     log: train/logs/exp_<name>.log, ends with STAGE_OK / STAGE_FAILED
-# names: teacher sft_rep short qwen8b dagger4 dpo
+# names: teacher sft_rep short short_full qwen8b dagger4 dpo
 set -o pipefail
 cd "$(dirname "$0")/../.."
 . /root/venv/bin/activate
@@ -29,6 +29,11 @@ run() {
               wait_for teacher && sft --data train/data/sft_ref.jsonl --limit 4800 --liger \
                 --out train/ckpt/sft_short --merge-out train/ckpt/sft_short-merged &&
               python train/eval_llm.py --model train/ckpt/sft_short-merged $EVAL --name sft_short ;;
+    short_full) # short prompt, all 9,600 teacher months
+              export GPUW_PROMPT=short
+              wait_for teacher && sft --data train/data/sft_ref.jsonl --limit 9600 --liger \
+                --out train/ckpt/sft_short_full --merge-out train/ckpt/sft_short_full-merged &&
+              python train/eval_llm.py --model train/ckpt/sft_short_full-merged $EVAL --name sft_short_full ;;
     qwen8b)   # the first SFT on Qwen3-8B (thinking off)
               wait_for teacher && sft --base Qwen/Qwen3-8B --data train/data/sft_ref.jsonl --limit 4800 --liger \
                 --out train/ckpt/sft_8b --merge-out train/ckpt/sft_8b-merged &&
