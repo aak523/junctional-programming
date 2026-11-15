@@ -87,6 +87,7 @@ Mean reward on the 30 held-out worlds (seeds 0-9 and 20000-20019), greedy, again
 | SFT on 4,800 teacher months | 0.497 | 0.445 | 5 / 30 | 1.1% |
 | + DAgger round 2 (relabels + own best episodes + 10% replay) | 0.417 | 0.406 | 18 / 30 | 1.6% |
 | **+ DAgger aggregate (the 4,800 unseen teacher months + 2,814 relabels)** | **0.583** | **0.573** | 12 / 30 | 1.2% |
+| SFT on 4,800 months of the current reference (same recipe as the first SFT) | 0.372 | 0.375 | 1 / 30 | 0.6% |
 | teacher: the reference before the options fix (466fcc7) | 0.877 | 0.862 | 30 / 30 | 0% |
 | current reference | 0.922 | 0.920 | 30 / 30 | 0% |
 
@@ -100,9 +101,17 @@ What the numbers say:
 - **What the model still gets wrong.** It misses 22 of 90 training runs (13 of them the first window, months 0-7) and
   rents too much: $836M of reservations and $184M of contracts running past month 23, against the reference's $615M
   and $91M. Penalties ($171M per world) and over-leasing make up most of the gap to the teacher ($1,319M vs $830M).
+- **A better teacher did not give a better student here.** After the reference's options fix (466fcc7), we generated
+  400 new teacher episodes (reward 0.925) and repeated the first SFT exactly. It scored lower (0.37 vs 0.46 over the 30 worlds) and
+  missed more runs (63 vs 52); it beat the old-teacher SFT on 9 of 30 worlds. One run cannot tell whether the fixed
+  reference is harder to imitate or this is run-to-run variance; the old-teacher DAgger model stays the trained model.
 - **The relabeller found states the expert cannot plan for.** 6 of 2,820 student states had no feasible LP plan
   (debt beyond the credit line); they are skipped.
 
-Compute: one Verda A100 80GB (no H100 was free on demand), about 8 GPU-hours. Throughput: batch 1 x accumulation 16,
+Adapters (LoRA, 264 MB each, too large for git) are kept outside the repository: `ckpt/sft`, `ckpt/dagger3` (the
+trained model) and `ckpt/sft_v2`, loadable with `PeftModel.from_pretrained` on the base model. `requirements.txt` is the
+box's frozen environment.
+
+Compute: one Verda A100 80GB (no H100 was free on demand), about 7 GPU-hours, $17.90 in total. Throughput: batch 1 x accumulation 16,
 no activation checkpointing and the Liger fused loss gave 6.1k tokens/s, 3.2x the defaults; a month's example is
 about 5.2k tokens (2.8k of them the rules), so each SFT round used about 4,800 examples (70 minutes).

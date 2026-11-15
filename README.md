@@ -49,6 +49,11 @@ Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
 - **Claude Fable 5 lost by the most so far**, at 65% of the reference in its one v4 game ([results/fable5_v4.md](results/fable5_v4.md)):
   it met all three windows with no penalties and finished in 13 of its 30 minutes, but bought 2.15x the compute window 1
   needed on the credit line ($70M of interest against the reference's zero), then liquidated the surplus at a loss.
+- **Training a small open model on the environment's experience improves it, but not to the reference**
+  ([train/README.md](train/README.md)). Qwen3-4B-Instruct-2507 with LoRA, one month per message, evaluated greedily on 30
+  held-out worlds: untrained 0.25, after behaviour cloning on the reference 0.46, after a DAgger round (the reference
+  relabels the states the student reached) 0.58. The reference scores 0.92. The trained model still misses 22 of 90
+  training runs and over-leases; letting it imitate its own best episodes cut missed runs but cost more than it saved.
 
 The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
 

@@ -11,6 +11,7 @@ World v5 rules (commit 2303cc6; world.py, lp.py, TASK.md and service.py unchange
 | SFT on 4,800 teacher months | 0.497 | 1613 | 2/10 | 1.8% | 0 |
 | + DAgger round 2 (relabels + own best episodes) | 0.417 | 1768 | 6/10 | 1.4% | 0 |
 | + DAgger aggregate (unseen teacher + relabels) | 0.583 | 1318 | 4/10 | 1.4% | 0 |
+| SFT on 4,800 months of the current reference | 0.372 | 1991 | 1/10 | 0.7% | 0 |
 | teacher: the reference before the options fix | 0.877 | 832 | 10/10 | 0.0% | 0 |
 | current Bayesian-LP reference | 0.922 | 790 | 10/10 | 0.0% | 0 |
 | perfect-information oracle | 1.000 | 734 | 10/10 | 0.0% | 0 |
@@ -24,6 +25,7 @@ World v5 rules (commit 2303cc6; world.py, lp.py, TASK.md and service.py unchange
 | SFT on 4,800 teacher months | 0.445 | 1767 | 3/20 | 0.7% | 0 |
 | + DAgger round 2 (relabels + own best episodes) | 0.406 | 1779 | 12/20 | 1.8% | 0 |
 | + DAgger aggregate (unseen teacher + relabels) | 0.573 | 1319 | 8/20 | 1.1% | 0 |
+| SFT on 4,800 months of the current reference | 0.374 | 1936 | 0/20 | 0.5% | 0 |
 | teacher: the reference before the options fix | 0.862 | 828 | 20/20 | 0.0% | 0 |
 | current Bayesian-LP reference | 0.920 | 772 | 20/20 | 0.0% | 0 |
 | perfect-information oracle | 1.000 | 714 | 20/20 | 0.0% | 0 |
