@@ -143,6 +143,9 @@
   .tip[hidden] { display: none; }
   .tip p { margin: 0; }
   .tip p + p { margin-top: 6px; }
+  .tip p.row { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
+  .tip p.row + p.row { margin-top: 2px; }
+  .tip p.row:last-child { border-top: 1px solid var(--grid); padding-top: 3px; }
   .training svg, .demand svg { display: block; width: 100%; height: auto; overflow: visible; }
   .pane h3.sub { margin: 0 0 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
   .pane svg + h3.sub { margin-top: 10px; }
@@ -513,6 +516,9 @@ const RUN = __RUN__;
     if (parent) parent.appendChild(el);
     return el;
   };
+  // A transparent hover target that shows a tooltip; "\n" in the text starts a new paragraph.
+  const tipZone = (parent, x, y, width, height, text) =>
+    svgEl("rect", { x, y, width, height, fill: "transparent", "data-tip": text }, parent);
   const flowSvg = document.getElementById("flow");
   const NODE_W = 88, NODE_H = 46, XS = [6, 106, 206], SUP_Y = 10, DC_Y = 84, BAR_W = NODE_W - 50;   // bar on the second row, number to its right
   const flowColor = (id) => (id in SITES ? `var(--site-${id})` : id.startsWith("cloud") ? "var(--cmd-rent)" : "var(--coast)");
@@ -535,7 +541,8 @@ const RUN = __RUN__;
     const qty = svgEl("text", { class: "qty", x: NODE_W - 8, y: 36, "text-anchor": "end" }, g);
     svgEl("rect", { class: "track", x: 8, y: 28, width: BAR_W, height: 8, rx: 2 }, g);
     const bar = svgEl("g", { transform: "translate(8,28)" }, g);
-    flowNodes[id] = { g, glow, qty, bar, cx: x + NODE_W / 2, top: y, bottom: y + NODE_H };
+    const zone = svgEl("rect", { x: 8, y: 25, width: BAR_W, height: 14, fill: "transparent" }, g);   // hover target for the bar's tooltip
+    flowNodes[id] = { g, glow, qty, bar, zone, cx: x + NODE_W / 2, top: y, bottom: y + NODE_H };
     g.addEventListener("pointerenter", () => { hoverFlow = id; });
     g.addEventListener("pointerleave", () => { if (hoverFlow === id) hoverFlow = null; });
     g.addEventListener("click", () => focusOn(id));
@@ -545,8 +552,9 @@ const RUN = __RUN__;
   ["us", "eu", "ap"].forEach((id, i) => makeNode(id, XS[i], DC_Y, id));
   ["us", "eu", "ap"].forEach((id, i) => makeNode(`cloud-${id}`, XS[i], CL_Y, `cloud ${id}`));
   const fmtK = (v) => (v < 0.05 ? "0" : `${v.toFixed(1)}k`);
-  const setBar = (id, parts) => {   // parts: [colour var, opacity, qty, hollow]
+  const setBar = (id, parts, tip) => {   // parts: [colour var, opacity, qty, hollow]
     const n = flowNodes[id];
+    n.zone.setAttribute("data-tip", tip);
     while (n.bar.firstChild) n.bar.removeChild(n.bar.firstChild);
     let x = 0, total = 0;
     for (const [color, op, q, hollow] of parts) {
@@ -562,10 +570,17 @@ const RUN = __RUN__;
   const showFlow = (m) => {
     for (const id of ["us", "eu", "ap"]) {
       const s = m.sites[id];
+      const offN = Math.max(0, s.owned.N - s.powered.N), offH = Math.max(0, s.owned.H - s.powered.H);
       setBar(id, [["var(--gen-n)", 1, s.powered.N], ["var(--gen-h)", 1, s.powered.H],
-        ["var(--gen-n)", 0.3, Math.max(0, s.owned.N - s.powered.N)], ["var(--gen-h)", 0.3, Math.max(0, s.owned.H - s.powered.H)]]);
+        ["var(--gen-n)", 0.3, offN], ["var(--gen-h)", 0.3, offH]],
+        `GPUs owned at ${id}, in thousands. Solid: powered and in service (${fmtK(s.powered.N)} gen N, ${fmtK(s.powered.H)} gen H). ` +
+        `Faint: delivered but unpowered, idle until the site has power for them (${fmtK(offN)} gen N, ${fmtK(offH)} gen H).` +
+        `\nAll overview bars share one scale: full width is the largest stock anywhere in the run.`);
     }
-    for (const id of ["vendor", "A", "B"]) setBar(id, [["var(--gen-n)", 1, m.waiting[id].N, true], ["var(--gen-h)", 1, m.waiting[id].H, true]]);
+    for (const id of ["vendor", "A", "B"]) setBar(id, [["var(--gen-n)", 1, m.waiting[id].N, true], ["var(--gen-h)", 1, m.waiting[id].H, true]],
+      `GPUs ordered from ${id === "vendor" ? "the vendor" : `broker ${id}`} and not yet delivered, in thousands: ` +
+      `${fmtK(m.waiting[id].N)} gen N and ${fmtK(m.waiting[id].H)} gen H (outlined, as they are not yours to use yet).` +
+      `\nAll overview bars share one scale: full width is the largest stock anywhere in the run.`);
   };
   // Every curve stays in the gap between the rows, so the pane's top and bottom padding match.
   // Supplier to datacentre: down from one row to the other. Datacentre to datacentre (a move): a low arch rising into the gap.
@@ -793,7 +808,10 @@ const RUN = __RUN__;
     flowRentG.replaceChildren();
     for (const site of Object.keys(SITES)) {
       const x = M(k).settle[site], id = `cloud-${site}`;
-      setBar(id, [["var(--cmd-rent)", 1, x.reserved], ["var(--cmd-rent)", 1, x.spot_req, true]]);
+      setBar(id, [["var(--cmd-rent)", 1, x.reserved], ["var(--cmd-rent)", 1, x.spot_req, true]],
+        `Cloud capacity rented for ${site} this month, in kH. Solid: reserved contracts in force (${fmtK(x.reserved)}). ` +
+        `Outline: the standing spot request (${fmtK(x.spot_req)}), filled at month end only as far as spot supply allows.` +
+        `\nAll overview bars share one scale: full width is the largest stock anywhere in the run.`);
       if (x.reserved + x.spot_req < 0.005) continue;
       const a = cloudAnchors[id].position.clone().normalize(), b = anchors[site].position.clone().normalize();
       rentals.add(arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat));
@@ -827,8 +845,11 @@ const RUN = __RUN__;
       const num = svgEl("text", { class: "chart-num", x: 274, y: y + 8.5, "text-anchor": "end" }, trainSvg);
       // Spare capacity: last month's compute left over after inference, which all went to training.
       num.textContent = `${Math.round(done)} / ${target}${known ? ` · spare ${rate.toFixed(1)} kH` : ""}`;
-      const tip = svgEl("title", {}, num);
-      tip.textContent = "training done in this window / target (kH-months) · last month's spare capacity";
+      tipZone(trainSvg, X0, y - 2, BW, 13,
+        `Training run for months ${a}–${d}: ${Math.round(done)} of the ${target} kH-months needed by the end of month ${d} are done. ` +
+        `Training gets all compute left over after inference, summed over sites, and counts only in the window it falls in.` +
+        (known && !decided && !hit ? `\nLighter part: last month's spare capacity (${rate.toFixed(1)} kH), roughly what one more month adds at that rate.` : "") +
+        `\nTick: the target. Missing it costs $200M plus $5M per kH-month short. Green: target reached; red: window missed.`);
     });
   };
   // Status: cash now and how it moved since the previous step, and the final score if the agent stopped here.
@@ -844,6 +865,21 @@ const RUN = __RUN__;
       const d = m.cash - M(k - 1).cash;
       const dv = svgEl("tspan", { dx: 6, style: `fill:${d < 0 ? "var(--cmd-buy)" : "var(--cmd-power)"}` }, cv);
       dv.textContent = fmtDelta(d);
+      // Hovering the change shows the month's cash flow: last month's charges, refunds and funding, then this month's commands.
+      const rows = [], prev = k > 0 ? RUN.months[k - 1] : null, dc = (key) => (m.costs[key] || 0) - (M(k - 1).costs[key] || 0);
+      if (prev) {
+        for (const [key, label] of [["power", "power"], ["contracts", "reserved"], ["spot", "spot"], ["interest", "interest"]])
+          rows.push([`${label} (month ${k - 1})`, -dc(key)]);
+        rows.push([`broker refunds (month ${k - 1})`, Object.values(prev.month_end.refunds).reduce((t, v) => t + v, 0)]);
+        rows.push([`funding (end of month ${k - 1})`, 40]);
+      }
+      rows.push([`commands (month ${k})`, -m.commands.reduce((t, c) => t + (c.cost || 0), 0)]);
+      const rest = d - rows.reduce((t, [, v]) => t + v, 0);
+      if (Math.abs(rest) >= 0.05) rows.push(["other", rest]);
+      dv.setAttribute("data-tip", [
+        `Change in cash since ${k > 0 ? `month ${k - 1}` : "the start"}:`,
+        ...rows.filter(([, v]) => Math.abs(v) >= 0.05).map(([l, v]) => `${l}\t${fmtDelta(v)}`),
+        `total\t${fmtDelta(d)}`].join("\n"));
     }
     const st = m.if_stopped;
     const sl = svgEl("text", { class: "chart-text", x: 0, y: 28 }, statusSvg);
@@ -882,7 +918,7 @@ const RUN = __RUN__;
     Object.values(m.settle).reduce((t, x) => t + siteCap(x), 0),
     Object.keys(SITES).reduce((t, s) => t + band(k, s, k)[1], 0) + trainingNeed(k))));
   const fmt1 = (v) => (v < 0.05 ? "0" : v.toFixed(1));
-  const computeRow = (svg, y, label, ent, labelColor, parts, need, scale, text) => {
+  const computeRow = (svg, y, label, ent, labelColor, parts, need, scale, text, tip) => {
     const X0 = 26, BW = 128, sx = (v) => X0 + (v / scale) * BW;
     const t = svgEl("text", { class: "chart-text", x: 0, y: y + 9, fill: labelColor, style: `fill:${labelColor}` }, svg);
     t.textContent = label;
@@ -900,6 +936,7 @@ const RUN = __RUN__;
     svgEl("path", { d: `M${sx(lo)},${y + 13} V${y - 1} H${sx(hi)} V${y + 13}`, fill: "none", stroke: "var(--fg)", "stroke-width": 1.2 }, svg);
     const n = svgEl("text", { class: "chart-num", x: 274, y: y + 9.5, "text-anchor": "end" }, svg);
     n.textContent = text;
+    tipZone(svg, X0, y - 2, BW, 16, tip);
   };
   const showCompute = (k) => {
     computeSvg.replaceChildren();
@@ -909,7 +946,11 @@ const RUN = __RUN__;
       cap += siteCap(x); lo += l; hi += h;
       computeRow(computeSvg, i * 17 + 2, site, site, `var(--site-${site})`,
         [[x.own, `var(--site-${site})`], [x.reserved, "var(--cmd-rent)"], [x.spot_req, "var(--cmd-rent)", true]],
-        [l, h], siteMax, `${fmt1(siteCap(x))} / ${fmt1(l)}–${fmt1(h)}`);
+        [l, h], siteMax, `${fmt1(siteCap(x))} / ${fmt1(l)}–${fmt1(h)}`,
+        `Compute at ${site} this month, in kH: ${fmt1(x.own)} from owned, powered GPUs (site colour), ${fmt1(x.reserved)} reserved cloud (solid yellow) ` +
+        `and a ${fmt1(x.spot_req)} standing spot request (yellow outline), filled at month end only as far as spot supply allows.` +
+        `\nBracket: the range ${site}'s inference demand can fall in this month (${fmt1(l)}–${fmt1(h)}). Inference must be served from the site's own capacity; ` +
+        `any shortfall costs $4M per kH, and anything above demand goes to training.`);
     });
     const tr = trainingNeed(Math.max(k, 0));
     const owned = Object.values(M(k).settle).reduce((t, x) => t + x.own, 0);
@@ -918,7 +959,9 @@ const RUN = __RUN__;
     computeAllSvg.replaceChildren();
     svgEl("line", { x1: 0, x2: 274, y1: 0.5, y2: 0.5, stroke: "var(--grid)" }, computeAllSvg);
     computeRow(computeAllSvg, 6, "all", null, "var(--fg)", [[owned, "var(--fg)"], [res, "var(--cmd-rent)"], [spot, "var(--cmd-rent)", true]],
-      [lo + tr, hi + tr], totalMax, `${fmt1(cap)} / ${fmt1(lo + tr)}–${fmt1(hi + tr)}`);
+      [lo + tr, hi + tr], totalMax, `${fmt1(cap)} / ${fmt1(lo + tr)}–${fmt1(hi + tr)}`,
+      `Compute at all sites together this month, in kH: ${fmt1(owned)} owned and powered, ${fmt1(res)} reserved, ${fmt1(spot)} spot requested.` +
+      `\nBracket: total inference demand (${fmt1(lo)}–${fmt1(hi)}) plus ${fmt1(tr)}, the training needed each remaining month to finish the current window on time.`);
   };
   // Money: cash now (with its bar and history), credit left, then spending so far by category.
   const moneySvg = document.getElementById("money");
@@ -926,6 +969,17 @@ const RUN = __RUN__;
   const SPEND = [["capex", "GPUs", "var(--cmd-buy)"], ["power", "power", "var(--cmd-power)"], ["contracts", "reserved", "var(--cmd-rent)"],
     ["spot", "spot", "var(--cmd-rent)"], ["moves", "moves", "var(--cmd-stock)"], ["options", "options", "var(--cmd-option)"],
     ["interest", "interest", "var(--muted)"], ["unserved", "unserved", "var(--muted)"], ["resale", "resale", "var(--cmd-power)"]];
+  const SPEND_TIP = {
+    capex: "Paid for GPU orders so far, from the vendor and the brokers, net of broker refunds. Paid when the order is placed.",
+    power: "Paid for colocation power so far, charged every month a power contract is energised.",
+    contracts: "Paid for reserved cloud capacity so far, charged every month a contract is in force.",
+    spot: "Paid for spot capacity so far: whatever was filled of the standing spot requests, at each month's spot price.",
+    moves: "Paid for moving GPUs between sites so far, at $0.5M per thousand.",
+    options: "Paid for capacity options so far, at $1M per kH.",
+    interest: "Interest paid so far on negative cash, at 2% a month.",
+    unserved: "Penalty so far for inference demand that went unserved, at $4M per kH. It counts towards the score but never comes out of cash.",
+    resale: "Received so far from reselling GPUs, at 75% of their used-market value.",
+  };
   const steps = [START, ...RUN.months];
   const spendMax = Math.max(1, ...steps.flatMap((m) => SPEND.map(([key]) => Math.abs(m.costs[key] || 0))));
   const cashMax = Math.max(...steps.map((m) => m.cash)), cashMin = -CREDIT;
@@ -946,6 +1000,9 @@ const RUN = __RUN__;
     svgEl("rect", { x: 0, y: 34, width: 274, height: 8, fill: "none", stroke: "var(--grid)" }, moneySvg);
     svgEl("rect", { x: 0, y: 34, width: Math.max(0, bx(m.cash)), height: 8, fill: "var(--fg)", "fill-opacity": 0.85 }, moneySvg);
     svgEl("line", { x1: bx(0), x2: bx(0), y1: 31, y2: 45, stroke: "var(--muted)" }, moneySvg);
+    tipZone(moneySvg, 0, 31, 274, 14,
+      `Cash now (${fmtUSD(m.cash)}), on a scale from −$500M, where the credit line is used up and further purchases are refused, ` +
+      `to ${fmtUSD(cashMax)}, the most cash held in this run.\nTick: $0. A fill ending left of it means the agent is borrowing, at 2% interest a month.`);
     // Spending so far; resale is money back.
     const X0 = 52, BW = 150;
     SPEND.forEach(([key, label, color], i) => {
@@ -957,6 +1014,7 @@ const RUN = __RUN__;
       if (w > 0.2) svgEl("rect", { x: X0, y: y + 1, width: w, height: 8, fill: color, "fill-opacity": 0.85 }, moneySvg);
       const n = svgEl("text", { class: "chart-num", x: 274, y: y + 8.5, "text-anchor": "end" }, moneySvg);
       n.textContent = Math.abs(v) < 0.05 ? "0" : key === "resale" ? `+${fmtUSD(-v)}` : fmtUSD(v);
+      tipZone(moneySvg, X0, y, BW, 10, `${SPEND_TIP[key]}\nThese bars share one scale: full width is the largest category by the end of the run.`);
     });
     // Cash over time, down to the bottom of the credit line.
     const G0 = 56, GH = 50, GL = 44;
@@ -1389,8 +1447,16 @@ const RUN = __RUN__;
       "Score if stopped now: the final net cost (the game's score, lower is better) if the agent sent no more commands from here. Standing contracts and spot requests run on to the end, then everything spent is added up, the GPUs still held are valued at resale, commitments past the end are charged, and missed training windows are penalised."],
   };
   const tip = document.getElementById("tip");
-  const showTip = (btn) => {
-    tip.replaceChildren(...INFO[btn.dataset.info].map((t) => Object.assign(document.createElement("p"), { textContent: t })));
+  // A paragraph with a tab in it is a row: label on the left, value on the right.
+  const tipPara = (t) => {
+    const p = document.createElement("p");
+    if (!t.includes("\t")) { p.textContent = t; return p; }
+    p.className = "row";
+    for (const part of t.split("\t")) p.appendChild(Object.assign(document.createElement("span"), { textContent: part }));
+    return p;
+  };
+  const showTip = (btn, paras) => {
+    tip.replaceChildren(...(paras || INFO[btn.dataset.info]).map(tipPara));
     tip.hidden = false;
     const r = btn.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
     const left = Math.min(Math.max(8, r.left - 12), innerWidth - w - 8);
@@ -1405,10 +1471,19 @@ const RUN = __RUN__;
     btn.addEventListener("focus", () => showTip(btn));
     btn.addEventListener("blur", hideTip);
   }
+  // Bars and figures carry their own explanation in data-tip; panes redraw every step, so listen on the document.
+  let tipEl = null;
+  document.addEventListener("pointerover", (e) => {
+    const el = e.target.closest?.("[data-tip]");
+    if (el === tipEl) return;
+    tipEl = el;
+    if (el) showTip(el, el.getAttribute("data-tip").split("\n")); else hideTip();
+  });
 
   // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.
   const BASE_DIST = 4.4;
   (function loop(now) {
+    if (tipEl && !tipEl.isConnected) { tipEl = null; hideTip(); }   // its pane redrew for another step
     anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
     // Light up both ends of every delivery in flight, rising and falling with the flight.
     const level = new Map(), idLevel = new Map();
