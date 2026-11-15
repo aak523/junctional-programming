@@ -20,8 +20,8 @@ and, for the month-end settlement that leads into the next month:
   window_training                training done so far in each training window, including this month (kH-months)
   met                            {last month of window: true/false} for windows already decided
 Money ($M): commands[i].cost is what each command cost (negative for income); cash is the cash after the month's
-commands; costs is spending so far by category; month_end is what the settlement charged at each site and in
-interest, and refunded at each supplier; deliveries[].value is what the delivered GPUs cost (the refund for a
+commands; costs is spending so far by category; month_end is what the settlement took from cash at each site (power,
+contracts, spot; unserved inference counts towards the score but is never paid from cash) and in interest, and refunded at each supplier; deliveries[].value is what the delivered GPUs cost (the refund for a
 cancelled order, the shipping cost for a move); if_stopped is the final score if the agent stopped sending commands
 here (the game's own finish(): standing contracts run on, then settlement).
 The top level also carries the rules a player knows about demand and training (rules) and the state before any
@@ -133,8 +133,7 @@ while w.t < W.T:
                    "window_training": [round(w.window_training(a, d), 2) for a, d, _ in W.MILESTONES],
                    "cash": cash_now, "costs": costs_now, "if_stopped": stopped,
                    "month_end": {"sites": {s: round(x["power_mw"] * W.POWER_COST[s] + contract_cost[s]
-                                                    + x["spot_filled"] * rep["spot_price"] * W.SITE_PRICE[s]
-                                                    + (x["demand"] - x["served"]) * W.UNSERVED_INFERENCE, 2)
+                                                    + x["spot_filled"] * rep["spot_price"] * W.SITE_PRICE[s], 2)
                                            for s, x in rep["sites"].items()},
                                  "interest": rep["interest"],
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
