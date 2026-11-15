@@ -3,6 +3,9 @@
 usage: python export_run.py <repo dir> <policy> <seed> <out.json>
        python export_run.py <repo dir> <harbor verifier details.json> - <out.json>   (replay an agent's run)
 
+Each month (and start) also lists power: the power contracts not yet over after the month's commands
+({site, mw, start, end (exclusive), ref: [month, command index] of the contract_power command, null for the
+starting contracts}).
 A replayed agent run also carries notes: the agent's belief-log entries written during each month.
 
 Each month records the commands the policy sent ([{c, ok}], ok false when the world refused it) and,
@@ -99,6 +102,16 @@ for s_ in W.SITES:
                           "powered": {g: round(v, 2) for g, v in pw.items()},
                           "own": round(sum(pw[g] * W.COMPUTE[g] for g in pw), 2)}
 order_ref = {}   # order id -> [month, index of its buy_gpus command in that month's list]
+power_ref = {}   # index in world.power -> [month, index of its contract_power command]
+
+
+def power_now(k):
+    """Power contracts not yet over at month k: energised ones and signed ones still to switch on."""
+    return [{"site": p["site"], "mw": p["mw"], "start": p["start"], "end": p["end"], "ref": power_ref.get(i)}
+            for i, p in enumerate(w.power) if p["end"] > k]
+
+
+start["power"] = power_now(0)
 while w.t < W.T:
     commands = []
 
@@ -112,6 +125,8 @@ while w.t < W.T:
         commands.append({"c": c, "ok": True, "cost": round(cash0 - w.cash, 2)})
         if c.split()[0] == "buy_gpus":
             order_ref[w.next_id - 1] = [len(months), len(commands) - 1]
+        if c.split()[0] == "contract_power":
+            power_ref[len(w.power) - 1] = [len(months), len(commands) - 1]
         return r
 
     if stop is None or w.t < stop:
@@ -121,6 +136,7 @@ while w.t < W.T:
             pass
     owned = {s: {g: round(v, 3) for g, v in w.owned[s].items()} for s in W.SITES}
     cash_now, costs_now, stopped = round(w.cash, 2), costs(w), if_stopped(w)
+    power = power_now(w.t)
     paid = {o["id"]: o["paid"] / o["qty"] for o in w.queue}   # $M per thousand GPUs of each order
     k = w.t
     contract_cost = {s: sum(c["qty"] * c["price"] for c in w.contracts if c["site"] == s and c["start"] <= k < c["end"]) for s in W.SITES}
@@ -167,7 +183,8 @@ while w.t < W.T:
                                  "interest": rep["interest"],
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
                                              for b in rep["broker"] if not b["delivered"]}},
-                   "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), [])})
+                   "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), []),
+                   "power": power})
 rules = {"demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
          "milestones": [list(m) for m in W.MILESTONES]}
 json.dump({"policy": name, "seed": seed, "rules": rules, "start": start, "months": months}, open(out, "w"), separators=(",", ":"))

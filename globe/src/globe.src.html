@@ -83,6 +83,7 @@
   .pending .left { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .pending .v { font-weight: 600; }
   .pending .v-buy { color: var(--cmd-buy); }
+  .pending .v-power { color: var(--cmd-power); }
   .pending .t-us { color: var(--site-us); } .pending .t-eu { color: var(--site-eu); } .pending .t-ap { color: var(--site-ap); }
   .pending .t-sup { color: var(--coast); } .pending .t-h { color: var(--gen-h); } .pending .t-n { color: var(--gen-n); }
   /* The log's heading stays put while the commands scroll under it. */
@@ -149,7 +150,7 @@
   .tip p.row { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
   .tip p.row + p.row { margin-top: 2px; }
   .tip p.row:last-child { border-top: 1px solid var(--grid); padding-top: 3px; }
-  .training svg, .demand svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .training svg, .demand svg, .power svg { display: block; width: 100%; height: auto; overflow: visible; }
   .pane h3.sub { margin: 0 0 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
   .pane svg + h3.sub { margin-top: 10px; }
   .chart-text { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
@@ -205,6 +206,7 @@
 </div>
 <div class="panes panes-right">
   <aside class="pane demand" aria-labelledby="demand-h"><h2><span id="demand-h">compute</span><button class="info" type="button" data-info="compute" aria-label="About compute" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><h3 class="sub">inference</h3><svg id="compute" viewBox="0 0 274 51" role="img"></svg><svg id="demand" viewBox="0 0 274 132" role="img" style="margin-top:10px"></svg><svg id="compute-all" viewBox="0 0 274 20" role="img" style="margin-top:10px"></svg><h3 class="sub">training</h3><svg id="train" viewBox="0 0 274 11" role="img"></svg></aside>
+  <aside class="pane power" aria-labelledby="power-h"><h2><span id="power-h">power</span><button class="info" type="button" data-info="power" aria-label="About power" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="power" viewBox="0 0 274 51" role="img"></svg></aside>
   <aside class="pane money" aria-labelledby="money-h"><h2><span id="money-h">money</span><button class="info" type="button" data-info="money" aria-label="About money" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="money" viewBox="0 0 274 238" role="img"></svg></aside>
 </div>
 <div class="center">
@@ -446,6 +448,64 @@ const RUN = __RUN__;
     cloudAnchors[`cloud-${site}`] = anchor;
     addLabel(anchor, `cloud ${site}`, "var(--cmd-rent)");
   }
+
+  // ---------------------------------------------------------------- power stations
+  // Power comes from colocation contracts at each site; the game gives them no place, so each datacentre gets a
+  // small power station just beside it. A solid arc joins them while power is switched on there; a dashed arc
+  // while a signed contract is still to switch on.
+  const STATIONS = { us: [-101.0, 51.0], eu: [22.6, 44.5], ap: [139.4, -34.9] };   // clear of the cloud and the label
+  const stationAnchors = {};
+  const powerPadMat = fatMat(), powerLineMat = fatMat();
+  const powerDashMat = fatMat({ dashed: true, dashSize: 0.012, gapSize: 0.01 });
+  powerDashMat.defines.USE_DASH = "";   // r128 does not switch the dash shader on from `dashed` alone
+  const stationGeo = (() => {   // a low hall with a chimney at one end
+    const hall = new THREE.BoxGeometry(0.05, 0.016, 0.03); hall.translate(-0.006, 0.008, 0);
+    const stack = new THREE.BoxGeometry(0.011, 0.042, 0.011); stack.translate(0.026, 0.021, 0);
+    const pts = [];
+    for (const g of [hall, stack]) {
+      const e = new THREE.EdgesGeometry(g).attributes.position.array;
+      for (let i = 0; i < e.length; i++) pts.push(e[i]);
+    }
+    return new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  })();
+  for (const [site, [lon, lat]] of Object.entries(STATIONS)) {
+    const anchor = new THREE.Group();
+    const n = toVec(lon, lat, 1).normalize();
+    anchor.position.copy(n.clone().multiplyScalar(R * LIFT));
+    anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    anchor.add(fatSegments(stationGeo, powerPadMat));
+    globe.add(anchor);
+    stationAnchors[site] = anchor;
+  }
+  // A low arc between two points on the lifted surface, rising to `lift` above it at the middle and bowing `side`
+  // sideways, so a dashed arc stays apart from the solid one even seen from straight above.
+  const lowArc = (a, b, lift, side, mat) => {
+    const ua = a.clone().normalize(), ub = b.clone().normalize(), omega = Math.acos(Math.min(1, ua.dot(ub)));
+    const perp = ua.clone().cross(ub).normalize();
+    const pos = [];
+    for (let i = 0; i <= 24; i++) {
+      const t = i / 24, s0 = Math.sin((1 - t) * omega) / Math.sin(omega), s1 = Math.sin(t * omega) / Math.sin(omega);
+      const v = ua.clone().multiplyScalar(s0).add(ub.clone().multiplyScalar(s1)).normalize().multiplyScalar(R * LIFT + lift * Math.sin(Math.PI * t))
+        .addScaledVector(perp, side * Math.sin(Math.PI * t));
+      pos.push(v.x, v.y, v.z);
+    }
+    const line = new THREE.Line2(new THREE.LineGeometry().setPositions(pos), mat);
+    if (mat.dashed) line.computeLineDistances();
+    line.userData.own = true;
+    line.raycast = () => {};
+    return line;
+  };
+  const powerArcs = new THREE.Group();
+  globe.add(powerArcs);
+  const showPowerGlobe = (k) => {
+    clearGroup(powerArcs);
+    const kk = Math.max(k, 0), list = M(k).power || [];
+    for (const site of Object.keys(STATIONS)) {
+      const a = stationAnchors[site].position, b = anchors[site].position;
+      if (list.some((p) => p.site === site && p.start <= kk && kk < p.end)) powerArcs.add(lowArc(a, b, 0.03, 0, powerLineMat));
+      if (list.some((p) => p.site === site && p.start > kk)) powerArcs.add(lowArc(a, b, 0.03, 0.045, powerDashMat));
+    }
+  };
 
   // Fill a footprint with 1k-GPU blocks, bottom to top in the order given. A fractional thousand is a shorter last block.
   const fillStack = (blocks, groups) => {
@@ -948,6 +1008,47 @@ const RUN = __RUN__;
       [spot, "var(--cmd-rent)", true, "Spot request"]],
       [lo + tr, hi + tr], totalMax, `${fmt1(cap)} / ${fmt1(lo + tr)}–${fmt1(hi + tr)}`, "Expected inference demand plus training needed per month");
   };
+  // Power per site this month: contracts energised (solid, one segment each), contracts signed but not yet
+  // switched on (outlined), and a tick at the MW the site's owned GPUs need.
+  const powerSvg = document.getElementById("power");
+  const MW_PER = { H: 1.4, N: 1.6 };   // MW per thousand GPUs
+  const mwNeed = (owned) => owned.H * MW_PER.H + owned.N * MW_PER.N;
+  const fmtMW = (v) => String(Math.round(v * 10) / 10);
+  const powerMax = Math.max(1, ...steps0().flatMap(([m, k]) => Object.keys(SITES).flatMap((s) => [
+    mwNeed(m.sites[s].owned), (m.power || []).filter((p) => p.site === s).reduce((t, p) => t + p.mw, 0)])));
+  function steps0() { return [[START, 0], ...RUN.months.map((m, k) => [m, k])]; }
+  const showPower = (k) => {
+    powerSvg.replaceChildren();
+    const m = M(k), kk = Math.max(k, 0);
+    Object.keys(SITES).forEach((site, i) => {
+      const y = i * 17 + 2, X0 = 26, BW = 128, sx = (v) => (v / powerMax) * BW;
+      const t = svgEl("text", { class: "chart-text", x: 0, y: y + 9, style: `fill:var(--site-${site})`, "data-ent": site }, powerSvg);
+      t.textContent = site;
+      svgEl("rect", { x: X0, y: y + 1, width: BW, height: 10, fill: "none", stroke: "var(--grid)" }, powerSvg);
+      const mine = (m.power || []).filter((p) => p.site === site);
+      const on = mine.filter((p) => p.start <= kk && kk < p.end), soon = mine.filter((p) => p.start > kk).sort((a, b) => a.start - b.start);
+      let x = X0;
+      on.forEach((p, j) => {
+        const w = sx(p.mw);
+        svgEl("rect", { x, y: y + 1, width: w, height: 10, fill: "var(--cmd-power)", "data-tip": `Energised: ${fmtMW(p.mw)} MW, until month ${p.end - 1}` }, powerSvg);
+        if (j > 0) svgEl("line", { x1: x, x2: x, y1: y + 1, y2: y + 11, stroke: "var(--bg)" }, powerSvg);
+        x += w;
+      });
+      for (const p of soon) {
+        const w = sx(p.mw);
+        svgEl("rect", { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: "transparent", stroke: "var(--cmd-power)",
+          "data-tip": `Signed: ${fmtMW(p.mw)} MW, on from month ${p.start}` }, powerSvg);
+        x += w;
+      }
+      const need = mwNeed(m.sites[site].owned), nx = X0 + sx(need);
+      svgEl("line", { x1: nx, x2: nx, y1: y - 2, y2: y + 14, stroke: "var(--fg)", "stroke-width": 1.2 }, powerSvg);
+      svgEl("line", { x1: nx, x2: nx, y1: y - 2, y2: y + 14, stroke: "transparent", "stroke-width": 6,
+        "data-tip": `Needed by owned GPUs: ${fmtMW(need)} MW` }, powerSvg);
+      const mw = on.reduce((t, p) => t + p.mw, 0), until = on.length ? Math.min(...on.map((p) => p.end)) - 1 : null;
+      const n = svgEl("text", { class: "chart-num", x: 274, y: y + 9.5, "text-anchor": "end" }, powerSvg);
+      n.textContent = `${fmtMW(mw)} / ${fmtMW(need)} MW${until !== null ? ` · until ${until}` : ""}`;
+    });
+  };
   // Money: cash now (with its bar and history), credit left, then spending so far by category.
   const moneySvg = document.getElementById("money");
   const CREDIT = 500;
@@ -1114,6 +1215,9 @@ const RUN = __RUN__;
     supPadMat.color = coastMat.color.clone();
     rentPadMat.color = new THREE.Color(css("--cmd-rent"));
     rentLineMat.color = rentPadMat.color.clone();
+    powerPadMat.color = new THREE.Color(css("--cmd-power"));
+    powerLineMat.color = powerPadMat.color.clone();
+    powerDashMat.color = powerPadMat.color.clone();
     parkedLineMat.color = new THREE.Color(css("--fg"));
     for (const id of Object.keys(padMat)) padMat[id].color = new THREE.Color(css(`--site-${id}`));
     for (const [gen, token] of [["H", "--gen-h"], ["N", "--gen-n"]]) {
@@ -1321,6 +1425,24 @@ const RUN = __RUN__;
       });
       pendingList.appendChild(li);
     }
+    // Power contracts signed but not yet switched on.
+    for (const p of (M(k).power || []).filter((p) => p.ref && p.start > Math.max(k, 0)).sort((a, b) => a.start - b.start)) {
+      const [om, oi] = p.ref, c = RUN.months[om].commands[oi];
+      const li = document.createElement("li"), cmd = document.createElement("span"), q = document.createElement("span");
+      colourTokens(cmd, c.c.split(/\s+/), "power");
+      q.className = "left";
+      q.textContent = `from ${p.start}`;
+      q.setAttribute("data-tip", `Switches on at month ${p.start}`);
+      li.append(cmd, q);
+      li.addEventListener("click", () => {
+        const target = logItems[om] && logItems[om][oi];
+        if (!target) return;
+        log.scrollTo({ top: target.offsetTop - (log.clientHeight - target.offsetHeight) / 2, behavior: reduce ? "auto" : "smooth" });
+        lightOn(target);
+        setTimeout(() => lightOff(target), 1600);
+      });
+      pendingList.appendChild(li);
+    }
     pendingEmpty.hidden = pendingList.children.length > 0;
   };
   const showLog = (k) => {
@@ -1347,6 +1469,8 @@ const RUN = __RUN__;
     showStatus(k);
     showDemand(k);
     showCompute(k);
+    showPower(k);
+    showPowerGlobe(k);
     showMoney(k);
     paneHl = undefined;   // panes were redrawn; re-apply the hover highlight
   };
@@ -1423,12 +1547,16 @@ const RUN = __RUN__;
     pending: [
       "Buy orders placed but not yet fully delivered: the command that placed each, and how many of its GPUs are still to arrive (thousands).",
       "Vendor orders arrive in parts: none sooner than 3 months after ordering, then a capped amount each month, first come first served. Broker orders arrive in full or are cancelled.",
+      "Signed power contracts that have not switched on yet are listed too, with the month they do.",
       "Click an order to find it in the log."],
     compute: [
       "This month's compute at each site against what it is expected to need. Bar: capacity by source, owned powered GPUs in the site's colour, reserved compute solid yellow, the spot request as a yellow outline. Bracket: the range this month's inference demand can fall in; the actual figure is only revealed when the month ends. Inference must be served at its own site.",
       "The all row adds the training still needed each month to meet the current window.",
       "Training runs need a set amount of compute within each window of months: 60 kH-months in months 0–7, 140 in 8–15 and 320 in 16–23. The training bar shows the current window: what is done so far against the target (tick), with last month's spare capacity (compute left over after inference, all of which goes to training) in the lighter part. Green means the target is reached, red that the window was missed.",
       "The chart is inference demand per site: what has been seen so far, and the range the rules allow from here on (3–7% growth a month, ±5% noise). Shading under a line is demand that went unserved."],
+    power: [
+      "Power contracted at each site against what its GPUs need. GPUs only give compute if their site has power for them; the rest sit idle (gen N is powered first).",
+      "Solid: contracts switched on this month, one segment each. Outline: contracts signed but not yet switched on. Tick: MW needed by the GPUs owned there (1.4 MW per thousand gen H, 1.6 per thousand gen N). On the right: MW on / MW needed, and the month the earliest contract in force ends."],
     money: [
       "Cash after this month's commands, and how much of the $500M credit line is still free. Funding adds $40M at the end of every month; debt costs 2% a month in interest.",
       "Bars: money spent so far by category. GPUs is net of broker refunds; unserved is the penalty for inference demand that could not be served, which counts towards the score but never comes out of cash; resale is money back from selling GPUs.",
