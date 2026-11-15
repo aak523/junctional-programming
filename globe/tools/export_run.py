@@ -8,6 +8,7 @@ Each month (and start) also lists power: the power contracts not yet over after 
 starting contracts}).
 Each month also carries prices: what the agent saw at the start of that month (spot and reserve per kH-month
 before the site multiplier, gpu list and broker prices per thousand GPUs, used-market value per thousand GPUs).
+Each month also carries news: the headlines the agent saw at the start of that month.
 A replayed agent run also carries notes: the agent's belief-log entries written during each month.
 
 Each month records the commands the policy sent ([{c, ok}], ok false when the world refused it) and,
@@ -116,7 +117,8 @@ def power_now(k):
 start["power"] = power_now(0)
 while w.t < W.T:
     commands = []
-    p = w.observe()["prices"]
+    obs = w.observe()
+    p, news = obs["prices"], obs["news"]
     prices = {"spot": p["spot"], "reserve": {str(m): v for m, v in p["reserve"].items()}, "gpu": p["gpu"], "broker": p["broker"],
               "market_value": p["market_value"]}
 
@@ -189,7 +191,7 @@ while w.t < W.T:
                                  "refunds": {b["src"]: round(b["qty"] * paid.get(b["id"], 0.0) * W.BROKER_REFUND, 2)
                                              for b in rep["broker"] if not b["delivered"]}},
                    "met": {str(d): v for d, v in w.met.items()}, "notes": NOTES.get(len(months), []),
-                   "power": power, "prices": prices})
+                   "power": power, "prices": prices, "news": news})
 rules = {"site_price": W.SITE_PRICE, "option": {"premium": W.OPTION_PREMIUM, "strike": W.OPTION_STRIKE},
          "demand_start": 6.0, "growth": list(W.GROWTH), "noise": 0.05, "share": W.INF_SHARE,
          "milestones": [list(m) for m in W.MILESTONES]}

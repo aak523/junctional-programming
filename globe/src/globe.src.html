@@ -75,6 +75,12 @@
   .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
   .pending li { cursor: pointer; }
+  .news ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .news li { font-size: 11px; line-height: 1.4; color: var(--fg); padding-left: 7px; border-left: 2px solid var(--grid); }
+  .news li.fresh { animation: news-in 0.6s ease-out; }
+  @keyframes news-in { from { opacity: 0; transform: translateX(-4px); } }
+  @media (prefers-reduced-motion: reduce) { .news li.fresh { animation: none; } }
+  .panes:not(.panes-right) { max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   [data-ent] { transition: background-color 0.2s; }
   .pane svg text, [data-ent] { cursor: default; }
   .pending li [data-ent] { cursor: pointer; }   /* the whole order row is clickable */
@@ -211,6 +217,7 @@
 <div id="stage"></div>
 <div class="panes">
   <aside class="pane log" id="log" aria-labelledby="log-h"><h2><span id="log-h">log</span><button class="info" type="button" data-info="log" aria-label="About log" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2></aside>
+  <aside class="pane news" id="news" aria-labelledby="news-h"><h2><span id="news-h">news</span><button class="info" type="button" data-info="news" aria-label="About news" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ul></ul><p class="empty">no news this month</p></aside>
   <aside class="pane pending" id="pending" aria-labelledby="pending-h"><h2><span id="pending-h">outstanding orders</span><button class="info" type="button" data-info="pending" aria-label="About outstanding orders" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><ol></ol><p class="empty">no orders outstanding</p></aside>
   <aside class="pane flow" aria-labelledby="flow-h"><h2><span id="flow-h">globe overview</span><button class="info" type="button" data-info="flow" aria-label="About globe overview" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="flow" viewBox="0 0 300 214" role="img"></svg></aside>
 </div>
@@ -237,7 +244,7 @@
   </div>
   <output class="num" id="num" for="month">0</output>
 </div>
-<aside class="pane training" aria-labelledby="training-h"><h2><span id="training-h">status</span><button class="info" type="button" data-info="training" aria-label="About status" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="status" viewBox="0 0 294 31" role="img"></svg></aside>
+<aside class="pane training" aria-labelledby="training-h"><h2><span id="training-h">status</span><button class="info" type="button" data-info="training" aria-label="About status" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="status" viewBox="0 0 294 50" role="img"></svg></aside>
 </div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
 <div class="error" id="err" hidden>The 3D view could not start. This browser may not support WebGL.</div>
@@ -1007,6 +1014,11 @@ const RUN = __RUN__;
     sl.textContent = "score if stopped now";
     const sv = svgEl("text", { class: "chart-num", x: 294, y: 28.5, "text-anchor": "end" }, statusSvg);
     sv.textContent = `${fmtUSD(st.net_cost)} net cost`;
+    const ol = svgEl("text", { class: "chart-text", x: 0, y: 47 }, statusSvg);
+    ol.textContent = "commands used";
+    const ov = svgEl("text", { class: "chart-num", x: 294, y: 47.5, "text-anchor": "end" }, statusSvg);
+    ov.textContent = k < 0 ? "–" : `${m.commands.filter((c) => c.ok).length} / 15`;
+    ov.setAttribute("data-tip", "Commands sent this month, out of 15 a month");
     // Hovering the score shows its parts: spend − mark-to-market + obligations + penalties.
     sv.setAttribute("data-tip", [
       `spend\t${fmtUSD(st.spend)}`,
@@ -1606,6 +1618,16 @@ const RUN = __RUN__;
   // Pending buy orders at month k: the original command and how much of it is still to come.
   const pendingPane = document.getElementById("pending"), pendingList = pendingPane.querySelector("ol");
   const pendingEmpty = pendingPane.querySelector(".empty");
+  // News: the headlines the agent saw at the start of this month (the start step sees month 0's).
+  const newsPane = document.getElementById("news"), newsList = newsPane.querySelector("ul");
+  let newsShown = null;
+  const showNews = (k) => {
+    const items = RUN.months[Math.max(0, k)].news || [], key = Math.max(0, k);
+    if (key === newsShown) return;
+    newsShown = key;
+    newsList.replaceChildren(...items.map((t) => Object.assign(document.createElement("li"), { textContent: t, className: "fresh" })));
+    newsPane.querySelector(".empty").hidden = items.length > 0;
+  };
   const showPending = (k) => {
     pendingList.replaceChildren();
     for (const [om, oi, left] of M(k).pending || []) {
@@ -1653,6 +1675,7 @@ const RUN = __RUN__;
     drawArrows(k);
     log.scrollTop = log.scrollHeight;
     showPending(k);
+    showNews(k);
   };
 
   // Step animation for the panes: they redraw from scratch each step, so match old and new marks by a key (bars by
@@ -1808,9 +1831,12 @@ const RUN = __RUN__;
       "Cash, credit left, spending so far, and cash over time."],
     prices: [
       "What the agent was quoted each month, up to now. Hover a line for this month's price."],
+    news: [
+      "Headlines the agent saw at the start of this month."],
     training: [
       "Cash now and its change since last step (hover for the breakdown).",
-      "Score if stopped now: final net cost if the agent sent no more commands. Lower is better."],
+      "Score if stopped now: final net cost if the agent sent no more commands. Lower is better.",
+      "Commands used: this month's commands, out of 15."],
   };
   const tip = document.getElementById("tip");
   // A paragraph with a tab in it is a row: label on the left, value on the right.
