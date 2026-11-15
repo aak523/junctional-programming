@@ -291,6 +291,25 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
     l.raycast = () => {};   // not pickable; hover goes by footprint
     return l;
   };
+  // Marching dashes over a static arc, so its direction shows: short bright dashes travel from its start to its
+  // end, over the arc itself drawn faint. Each base material gets one dash material that follows its colour.
+  const flowPairs = [];   // [dash material, base material]
+  const flowFor = (base) => {
+    let pair = flowPairs.find(([, b]) => b === base);
+    if (!pair) {
+      const m = fatMat({ dashed: true, dashSize: 0.012, gapSize: 0.05, transparent: true, opacity: 0.85 });
+      m.defines.USE_DASH = "";   // r128 does not switch the dash shader on from `dashed` alone
+      pair = [m, base];
+      flowPairs.push(pair);
+    }
+    return pair[0];
+  };
+  const withFlow = (line) => {
+    line.computeLineDistances();
+    const f = new THREE.Line2(line.geometry, flowFor(line.material));
+    f.raycast = () => {};
+    return [line, f];
+  };
   const hollowMat = { H: fatMat(), N: fatMat() };   // ordered, not yet delivered
   const blockMat = { H: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() },
                      N: { on: new THREE.MeshBasicMaterial(), off: new THREE.MeshBasicMaterial() } };
@@ -501,7 +520,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
     const kk = Math.max(k, 0), list = M(k).power || [];
     for (const site of Object.keys(STATIONS)) {
       const a = stationAnchors[site].position, b = anchors[site].position;
-      if (list.some((p) => p.site === site && p.start <= kk && kk < p.end)) powerArcs.add(lowArc(a, b, 0.03, 0, powerLineMat));
+      if (list.some((p) => p.site === site && p.start <= kk && kk < p.end)) powerArcs.add(...withFlow(lowArc(a, b, 0.03, 0, powerLineMat)));
       if (list.some((p) => p.site === site && p.start > kk)) powerArcs.add(lowArc(a, b, 0.03, 0.045, powerDashMat));
     }
   };
@@ -807,7 +826,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
       arcPoint(a, b, omega, 0.5, stack.position);
       stack.quaternion.setFromUnitVectors(up, stack.position.clone().normalize());
       fillStack(stack, [[blockMat[d.gen].on, d.qty]]);
-      parked.add(line, stack);
+      parked.add(...withFlow(line), stack);
       // Summary pane: the move's curve stays drawn, with the quantity on it.
       const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: flowColor(d.site), "stroke-width": 1.5, "stroke-opacity": 0.45 }, flowParkedG);
       const mid = path.getPointAtLength(path.getTotalLength() / 2);
@@ -846,7 +865,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
       const omega = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
       const mat = ghostMat(d.site);
       mat.color = padMat[d.site].color;
-      ghosts.add(arcLine(a, b, omega, d.ok ? 1 : 0.5, mat));   // a cancelled order's trace stops where it broke
+      ghosts.add(...withFlow(arcLine(a, b, omega, d.ok ? 1 : 0.5, mat)));   // a cancelled order's trace stops where it broke
       const path = svgEl("path", { d: flowPath(d.src, d.site), fill: "none", stroke: flowColor(d.site), "stroke-width": 1.5,
         "stroke-opacity": 0.35 }, flowGhostG);
       if (!d.ok) { const len = path.getTotalLength(); path.setAttribute("stroke-dasharray", `${len / 2} ${len}`); }
@@ -863,7 +882,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
       setBar(id, [["var(--cmd-rent)", 1, x.reserved, false, "Reserved cloud, kH"], ["var(--cmd-rent)", 1, x.spot_req, true, "Spot request, kH"]]);
       if (x.reserved + x.spot_req < 0.005) continue;
       const a = cloudAnchors[id].position.clone().normalize(), b = anchors[site].position.clone().normalize();
-      rentals.add(arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat));
+      rentals.add(...withFlow(arcLine(a, b, Math.acos(Math.min(1, a.dot(b))), 1, rentLineMat)));
       const from = flowNodes[site], to = flowNodes[id];
       svgEl("path", { d: `M${from.cx},${from.bottom} L${to.cx},${to.top}`, fill: "none", stroke: "var(--cmd-rent)", "stroke-width": 1.5, "stroke-opacity": 0.7 }, flowRentG);
     }
@@ -1626,7 +1645,17 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
 
   // Slow rotation as the camera nears the surface, so dragging moves the ground at a similar rate at any zoom.
   const BASE_DIST = 4.4;
+  let lastFlow = 0;
+  const stepFlow = (now) => {
+    const dt = lastFlow ? Math.min(100, now - lastFlow) : 0;
+    lastFlow = now;
+    for (const [m, base] of flowPairs) m.color.copy(base.color);
+    if (reduce) return;   // no motion: the dashes stay put
+    for (const [m] of flowPairs) m.uniforms.dashOffset.value -= dt * 0.00008;
+    powerDashMat.uniforms.dashOffset.value -= dt * 0.00004;   // signed power creeps in too, more slowly
+  };
   (function loop(now) {
+    stepFlow(now);
     if (tipEl && !tipEl.isConnected) { tipEl = null; hideTip(); }   // its pane redrew for another step
     anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
     // Light up both ends of every delivery in flight, rising and falling with the flight.
