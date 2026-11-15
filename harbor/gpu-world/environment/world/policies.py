@@ -290,7 +290,7 @@ class LPPolicy:
     insurance), and in a training window's last month at least the gap the LP's convex shortfall cost would leave
     (`guard`: the fixed penalty of a missed run is a cliff the LP cannot see). Charging unserved inference above its
     true cost was tried against the LP's inference-for-training leak and over-insured instead; `unserved` stays true."""
-    P = {"paths": 24, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.03, "shared": 2,
+    P = {"paths": 24, "shortfall": 40.0, "spot_q": 0.75, "probe": 0.5, "margin": 0.03, "shared": 1,
          "unserved": W.UNSERVED_INFERENCE, "guard": True}
 
     def __init__(self, beliefs=None, seed=0, **params):

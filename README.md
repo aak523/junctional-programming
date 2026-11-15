@@ -11,7 +11,7 @@ rents spot, signs power, moves and resells hardware, and manages cash on a credi
 
 | Model | World | Games | Model reward | Reference reward, same worlds | Model as % of reference |
 |---|---|---|---|---|---|
-| Gemini 4 Hydrogen, v5 games re-scored against the fixed reference and oracle | v5 | 5 | 0.69–0.89 (mean 0.80) | 0.84–0.97 (mean 0.92) | 83–94% (mean 87%) |
+| Gemini 4 Hydrogen, v5 games re-scored against the fixed reference and oracle | v5 | 5 | 0.69–0.89 (mean 0.80) | 0.89–0.97 (mean 0.92) | 78–97% (mean 87%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v5 | 5 | 0.69–1.00 (mean 0.85) | 0.84–0.92 (mean 0.88) | 82–110% (mean 96%, standard error 4.5%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode), fixed seeds 1001–1005 | v4 | 5 | 0.79–0.97 | 0.87–0.99 | 89–98% (mean 92%) |
 | Gemini 4 Hydrogen (Harbor + OpenCode) | v4 | 3 | 0.74–0.90 (mean 0.82) | 0.86–0.89 (mean 0.87) | 85–101% (mean 94%) |
@@ -38,7 +38,13 @@ Per-seed results: `harbor/jobs/hydrogen-v5-paired/PAIRED.md`.
   Hydrogen's early fleet (9k gen H in months 0–2, 9k gen N at launch, at one site) and plan everything else around
   it. On the five paired worlds it scores 85–99% of the reference where Hydrogen scored 82–112%. `gap.py` plays it
   against the reference: on tuning seeds 100–139 it was at 90.0% of the reference (above it on 6 of 40) before the fix
-  and 86.5% (standard error 1.3%, above it on none) after; on evaluation seeds 0–9 it is at 87.6%.
+  and 86.5% (standard error 1.4%, above it on 1) after; on evaluation seeds 0–9 it is at 87.2% (above it on none).
+- **What is left between the reference and the oracle is mostly unknowable.** Revealing one hidden factor at a time
+  to the reference (tuning seeds 100–111, a $50M gap): everything its filter estimates (the current regime, launch
+  month, growth and broker reliability) together saves under $3M; the future supply path saves $30M (59% of the gap)
+  and the future demand path $8M (15%). Re-tuned after the fix, sharing decisions across the sampled futures for 2
+  months instead of 3 saves $8M (better on 11 of 12 seeds). A scenario tree (futures sharing their history and
+  decisions in groups up to a branch month), 48 futures instead of 24, and the other knobs did not help.
 
 The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gives that code.
 
@@ -61,7 +67,7 @@ The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gi
   and broker reliability and its silent decay. The structure and priors are all in TASK.md; only the realised values are hidden.
 - **Reference, oracle and bound** (`policies.py`, `lp.py`):
   - **reference:** a Bayesian filter over every hidden factor feeds a linear programme. Each month it solves the LP
-    over 24 futures sampled from the posterior, keeps the next 3 months of decisions common to all of them, and plays
+    over 24 futures sampled from the posterior, keeps this month's and next month's decisions common to all of them, and plays
     this month's. A guard covers the cliff of a missed training run: in a window's last month it tops up spot to the
     gap that capacity already certain leaves. It sees exactly what the agent sees,
     and its knobs were tuned on seeds 100+ only.
@@ -75,11 +81,12 @@ The v3 Harbor logs are archived in `results/v3/`; `git checkout gpu-world-v3` gi
 
 | do_nothing | stop_early | spot_only | exploiter | committer | **reference** | oracle | LP bound |
 |---|---|---|---|---|---|---|---|
-| 3,401 | 3,113 | 2,391 | 1,408 | 902 | **796** | 734 | 703 |
+| 3,401 | 3,134 | 2,391 | 1,460 | 896 | **790** | 734 | 703 |
 
-The reference meets all three training runs on every seed and scores 0.91 on average (0.83 at worst). Doing nothing
-scores 0.21 and stopping after 3 months 0.24. Every baseline costs at least 2.4x the reference on every seed, the
-exploiter at least 1.49x (1.76x on average), and the committer (early fleet, otherwise the reference) 1.15x on average. The exploits tried were buy-and-flip GPUs,
+The reference meets all three training runs on every seed and scores 0.92 on average (0.85 at worst). Doing nothing
+scores 0.21 and stopping after 3 months 0.23. Every baseline costs at least 2.5x the reference on every seed, the
+exploiter at least 1.59x (1.86x on average), and the committer (early fleet, otherwise the reference) at least 1.05x
+(1.16x on average). The exploits tried were buy-and-flip GPUs,
 contracts past the horizon, options bought and never used, undelivered orders at the end, and stopping after 3 months.
 
 ## Run it
