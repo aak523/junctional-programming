@@ -169,6 +169,25 @@ class Bayes:
         self.spike_last = spike
         self._growth_update(hist)
 
+    def describe(self, t):
+        """One line of what the filter believes at month t, for a replay's notes."""
+        parts = [f"supply tight {self.b:.0%}"]
+        if len(self.launch) == 1:
+            parts.append(f"gen N launched month {next(iter(self.launch))}")
+        else:
+            live = [m for m, p in self.launch.items() if p > 0.01]
+            mean = sum(m * p for m, p in self.launch.items())
+            parts.append(f"gen N launch due month {live[0]}" if len(live) == 1 else
+                         f"gen N launch expected month {mean:.0f} (months {min(live)}-{max(live)} possible)")
+        fast = sum(p for (g, sw), p in self.growth.items() if growth_rate(g, sw, t) == max(W.GROWTH))
+        parts.append(f"fast demand growth ({max(W.GROWTH):.0%}/month) {fast:.0%}")
+        parts.append("brokers reliable " + ", ".join(f"{b} {p:.0%}" for b, p in self.rel.items()))
+        if self.export_start is not None:
+            parts.append(f"export controls since month {self.export_start}")
+        elif t - self.export_rumour <= 1:
+            parts.append("export controls rumoured")
+        return "Believes: " + "; ".join(parts) + "."
+
     def _bayes(self, lt, ll):
         self.b = self.b * lt / (self.b * lt + (1 - self.b) * ll)
 
@@ -318,6 +337,8 @@ class LPPolicy:
     def __call__(self, obs, act):
         self.bel.update(obs)
         t, p = obs["month"], self.p
+        # what it believed and why it acted this month, for a replay's notes
+        self.notes = [self.bel.describe(t)] if isinstance(self.bel, Bayes) else []
 
         def do(cmd):
             try:
@@ -327,6 +348,7 @@ class LPPolicy:
                 return False
         gen = "N" if obs["launched"] else "H"
         if t == 0:   # exploration: a small order is the only way to learn a broker's reliability
+            self.notes.append(f"Probes each broker with {p['probe']}k GPUs: ordering is the only way to learn whether it delivers.")
             for b, mu in W.BROKERS.items():
                 do(f"buy_gpus {p['probe']} {gen} {b} us")
                 cost = p["probe"] * W.GPU_PRICE[gen] * mu
@@ -334,6 +356,9 @@ class LPPolicy:
                 obs = obs | {"cash": obs["cash"] - cost, "bought_this_month": bought, "queue": obs["queue"] + [
                     {"gen": gen, "ordered": p["probe"], "left": p["probe"], "placed": t, "src": b, "paid": cost, "site": "us"}]}
         paths = self.paths(obs)
+        if self.notes and t == 0:
+            self.notes.append(f"Each month: solves an LP over {len(paths)} futures sampled from these beliefs and plays its first month; "
+                              f"rents spot at the {p['spot_q']:.0%} quantile of the futures' best levels.")
         dec, _, spot = lp.solve(lp.state_of(obs), paths, lead=self.lead(obs), shortfall=p["shortfall"],
                                 margin=p["margin"], shared=p["shared"], unserved=p["unserved"])
         # the LP's convex shortfall cost cannot see the fixed penalty of a missed run: in a window's last month, if the
@@ -347,6 +372,8 @@ class LPPolicy:
             if d == t and p["guard"]:
                 need = target - done - sure(t) + 0.5
                 if need > 0:
+                    self.notes.append(f"Last month of a training window, {need:.1f} kH-months short of the {target:.0f} target under the "
+                                      f"highest-demand future: asks spot to cover it.")
                     loose = W.SPOT_CAP["loose"]
                     floor = {s: need if self.bel.p_tight() > 0.5 else 1.3 * need * loose[s] / sum(loose.values()) for s in SITES}
         for s in SITES:   # spot first: it is this month's capacity
