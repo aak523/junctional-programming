@@ -997,15 +997,23 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
     t.textContent = label;
     if (ent) t.setAttribute("data-ent", ent);
     svgEl("rect", { x: X0, y: y + 1, width: BW, height: 10, fill: "none", stroke: "var(--grid)" }, svg);
-    let x = X0;
-    for (const [q, c, style, tip] of [[z.own, color, "solid", "Owned GPUs with power"], [z.idle, color, "faint", "Owned GPUs idle, no power"],
-      [z.reserved, "var(--cmd-rent)", "solid", "Reserved cloud"], [z.spot, "var(--cmd-rent)", "hollow", "Spot request"]]) {
+    // Idle GPUs (no power) go last, hatched, so what is usable reads as one run from the left.
+    const hatch = `hatch-${label}`;
+    const pat = svgEl("pattern", { id: hatch, patternUnits: "userSpaceOnUse", width: 4, height: 4, patternTransform: "rotate(45)" },
+      svgEl("defs", {}, svg));
+    svgEl("line", { x1: 0, x2: 0, y1: 0, y2: 4, stroke: color, "stroke-width": 1.6 }, pat);
+    let x = X0, idleX = null;
+    for (const [q, c, style, tip] of [[z.own, color, "solid", "Owned GPUs with power"], [z.reserved, "var(--cmd-rent)", "solid", "Reserved cloud"],
+      [z.spot, "var(--cmd-rent)", "hollow", "Spot request"], [z.idle, color, "hatch", "Owned GPUs idle, no power"]]) {
       const w = sx(q) - X0, dt = `${tip}: ${fmt1(q)} kH`;
+      if (style === "hatch") idleX = x;
       if (w > 0.2) svgEl("rect", style === "hollow" ? { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: "transparent", stroke: c, "data-tip": dt }
-        : { x, y: y + 1, width: w, height: 10, fill: c, "fill-opacity": style === "faint" ? 0.3 : 1, "data-tip": dt }, svg);
+        : style === "hatch" ? { x: x + 0.5, y: y + 1.5, width: Math.max(0, w - 1), height: 9, fill: `url(#${hatch})`, stroke: c, "data-tip": dt }
+        : { x, y: y + 1, width: w, height: 10, fill: c, "data-tip": dt }, svg);
       x += w;
     }
-    // Power line: MW on (solid, one segment per contract) then MW signed (outlined), on the bar's scale.
+    // Power line: MW on (solid, one segment per contract) under the powered GPUs, then MW signed (outlined)
+    // under the idle GPUs it will switch on, on the bar's scale.
     let px = X0;
     z.on.forEach((p, j) => {
       const w = sx(p.mw * z.khPerMW) - X0;
@@ -1013,6 +1021,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
       if (j > 0) svgEl("line", { x1: px, x2: px, y1: y + 14, y2: y + 17, stroke: "var(--bg)" }, svg);
       px += w;
     });
+    if (z.idle > 0.05 && idleX !== null) px = Math.max(px, idleX);
     for (const p of z.soon) {
       const w = sx(p.mw * z.khPerMW) - X0;
       svgEl("rect", { x: px + 0.5, y: y + 14.5, width: Math.max(0, w - 1), height: 2, fill: "transparent", stroke: "var(--cmd-power)", "stroke-width": 0.8,
