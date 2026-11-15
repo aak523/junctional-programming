@@ -668,6 +668,42 @@ const RUN = __RUN__;
   for (const site of Object.keys(STATIONS)) for (const c of stationAnchors[site].children) if (c instanceof THREE.LineSegments2) c.visible = false;
   for (const a of Object.values(cloudAnchors)) for (const c of a.children) if (c instanceof THREE.LineSegments2) c.visible = false;
   let objs = null, objCur = null;
+  // Spot at a cloud, counted as blocks on its pad: one per kH that arrived this month, in the rented colour, a short
+  // last block for a fraction. Any part of the standing request that supply could not fill stands after them as
+  // dashed outlines in the alert colour.
+  class SpotBlocks {
+    constructor({ theme, color, alert }) {
+      this.group = new THREE.Group();
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(16, 0.5, 16), new THREE.MeshStandardMaterial({ color: theme.pad, roughness: 0.92 }));
+      pad.position.y = 0.25;
+      this.group.add(pad);
+      this.mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25 * theme.emissive, roughness: 0.6 });
+      this.edgeMat = new THREE.LineDashedMaterial({ color: alert, dashSize: 0.45, gapSize: 0.3 });
+      this.geo = new THREE.BoxGeometry(2.6, 2.6, 2.6);
+      this.geo.translate(0, 1.3, 0);
+      this.edges = new THREE.EdgesGeometry(this.geo);
+      this.items = new THREE.Group();
+      this.group.add(this.items);
+      this.key = null;
+    }
+    update(d) {
+      const level = d.level || 0, got = Math.min(level, d.cap || 0), key = `${level}|${got}`;
+      if (key === this.key) return;
+      this.key = key;
+      this.items.clear();
+      const pieces = [];
+      for (let left = Math.round(got * 100) / 100; left > 0.01; left -= 1) pieces.push([Math.min(1, left), true]);
+      for (let left = Math.round((level - got) * 100) / 100; left > 0.01; left -= 1) pieces.push([Math.min(1, left), false]);
+      const rows = Math.ceil(pieces.length / 3);
+      pieces.forEach(([f, solid], i) => {
+        const m = solid ? new THREE.Mesh(this.geo, this.mat) : new THREE.LineSegments(this.edges, this.edgeMat);
+        if (!solid) m.computeLineDistances();
+        m.position.set(((i % 3) - 1) * 3.4, 0.5, (Math.floor(i / 3) - (rows - 1) / 2) * 3.4);
+        m.scale.y = f;
+        this.items.add(m);
+      });
+    }
+  }
   const buildObjects = () => {
     if (objs) for (const o of [...objs.all, objs.vendor]) o.group.parent.remove(o.group);
     const dark = new THREE.Color(css("--bg")).getHSL({}).l < 0.5;
@@ -704,7 +740,8 @@ const RUN = __RUN__;
     const tower = (site) => place(new OBJ3D.power.Power({ theme: tint("--cmd-power"), color: T.site[site], metal }), stationAnchors[site], OBJ_SCALE.power);
     // Cloud: the spot tap over its bucket, and a floating sheet per reserved contract beside it, made as needed.
     const spots = {}, contracts = {};
-    for (const site of Object.keys(SITES)) spots[site] = place(new OBJ3D.spot.Spot({ theme: tint("--cmd-rent"), color: new THREE.Color(css("--cmd-rent")).getHex(), metal }),
+    for (const site of Object.keys(SITES)) spots[site] = place(new SpotBlocks({ theme: tint("--cmd-rent"), color: new THREE.Color(css("--cmd-rent")).getHex(),
+      alert: new THREE.Color(css("--alert")).getHex() }),
       cloudAnchors[`cloud-${site}`], OBJ_SCALE.cloud);
     const sheet = (site) => place(new OBJ3D.contract.Contract({ theme: tint("--cmd-rent"), color: T.site[site] }), cloudAnchors[`cloud-${site}`], OBJ_SCALE.sheet);
     objs = { campuses, vendor: vendorFor(launchedNow), vendorFor, brokers, power, tower, spots, contracts, sheet, all };

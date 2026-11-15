@@ -14,7 +14,7 @@ import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
 ref = sys.argv[1] if len(sys.argv) > 1 else "origin/viz-state-objects"
-MODULES = ["theme3d", "campus3d", "vendor3d", "broker3d", "power3d", "spot3d", "contract3d"]
+MODULES = ["theme3d", "campus3d", "vendor3d", "broker3d", "power3d", "contract3d"]
 
 out = ["/* Ported from viz/*3d.js at %s by tools/port_objects.py. Do not edit by hand. */" % ref,
        "const OBJ3D = {};"]
