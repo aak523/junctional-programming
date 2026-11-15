@@ -42,7 +42,7 @@
 <main>
   <header>
     <h1>GPU World State Map</h1>
-    <p>Every piece of state in <code>world.py</code>, whether the agent observes it, and where the globe shows it today. Run on screen: fable-5 replay.</p>
+    <p>Every piece of state in <code>world.py</code>, whether the agent observes it, and where the globe shows it today. Values are the v5 rules; each exported run records its own rules version, and the globe's title and score hover name the run on screen.</p>
     <div class="legend">
       <span><span class="chip s">shown</span>fully on screen</span>
       <span><span class="chip p">partial</span>aggregate, hover-only or log-only</span>
@@ -56,7 +56,7 @@
     <div class="wrap"><table>
       <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
       <tr><td>t</td><td>Month 0..23. Settlement after month 23.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Slider, log month headers.</td></tr>
-      <tr><td>ops</td><td>Commands used this month, max 15.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Status "commands used N / 15".</td></tr>
+      <tr><td>ops</td><td>Commands used this month, max 15 (exported as rules.ops_per_month).</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Status "commands used N / 15".</td></tr>
       <tr><td>commands</td><td>Each command, accepted or refused, with its cost.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Log, coloured by verb; costs on the right; command arrows on the globe during playback.</td></tr>
       <tr><td>notes</td><td>Agent's belief log entries per month.</td><td class="sees">own</td><td class="where"><span class="chip p">partial</span>One-line preview per month in the log, full text on hover. No side-by-side reading across months.</td></tr>
     </table></div>
@@ -94,9 +94,9 @@
       <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
       <tr><td>own compute</td><td>Powered GPUs in kH: H 1, N 2 per thousand.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Solid segment in compute rows.</td></tr>
       <tr><td>contracts[]</td><td>Reserved cloud {site, kH, price, start, end, option}. 6/12/24-month terms; start: us 2 kH until month 4.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>Total reserved per site (yellow segment, cloud hover). No per-contract price, end month or option flag.</td></tr>
-      <tr><td>spot_level</td><td>Standing spot request per site, kH.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Hollow segment, cloud hover, rental arc hover.</td></tr>
-      <tr><td>spot filled</td><td>min(request, spot cap). Cap depends on regime, spikes, export controls.</td><td class="sees">after month</td><td class="where"><span class="chip p">partial</span>Request shown; fill vs request gap not shown.</td></tr>
-      <tr><td>demand[site]</td><td>Inference demand: 6 kH total at month 0, growing 3% or 7% a month; us 50%, eu 30%, ap 20%.</td><td class="sees">after month</td><td class="where"><span class="chip s">shown</span>Demand chart, bracket on compute rows, site hover expected range.</td></tr>
+      <tr><td>spot_level</td><td>Standing spot request per site, kH.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Cloud hover and rental arc hover, beside what was filled.</td></tr>
+      <tr><td>spot filled</td><td>min(request, spot cap). Cap depends on regime, spikes, export controls.</td><td class="sees">after month</td><td class="where"><span class="chip s">shown</span>Hollow segment of the compute bars and the cloud bar (filled); hovers give filled of requested.</td></tr>
+      <tr><td>demand[site]</td><td>Inference demand: 6 kH total at month 0, growing 4% or 8% a month (5% lognormal noise around the trend); us 50%, eu 30%, ap 20%.</td><td class="sees">after month</td><td class="where"><span class="chip s">shown</span>Demand chart, bracket on compute rows, site hover expected range.</td></tr>
       <tr><td>served / unserved</td><td>Served = min(demand, capacity). Unserved costs $4M per kH-month in the score, not in cash.</td><td class="sees">after month</td><td class="where"><span class="chip n">missing</span>Only the cumulative "unserved" spend row.</td></tr>
       <tr><td>training</td><td>Capacity left after serving inference, per month.</td><td class="sees">after month</td><td class="where"><span class="chip s">shown</span>Training pane, "spare" text.</td></tr>
       <tr><td>options</td><td>kH of options held. $1M per kH; exercise gives a 6-month reservation at $1.6M per kH-month outside caps.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Log lines and "options" spend row only.</td></tr>
@@ -118,11 +118,11 @@
     <h2>Money</h2>
     <div class="wrap"><table>
       <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
-      <tr><td>cash</td><td>Starts $400M. +$40M funding each month. Can go to −$500M on credit.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Status, money pane bar and graph, credit left.</td></tr>
-      <tr><td>interest</td><td>2% a month on negative cash.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Spend row, cash-delta hover.</td></tr>
+      <tr><td>cash</td><td>Starts $400M. +$40M funding each month (exported per month as month_end.funding). Can go to −$500M on credit.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Status, money pane bar and graph, credit left.</td></tr>
+      <tr><td>interest</td><td>2% a month on negative cash; a positive balance earns 0.75% a month (negative interest).</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Spend row, cash-delta hover.</td></tr>
       <tr><td>cost{}</td><td>Spend by category: capex, power, contracts, spot, moves, options, interest, unserved, resale.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Money pane spend rows.</td></tr>
       <tr><td>month cash flow</td><td>Charges, refunds, funding, commands between steps.</td><td class="sees">derived</td><td class="where"><span class="chip s">shown</span>Cash-delta hover breakdown.</td></tr>
-      <tr><td>if_stopped.net_cost</td><td>Final score if no more commands: spend − mark + obligations + penalties.</td><td class="sees">no</td><td class="where"><span class="chip s">shown</span>Status "score if stopped".</td></tr>
+      <tr><td>if_stopped.score, .net_cost</td><td>If no more commands: net cost = spend − mark + obligations + penalties; score = the oracle's net cost on this world / net cost (at most 1) × runs met / 3.</td><td class="sees">no</td><td class="where"><span class="chip s">shown</span>Status "score if stopped": score and net cost.</td></tr>
       <tr><td>if_stopped parts</td><td>spend, mark_to_market (75% of market value of all held GPUs), obligations (contract months past 23), penalties, milestones met.</td><td class="sees">no</td><td class="where"><span class="chip s">shown</span>Score hover breakdown.</td></tr>
     </table></div>
   </section>
@@ -134,7 +134,7 @@
       <tr><td>gpu price</td><td>H $25M, N $40M per thousand; broker A 1.10x, B 1.25x.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Prices pane GPU chart; vendor and broker hovers.</td></tr>
       <tr><td>spot price</td><td>Contract index × regime multiplier × noise × spike, then × site price (us 1.0, eu 1.1, ap 0.95).</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Prices pane compute chart; per-site prices on hover and in cloud hovers.</td></tr>
       <tr><td>reserve price</td><td>Contract index × term factor (6m 1.15, 12m 1.0, 24m 0.9) × site price.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Prices pane compute chart (6/12/24 m); per-site on hover and in cloud hovers.</td></tr>
-      <tr><td>market_value</td><td>Used price per gen; H falls 2% a month and 40% at gen N launch.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Prices pane GPU chart; datacentre hovers.</td></tr>
+      <tr><td>market_value</td><td>Used price per gen: falls 4% a month; gen H also halves at the gen N launch.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Prices pane GPU chart; datacentre hovers.</td></tr>
       <tr><td>news</td><td>Headlines: regime hints (75% accurate), spikes, export-control rumours, launch hints.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>News pane, this month's headlines.</td></tr>
     </table></div>
   </section>
@@ -144,9 +144,9 @@
     <div class="wrap"><table>
       <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
       <tr><td>regime[k]</td><td>Tight or loose each month, 10% switch chance. Drives allocation, caps, spot price, price drift.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
-      <tr><td>launch</td><td>Gen N launch month, 11..18.</td><td class="sees">at launch</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>launch</td><td>Gen N launch month, 9..15.</td><td class="sees">at launch</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
       <tr><td>export</td><td>Export-control start (5..15, half of seeds); H allocation 40%, spot 60% for 6 months.</td><td class="sees">at start</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
-      <tr><td>growth / switch</td><td>Demand growth 3% or 7%; may switch once in months 8..15.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>growth / switch</td><td>Demand growth 4% or 8%; may switch once in months 8..15.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
       <tr><td>broker reliability</td><td>Each broker reliable (90%) or not (35%); a reliable one may decay once in months 8..15.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
       <tr><td>spike[k]</td><td>Rival-lab spot spikes (12% of months): spot price ×1.5, cap ×0.5.</td><td class="sees">news</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
       <tr><td>power_leads</td><td>Pre-drawn lead times per site: us 3..8, eu 4..9, ap 2..6 months.</td><td class="sees">on signing</td><td class="where"><span class="chip h">hidden</span>Outcome shown as "from N".</td></tr>
