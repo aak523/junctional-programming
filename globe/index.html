@@ -159,7 +159,7 @@
   .center {
     position: fixed; left: 50%; transform: translateX(-50%);
     top: calc(16px + env(safe-area-inset-top, 0px));
-    width: min(320px, calc(100% - 32px));
+    width: min(360px, calc(100% - 32px));
     display: flex; flex-direction: column; gap: 8px;
   }
   .pane > h2 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
@@ -228,6 +228,22 @@
     font-size: 13px; font-weight: 600; letter-spacing: 0.06em; white-space: nowrap;
   }
   .site-label[hidden], .error[hidden] { display: none; }
+  /* About and source buttons at the end of the playback bar. */
+  .corner { flex: none; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; background: none;
+    color: var(--muted); cursor: pointer; }
+  .corner:hover, .corner:focus-visible { color: var(--fg); outline: none; }
+  .corner svg { width: 16px; height: 16px; }
+  /* Intro: which run this is, over the globe on load and from the about button. */
+  .intro { box-sizing: border-box; width: min(460px, calc(100% - 32px)); padding: 18px 20px; border: 1px solid var(--coast);
+    background: var(--bg); color: var(--fg); font-size: 13px; line-height: 1.55; }
+  .intro::backdrop { background: rgb(0 0 0 / 0.45); }
+  .intro .kicker { margin: 0; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .intro h1 { margin: 4px 0 0; font-size: 18px; font-weight: 600; text-wrap: balance; }
+  .intro p { margin: 10px 0 0; }
+  .intro a { color: var(--coast); }
+  .intro form { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .intro-go { font: inherit; font-weight: 600; padding: 7px 14px; border: 0; background: var(--coast); color: var(--bg); cursor: pointer; }
+  .intro-go:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .error { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; padding: 16px; text-align: center; }
 </style>
 
@@ -260,10 +276,23 @@
     <div class="ticks" id="ticks" aria-hidden="true"></div>
   </div>
   <output class="num" id="num" for="month">0</output>
+  <button class="corner" id="about" type="button" aria-label="About this replay"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+  <a class="corner" href="https://github.com/aak523/junctional-programming" target="_blank" rel="noopener" aria-label="Source on GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
 </div>
 <aside class="pane training" aria-labelledby="training-h"><h2><span id="training-h">status</span><button class="info" type="button" data-info="training" aria-label="About status" aria-describedby="tip"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor"/><path d="M6 5.2v3.6M6 3.3v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></h2><svg id="status" viewBox="0 0 294 50" role="img"></svg></aside>
 </div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
+<dialog class="intro" id="intro" aria-labelledby="intro-h">
+  <p class="kicker" id="intro-kicker"></p>
+  <h1 id="intro-h"></h1>
+  <p id="intro-who"></p>
+  <p id="intro-score"></p>
+  <p>Press play or drag the slider through the months. Hover an <span aria-hidden="true">ⓘ</span> for what a pane shows.</p>
+  <form method="dialog">
+    <button class="intro-go" type="submit" autofocus>Watch the replay</button>
+    <span><a id="intro-other"></a> · <a href="https://github.com/aak523/junctional-programming" target="_blank" rel="noopener">Source on GitHub</a></span>
+  </form>
+</dialog>
 <div class="error" id="err" hidden>The 3D view could not start. This browser may not support WebGL.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -3324,6 +3353,28 @@ const RUN = {"policy":"reference","seed":1001,"rules_version":"v5","code":"67e54
   });
   setMonth(-1);
   setPlaying(false);   // start paused
+
+  // Intro: which run this is (the reference, or an agent's recorded game), shown on load and from the about button.
+  const AGENTS = { fable: "Claude Fable 5", hydrogen: "Gemini 4 Hydrogen" };
+  const isRef = RUN.policy === "reference";
+  const agent = Object.entries(AGENTS).find(([k]) => RUN.policy.startsWith(k));
+  const who = isRef ? "the reference policy" : agent ? agent[1] : RUN.policy;
+  document.getElementById("intro-kicker").textContent = `GPU World replay · world seed ${RUN.seed} · rules ${RUN.rules_version}`;
+  document.getElementById("intro-h").textContent = isRef ? "The reference policy's game" : `${who}'s game`;
+  document.getElementById("intro-who").textContent = isRef
+    ? "The reference is our scripted baseline, and it sees only what an agent sees. A Bayesian filter tracks every hidden " +
+      "factor, and each month a linear programme plans over 24 futures sampled from its beliefs. The shaded notes in the " +
+      "log show what it believes and why it acts."
+    : `${who} plays as the agent here, through the same commands and observations as any agent. The shaded notes in ` +
+      "the log are the belief log it wrote while playing.";
+  const last = RUN.months[RUN.months.length - 1].if_stopped;
+  document.getElementById("intro-score").textContent = `Final score ${last.score.toFixed(2)}, with ${last.milestones_met} ` +
+    "of 3 training runs met. A score of 1 matches an oracle that knows the future.";
+  Object.assign(document.getElementById("intro-other"), isRef
+    ? { href: "globe.html", textContent: "Claude Fable 5's game" } : { href: "index.html", textContent: "The reference's game" });
+  const intro = document.getElementById("intro");
+  document.getElementById("about").addEventListener("click", () => intro.showModal());
+  intro.showModal();
 
   // Pane explanations, shown on demand from each pane's info button.
   const INFO = {

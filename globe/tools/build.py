@@ -7,10 +7,10 @@ import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
 run = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else root / "data" / "run-fable-5.json"
-html = (root / "src" / "globe.src.html").read_text()
-html = html.replace("__COAST__", (root / "data" / "coast.json").read_text().strip())
-html = html.replace("__OBJECTS__", (root / "src" / "objects3d.js").read_text().strip())
-html = html.replace("__RUN__", run.read_text().strip())
+html = (root / "src" / "globe.src.html").read_text(encoding="utf-8")
+html = html.replace("__COAST__", (root / "data" / "coast.json").read_text(encoding="utf-8").strip())
+html = html.replace("__OBJECTS__", (root / "src" / "objects3d.js").read_text(encoding="utf-8").strip())
+html = html.replace("__RUN__", run.read_text(encoding="utf-8").strip())
 out = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else root / "globe.html"
-out.write_text(html)
+out.write_text(html, encoding="utf-8")
 print("built", out.name, "with", run.name)
