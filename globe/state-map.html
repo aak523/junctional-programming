@@ -1,0 +1,155 @@
+<title>GPU World State Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one reading column of grouped tables; each row = one piece of world state, with a status chip for how the globe shows it. */
+  :root {
+    --bg: #f3f5f7; --panel: #ffffff; --fg: #17212b; --muted: #5d6b79; --rule: #d5dde5;
+    --shown: #3f7a00; --partial: #9a7d00; --none: #c42b1c; --hidden: #6a4fb3;
+    --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #070b10; --panel: #0d141c; --fg: #d8e2ec; --muted: #7d8c9b; --rule: #1f3a4d;
+    --shown: #c3e85a; --partial: #ffd84d; --none: #ff6b5e; --hidden: #b9a2ff; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #070b10; --panel: #0d141c; --fg: #d8e2ec; --muted: #7d8c9b; --rule: #1f3a4d;
+    --shown: #c3e85a; --partial: #ffd84d; --none: #ff6b5e; --hidden: #b9a2ff; color-scheme: dark }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--sans);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+  main { max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; text-wrap: balance; }
+  h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; }
+  header { display: grid; gap: 10px; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); }
+  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  td:first-child { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+  td.where { color: var(--muted); }
+  th:nth-child(1) { width: 19%; } th:nth-child(2) { width: 33%; } th:nth-child(3) { width: 9%; } th:nth-child(4) { width: 39%; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 0 6px; border: 1px solid currentColor; border-radius: 3px; white-space: nowrap; margin-right: 6px; }
+  .s { color: var(--shown); } .p { color: var(--partial); } .n { color: var(--none); } .h { color: var(--hidden); }
+  .sees { font-family: var(--mono); font-size: 12px; }
+  code { font-family: var(--mono); font-size: 12.5px; }
+  .gaps { display: grid; gap: 6px; margin: 0; padding-left: 20px; }
+  .gaps li::marker { color: var(--none); }
+</style>
+
+<main>
+  <header>
+    <h1>GPU World State Map</h1>
+    <p>Every piece of state in <code>world.py</code>, whether the agent observes it, and where the globe shows it today. Run on screen: fable-5 replay.</p>
+    <div class="legend">
+      <span><span class="chip s">shown</span>fully on screen</span>
+      <span><span class="chip p">partial</span>aggregate, hover-only or log-only</span>
+      <span><span class="chip n">missing</span>not on screen</span>
+      <span><span class="chip h">hidden</span>world-only, the agent never sees it</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Time and turns</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>t</td><td>Month 0..23. Settlement after month 23.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Slider, log month headers.</td></tr>
+      <tr><td>ops</td><td>Commands used this month, max 15.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Count of log lines per month only.</td></tr>
+      <tr><td>commands</td><td>Each command, accepted or refused, with its cost.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Log, coloured by verb; costs on the right; command arrows on the globe during playback.</td></tr>
+      <tr><td>notes</td><td>Agent's belief log entries per month.</td><td class="sees">own</td><td class="where"><span class="chip p">partial</span>One-line preview per month in the log, full text on hover. No side-by-side reading across months.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>GPUs</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>owned[site][gen]</td><td>Delivered GPUs at us, eu, ap, by gen H / N (thousands). Start: us 6k H, eu 4k H.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Block stacks, overview bars, site hover, compute rows.</td></tr>
+      <tr><td>powered[site][gen]</td><td>Owned GPUs that the site's MW can run. N gets power first. H 1.4 MW, N 1.6 MW per thousand.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Bright vs dim blocks; solid vs hatched compute segment; site hover.</td></tr>
+      <tr><td>queue (vendor)</td><td>Paid orders: gen, qty, left, placed month, site. FIFO per gen. Ships from placed+2 month end, capped by allocation.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>Supplier boxes (dark fill), overview bar, outstanding orders. No per-order progress, queue position or arrival estimate.</td></tr>
+      <tr><td>queue (broker A/B)</td><td>Orders at 1.10x / 1.25x list, max 4k per broker per month. Resolve next month end: delivered or cancelled with 80% refund.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Supplier boxes, outstanding orders, delivery or red cancelled arc with cross, red log line.</td></tr>
+      <tr><td>shipped[gen]</td><td>Vendor GPUs shipped at month end.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Delivery arcs with hover summary, log "received".</td></tr>
+      <tr><td>moves</td><td>GPUs in transit between sites, $0.5M per thousand, max 5k per month, arrive next month.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Mid-arc stack, hover "Moving ... arrives next month", overview curve.</td></tr>
+      <tr><td>resold[gen]</td><td>GPUs sold this month at 75% of market value, max 3k per gen per month.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>Log line and "resale" spend row. Nothing on the globe.</td></tr>
+      <tr><td>launched</td><td>Gen N on sale from the launch month; gen H discontinued then.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Only implied when gen N colour appears.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Power</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>power[]</td><td>Contracts {site, MW, start, end}, 24 months from switch-on. Start: us 10 MW, eu 6 MW until month 19.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Underline under compute rows, station arcs (solid on, dashed signed), outstanding orders "from N", hover.</td></tr>
+      <tr><td>MW on vs need</td><td>MW running now vs MW owned GPUs would need.</td><td class="sees">derived</td><td class="where"><span class="chip s">shown</span>Text under each compute row; site hover.</td></tr>
+      <tr><td>contract end</td><td>When each contract stops. Owned GPUs go dark after it.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>"until N" text and hover. No warning before expiry.</td></tr>
+      <tr><td>POWER_COST</td><td>$M per MW-month: us 0.15, eu 0.20, ap 0.12.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Only as the "power" spend total.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Compute and demand</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>own compute</td><td>Powered GPUs in kH: H 1, N 2 per thousand.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Solid segment in compute rows.</td></tr>
+      <tr><td>contracts[]</td><td>Reserved cloud {site, kH, price, start, end, option}. 6/12/24-month terms; start: us 2 kH until month 4.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>Total reserved per site (yellow segment, cloud hover). No per-contract price, end month or option flag.</td></tr>
+      <tr><td>spot_level</td><td>Standing spot request per site, kH.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Hollow segment, cloud hover, rental arc hover.</td></tr>
+      <tr><td>spot filled</td><td>min(request, spot cap). Cap depends on regime, spikes, export controls.</td><td class="sees">after month</td><td class="where"><span class="chip p">partial</span>Request shown; fill vs request gap not shown.</td></tr>
+      <tr><td>demand[site]</td><td>Inference demand: 6 kH total at month 0, growing 3% or 7% a month; us 50%, eu 30%, ap 20%.</td><td class="sees">after month</td><td class="where"><span class="chip s">shown</span>Demand chart, bracket on compute rows, site hover expected range.</td></tr>
+      <tr><td>served / unserved</td><td>Served = min(demand, capacity). Unserved costs $4M per kH-month in the score, not in cash.</td><td class="sees">after month</td><td class="where"><span class="chip n">missing</span>Only the cumulative "unserved" spend row.</td></tr>
+      <tr><td>training</td><td>Capacity left after serving inference, per month.</td><td class="sees">after month</td><td class="where"><span class="chip s">shown</span>Training pane, "spare" text.</td></tr>
+      <tr><td>options</td><td>kH of options held. $1M per kH; exercise gives a 6-month reservation at $1.6M per kH-month outside caps.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Log lines and "options" spend row only.</td></tr>
+      <tr><td>reserved_now</td><td>kH reserved this month vs the per-site cap (regime-dependent).</td><td class="sees">via replies</td><td class="where"><span class="chip n">missing</span></td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Training milestones</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>window_training</td><td>kH-months done in windows 0..7, 8..15, 16..23. Targets 60, 140, 320.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Training bars: done, this month, target.</td></tr>
+      <tr><td>met</td><td>Pass or fail, decided at each window's last month.</td><td class="sees">yes</td><td class="where"><span class="chip p">partial</span>Bar colour for the current window only. No history of past windows.</td></tr>
+      <tr><td>penalties</td><td>$200M per missed window plus $5M per kH-month short.</td><td class="sees">rules</td><td class="where"><span class="chip n">missing</span>Folded into the score.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Money</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>cash</td><td>Starts $400M. +$40M funding each month. Can go to −$500M on credit.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Status, money pane bar and graph, credit left.</td></tr>
+      <tr><td>interest</td><td>2% a month on negative cash.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Spend row, cash-delta hover.</td></tr>
+      <tr><td>cost{}</td><td>Spend by category: capex, power, contracts, spot, moves, options, interest, unserved, resale.</td><td class="sees">yes</td><td class="where"><span class="chip s">shown</span>Money pane spend rows.</td></tr>
+      <tr><td>month cash flow</td><td>Charges, refunds, funding, commands between steps.</td><td class="sees">derived</td><td class="where"><span class="chip s">shown</span>Cash-delta hover breakdown.</td></tr>
+      <tr><td>if_stopped.net_cost</td><td>Final score if no more commands: spend − mark + obligations + penalties.</td><td class="sees">no</td><td class="where"><span class="chip s">shown</span>Status "score if stopped".</td></tr>
+      <tr><td>if_stopped parts</td><td>spend, mark_to_market (75% of market value of all held GPUs), obligations (contract months past 23), penalties, milestones met.</td><td class="sees">no</td><td class="where"><span class="chip n">missing</span>Exported, not drawn.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Prices and news</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>gpu price</td><td>H $25M, N $40M per thousand; broker A 1.10x, B 1.25x.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Not exported.</td></tr>
+      <tr><td>spot price</td><td>Contract index × regime multiplier × noise × spike, then × site price (us 1.0, eu 1.1, ap 0.95).</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Not exported.</td></tr>
+      <tr><td>reserve price</td><td>Contract index × term factor (6m 1.15, 12m 1.0, 24m 0.9) × site price.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Not exported.</td></tr>
+      <tr><td>market_value</td><td>Used price per gen; H falls 2% a month and 40% at gen N launch.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Not exported.</td></tr>
+      <tr><td>news</td><td>Headlines: regime hints (75% accurate), spikes, export-control rumours, launch hints.</td><td class="sees">yes</td><td class="where"><span class="chip n">missing</span>Not exported.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Hidden world</h2>
+    <div class="wrap"><table>
+      <tr><th>State</th><th>What it is</th><th>Agent sees</th><th>Globe now</th></tr>
+      <tr><td>regime[k]</td><td>Tight or loose each month, 10% switch chance. Drives allocation, caps, spot price, price drift.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>launch</td><td>Gen N launch month, 11..18.</td><td class="sees">at launch</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>export</td><td>Export-control start (5..15, half of seeds); H allocation 40%, spot 60% for 6 months.</td><td class="sees">at start</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>growth / switch</td><td>Demand growth 3% or 7%; may switch once in months 8..15.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>broker reliability</td><td>Each broker reliable (90%) or not (35%); a reliable one may decay once in months 8..15.</td><td class="sees">no</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>spike[k]</td><td>Rival-lab spot spikes (12% of months): spot price ×1.5, cap ×0.5.</td><td class="sees">news</td><td class="where"><span class="chip h">hidden</span>Not exported.</td></tr>
+      <tr><td>power_leads</td><td>Pre-drawn lead times per site: us 3..8, eu 4..9, ap 2..6 months.</td><td class="sees">on signing</td><td class="where"><span class="chip h">hidden</span>Outcome shown as "from N".</td></tr>
+    </table></div>
+  </section>
+</main>

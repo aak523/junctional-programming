@@ -1001,6 +1001,13 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"demand_start"
     sl.textContent = "score if stopped now";
     const sv = svgEl("text", { class: "chart-num", x: 294, y: 28.5, "text-anchor": "end" }, statusSvg);
     sv.textContent = `${fmtUSD(st.net_cost)} net cost`;
+    // Hovering the score shows its parts: spend − mark-to-market + obligations + penalties.
+    sv.setAttribute("data-tip", [
+      `spend\t${fmtUSD(st.spend)}`,
+      `GPUs held, at 75% of value\t−${fmtUSD(st.mark_to_market)}`,
+      `contracts past month 23\t+${fmtUSD(st.obligations)}`,
+      `penalties (${3 - st.milestones_met} missed)\t+${fmtUSD(st.penalties)}`,
+      `total\t${fmtUSD(st.net_cost)}`].join("\n"));
   };
   // Inference demand per site: what the agent has seen (months before this one, demand line with any unserved
   // part shaded) and the range the rules allow from here on (growth between the two rates, noise either side).
