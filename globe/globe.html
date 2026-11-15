@@ -61,7 +61,7 @@
   .flow .box { fill: transparent; stroke: var(--grid); }
   .flow .track { fill: none; stroke: var(--grid); }
   .log {
-    max-height: 240px; overflow-y: auto; overscroll-behavior: contain;
+    height: 214px; flex: none; overflow-y: auto; overscroll-behavior: contain;
     display: flex; flex-direction: column; gap: 10px;
   }
   .log { position: relative; padding-left: 26px; }
@@ -69,12 +69,13 @@
   .log .arrows path { fill: none; stroke-width: 1; stroke-opacity: 0.6; }
   .panes-right { left: auto; right: max(16px, env(safe-area-inset-right, 0px));
     max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-  .pending { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
+  .pending { height: 124px; flex: none; overflow-y: auto; overscroll-behavior: contain; }
   .pane .empty { margin: 0; font-size: 11px; font-style: italic; color: var(--muted); }
   .pane .empty[hidden] { display: none; }
   .pending ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .pending li { display: flex; gap: 8px; justify-content: space-between; font-family: var(--font-cmd); font-size: 11px; line-height: 1.45; color: var(--muted); }
   .pending li { cursor: pointer; }
+  .news { height: 136px; flex: none; overflow-y: auto; overscroll-behavior: contain; }   /* fixed heights: the column never jumps between steps */
   .news ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
   .news li { font-size: 11px; line-height: 1.4; color: var(--fg); padding-left: 7px; border-left: 2px solid var(--grid); }
   .news li.fresh { animation: news-in 0.6s ease-out; }
@@ -130,6 +131,11 @@
   .log li.evt.cancelled .v { color: var(--alert); font-weight: 600; }
   .log li.evt.cancelled .q { text-decoration: line-through; }
   .log li.evt.cancelled::before { content: "✕ "; font-style: normal; font-weight: 700; }
+  .log li.cmd { cursor: pointer; }
+  .log li.cmd:hover { background: var(--hl); }
+  /* Where a clicked command's outcome shows: an outline that fades out. */
+  .outcome-flash { fill: none; stroke: var(--coast); stroke-width: 1.5; pointer-events: none; animation: outcome 1.8s ease-out forwards; }
+  @keyframes outcome { 0%, 40% { stroke-opacity: 1; } 100% { stroke-opacity: 0; } }
   .log li.refused, .log li.refused span { color: var(--muted); text-decoration: line-through; }
   @media (max-width: 720px) {
     .panes { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -1571,6 +1577,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
         const cost = Object.assign(document.createElement("span"), { className: `cost ${c.cost > 0 ? "out" : "in"}`, textContent: fmtDelta(-c.cost) });
         li.append(cost);
       }
+      if (c.ok) { li.classList.add("cmd"); const ci = items.length; li.addEventListener("click", () => showOutcome(m.month, ci)); }
       ol.appendChild(li);
       items.push(li);
     }
@@ -1628,6 +1635,57 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
     newsList.replaceChildren(...items.map((t) => Object.assign(document.createElement("li"), { textContent: t, className: "fresh" })));
     newsPane.querySelector(".empty").hidden = items.length > 0;
   };
+  // Clicking a command in the log lights up where its outcome shows at the current month, without changing month:
+  // the log line where its GPUs arrived (if that is in the past), its outstanding-orders row (if it is still to come),
+  // or the pane row it changed (compute row of the site, a money row).
+  const flashBox = (parent, x, y, w, h) => {
+    const r = svgEl("rect", { class: "outcome-flash", x: x - 2, y: y - 2, width: w + 4, height: h + 4, rx: 2 }, parent);
+    setTimeout(() => r.remove(), 1900);
+    parent.closest(".pane")?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  };
+  const flashEl = (el) => { const b = el.getBBox(); flashBox(el.parentNode, b.x, b.y, b.width, b.height); };
+  const flashLog = (li) => {
+    log.scrollTo({ top: li.offsetTop - (log.clientHeight - li.offsetHeight) / 2, behavior: reduce ? "auto" : "smooth" });
+    lightOn(li);
+    setTimeout(() => lightOff(li), 1600);
+  };
+  const flashSiteRow = (site) => {
+    const i = Object.keys(SITES).indexOf(site);
+    if (i >= 0) flashBox(computeSvg, 0, i * ROW_H + 2, 274, ROW_H - 4);
+  };
+  const flashMoneyRow = (label) => {
+    const t = [...moneySvg.querySelectorAll("text")].find((e) => e.textContent === label);
+    if (t) { const b = t.getBBox(); flashBox(moneySvg, b.x, b.y, 132, b.height); }
+  };
+  const flashNode = (id) => flowNodes[id] && flashEl(flowNodes[id].g.firstElementChild || flowNodes[id].g);
+  const showOutcome = (om, oi) => {
+    const k = month, c = RUN.months[om].commands[oi], t = c.c.split(/\s+/), verb = t[0];
+    const ref = `${om},${oi}`, pendingRow = [...pendingList.children].find((li) => li.dataset.ref === ref);
+    if (verb === "buy_gpus" || verb === "move_gpus") {
+      let last = null;   // the latest arrival (or cancellation) already in the log
+      for (let m = 0; m < k; m++) RUN.months[m].deliveries.forEach((d, di) => {
+        if ((d.orders || []).some(([a, b]) => a === om && b === oi) && evtItems[m] && evtItems[m][di]) last = evtItems[m][di];
+      });
+      if (last) flashLog(last);
+      if (pendingRow) flashLog(pendingRow);
+      if (!last && !pendingRow) flashNode(verb === "move_gpus" ? t[4] : t.find((x) => x in SITES));
+      return;
+    }
+    if (verb === "contract_power") {
+      const p = (M(k).power || []).find((q) => q.ref && q.ref[0] === om && q.ref[1] === oi);
+      if (p && p.start > Math.max(k, 0) && pendingRow) return flashLog(pendingRow);
+      return flashSiteRow(t[2]);
+    }
+    if (verb === "reserve" || verb === "set_spot" || verb === "exercise_option") {
+      const site = t.find((x) => x in SITES);
+      flashSiteRow(site);
+      flashNode(`cloud-${site}`);
+      if (verb === "exercise_option") flashMoneyRow("options");
+      return;
+    }
+    if (verb === "buy_option") return flashMoneyRow("options");
+    if (verb === "resell_gpus") { flashMoneyRow("resale"); flashNode(t.find((x) => x in SITES)); }
+  };
   const showPending = (k) => {
     pendingList.replaceChildren();
     for (const [om, oi, left] of M(k).pending || []) {
@@ -1639,6 +1697,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
       q.textContent = fmtQ(left);
       q.title = `${fmtQ(left)} GPUs still to arrive`;
       li.append(cmd, q);
+      li.dataset.ref = `${om},${oi}`;
       // Clicking an order scrolls the log to the command that placed it and lights that line for a moment.
       li.addEventListener("click", () => {
         const target = logItems[om] && logItems[om][oi];
@@ -1658,6 +1717,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
       q.textContent = `from ${p.start}`;
       q.setAttribute("data-tip", `Switches on at month ${p.start}`);
       li.append(cmd, q);
+      li.dataset.ref = `${om},${oi}`;
       li.addEventListener("click", () => {
         const target = logItems[om] && logItems[om][oi];
         if (!target) return;
