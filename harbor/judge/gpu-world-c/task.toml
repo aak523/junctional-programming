@@ -1,0 +1,29 @@
+schema_version = "1.4"
+
+[task]
+name = "junctional/gpu-world-c"
+description = "Run compute procurement for an AI lab for 24 months under hidden, drifting supply conditions."
+keywords = ["planning", "supply-chain", "partial-observability", "long-horizon"]
+
+[metadata]
+category = "planning"
+difficulty_explanation = """The agent must hit three training-run windows and serve growing inference demand at the lowest settled
+net cost while the supply regime, next-gen launch, export controls, inference growth and broker reliability are hidden and
+can change silently. Rules and priors are fully documented; only realised values are hidden. Reward = the perfect-information
+oracle's net cost / the agent's (capped at 1) times the share of training runs met, so doing nothing scores 0; a Bayesian
+LP reference that sees exactly what the agent sees scores about 0.9."""
+
+[verifier]
+timeout_sec = 600.0
+environment_mode = "shared"
+
+# The agent keeps public network access: Harbor's egress allowlist broke DNS for the model endpoint on Docker Desktop.
+# Nothing useful is reachable: the world runs in the sidecar, which draws a random 48-bit seed at startup, so even
+# with world.py from a public repo the hidden future cannot be reconstructed.
+[agent]
+timeout_sec = 1800.0
+
+[environment]
+build_timeout_sec = 1200
+cpus = 2
+memory_mb = 4096

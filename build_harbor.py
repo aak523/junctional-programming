@@ -209,7 +209,8 @@ def main():
     write(out / "instruction.md", instruction())
     write(out / "environment" / "Dockerfile", MAIN_DOCKERFILE)
     write(out / "environment" / "gpu", GPU_CLIENT)
-    seed_line = "" if a.seed is None else f'\n      WORLD_SEED: "{a.seed}"'
+    # a fixed seed is public (it is in this repo): JUDGE_KEY from the shell running harbor makes it private
+    seed_line = "" if a.seed is None else f'\n      WORLD_SEED: "{a.seed}"\n      JUDGE_KEY: "${{JUDGE_KEY:-}}"'
     write(out / "environment" / "docker-compose.yaml", COMPOSE.format(seed_line=seed_line, token=token))
     write(out / "environment" / "world" / "Dockerfile", WORLD_DOCKERFILE)
     for f in SIM + SERVER:

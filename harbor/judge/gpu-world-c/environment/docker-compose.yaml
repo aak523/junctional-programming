@@ -1,0 +1,19 @@
+services:
+  main:
+    depends_on:
+      world:
+        condition: service_healthy
+
+  world:
+    build:
+      context: ./world
+    environment:
+      WORLD_SEED: "9"
+      JUDGE_KEY: "${JUDGE_KEY:-}"
+      VERIFY_TOKEN: "d265c2b0219cf6b90550911a92628388d31a35f1cfc50826"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s

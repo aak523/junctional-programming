@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""gpu "<command>; <command>; ..."  -- talk to the GPU World server (run `gpu help`)."""
+import sys
+import urllib.request
+
+def server():
+    for url in ("http://localhost:8000", "http://world:8000"):
+        try:
+            urllib.request.urlopen(url + "/health", timeout=3)
+            return url
+        except OSError:
+            pass
+    raise SystemExit("GPU World server unreachable")
+
+
+line = " ".join(sys.argv[1:]) or "status"
+req = urllib.request.Request(server() + "/cmd", data=line.encode(), method="POST")
+print(urllib.request.urlopen(req, timeout=300).read().decode())

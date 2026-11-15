@@ -6,8 +6,11 @@ The agent's container reaches it only over the network:
   POST /settle   body = {"token": ...}   -> plays out any remaining months, then scores (verifier only)
   GET  /health
 Env: VERIFY_TOKEN, STATE_FILE (default /state/episode.json), WORLD_SEED (optional: by default a fresh random
-48-bit seed is drawn at startup, so the world exists only inside this container; it is revealed after settlement).
+48-bit seed is drawn at startup, so the world exists only inside this container; it is revealed after settlement),
+JUDGE_KEY (optional: a fixed WORLD_SEED is published in the repo, which the agent could read; a private key turns it
+into a private seed, the same one on every run with the same key).
 """
+import hashlib
 import json
 import os
 import secrets
@@ -27,6 +30,8 @@ LOCK = threading.Lock()
 STATE.parent.mkdir(parents=True, exist_ok=True)
 if not STATE.exists():   # a restart keeps the episode (and its seed)
     seed = int(os.environ.get("WORLD_SEED") or secrets.randbits(48))
+    if os.environ.get("JUDGE_KEY"):
+        seed = int.from_bytes(hashlib.sha256(f"{os.environ['JUDGE_KEY']}:{seed}".encode()).digest()[:6], "big")
     STATE.write_text(json.dumps({"seed": seed, "actions": []}))
 META, WORLD = service.load(STATE)
 SEED = META["seed"]
