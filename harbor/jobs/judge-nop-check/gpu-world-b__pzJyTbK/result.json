@@ -1,0 +1,124 @@
+{
+    "schema_version": 1,
+    "id": "a1b98476-f5ca-4a5d-a410-b327ec2d056f",
+    "task_name": "junctional/gpu-world-b",
+    "trial_name": "gpu-world-b__pzJyTbK",
+    "trial_uri": "file:///C:/Users/adamk/junctional-programming/harbor/jobs/judge-nop-check/gpu-world-b__pzJyTbK",
+    "task_id": {
+        "path": "harbor\\judge\\gpu-world-b"
+    },
+    "source": "judge",
+    "task_checksum": "168ffa9b4dede26dcfe7bec3a4efc98ecdb5b1dcf703e52e1da76533665dbdf0",
+    "config": {
+        "schema_version": 1,
+        "task": {
+            "path": "harbor\\judge\\gpu-world-b",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "judge"
+        },
+        "trial_name": "gpu-world-b__pzJyTbK",
+        "trials_dir": "harbor\\jobs\\judge-nop-check",
+        "install_only": false,
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "nop",
+            "import_path": null,
+            "model_name": null,
+            "base_url": null,
+            "model_api_key_name": null,
+            "model_api_format": null,
+            "skip_model_parsing": false,
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {},
+            "mcp_servers": []
+        },
+        "user_agent": null,
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "stream": false,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "override_error_policy": {},
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "extra_instructions": [],
+        "job_id": "a472490a-0548-4e88-bc50-c7eb19c058c3",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "nop",
+        "version": "1.0.0",
+        "model_info": null
+    },
+    "agent_result": {
+        "n_input_tokens": null,
+        "n_cache_tokens": null,
+        "n_output_tokens": null,
+        "cost_usd": null,
+        "model_usage": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 0.0
+        }
+    },
+    "verifier_environment_mode": "shared",
+    "exception_info": null,
+    "started_at": "2026-11-15T03:59:18.223427Z",
+    "finished_at": "2026-11-15T04:04:07.986575Z",
+    "environment_setup": {
+        "started_at": "2026-11-15T03:59:18.432516Z",
+        "finished_at": "2026-11-15T03:59:52.534357Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-11-15T03:59:52.534357Z",
+        "finished_at": "2026-11-15T03:59:52.534357Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-11-15T03:59:52.534357Z",
+        "finished_at": "2026-11-15T03:59:52.536020Z"
+    },
+    "verifier": {
+        "started_at": "2026-11-15T04:00:13.985684Z",
+        "finished_at": "2026-11-15T04:03:41.394601Z"
+    },
+    "step_results": null,
+    "reward_valid": true
+}

@@ -21,7 +21,8 @@ ends with one table of the four rewards per world and the verifier's mistake rep
 The worlds are evaluation seeds 4, 8 and 9: the three whose reference reward is closest to the median of seeds 0–9,
 not its best worlds. Their seeds are in this public repo and the agent has internet access, so set `JUDGE_KEY`: it
 turns each seed into a private one, the same on every run with the same key. The reference is deterministic for a
-seed, so it reproduces exactly. Without a key it scores the numbers below.
+seed, so it reproduces exactly. Without a key it scores the numbers below, which Harbor reproduced to the
+fourth decimal (`harbor/jobs/judge-{reference,nop,stop-early}-check/`).
 
 | world | seed | reference | do-nothing | stop-early |
 |---|---|---|---|---|

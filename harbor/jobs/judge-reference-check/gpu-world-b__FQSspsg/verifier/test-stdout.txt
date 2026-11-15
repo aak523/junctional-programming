@@ -1,0 +1,17 @@
+{
+ "reward": 0.8995,
+ "net_cost": 663.15,
+ "months_played": 24,
+ "milestones_met": 3,
+ "scale": {
+  "oracle": 596.51,
+  "reference": 663.15,
+  "do_nothing": 3127.29,
+  "stop_early": 3023.36,
+  "reference_reward": 0.8995,
+  "do_nothing_reward": 0.0,
+  "stop_early_reward": 0.0
+ }
+}
+Mistake report (the agent's game vs the reference's on this world):
+- Net cost $663M vs the reference's $663M.
