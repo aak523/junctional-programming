@@ -160,6 +160,9 @@
   .training svg, .demand svg, .power svg, .prices svg { display: block; width: 100%; height: auto; overflow: visible; }
   .pane h3.sub { margin: 0 0 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
   .pane svg + h3.sub { margin-top: 10px; }
+  /* A number that changed at the step flashes, then settles back to its own colour. */
+  @keyframes flash { from { fill: var(--coast); } }
+  svg text.flash { animation: flash 0.9s ease-out; }
   .chart-text { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
   .chart-num { font-size: 11px; fill: var(--fg); font-variant-numeric: tabular-nums; }
   .bar {
@@ -1652,7 +1655,59 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
     showPending(k);
   };
 
+  // Step animation for the panes: they redraw from scratch each step, so match old and new marks by a key (bars by
+  // their row, tooltip name and order; numbers by where they sit), then grow each bar from its old extent to its new
+  // one and flash each number whose text changed.
+  const PANE_SVGS = () => document.querySelectorAll(".panes svg[id], .pane.training svg[id]");
+  const markKey = (el, svg, seen) => {
+    const g = el.parentNode === svg ? "" : el.parentNode.getAttribute("transform") || el.parentNode.id || "g";
+    const base = el.tagName === "text"
+      ? `${svg.id}|t|${g}|${el.getAttribute("x")}|${el.getAttribute("y")}`
+      : `${svg.id}|r|${g}|${Math.round(+el.getAttribute("y"))}|${(el.getAttribute("data-tip") || "").split(":")[0]}`;
+    const n = seen.get(base) || 0;
+    seen.set(base, n + 1);
+    return `${base}|${n}`;
+  };
+  const snapPanes = () => {
+    const snap = new Map();
+    for (const svg of PANE_SVGS()) {
+      const seen = new Map();
+      for (const el of svg.querySelectorAll("rect, text")) {
+        snap.set(markKey(el, svg, seen), el.tagName === "text" ? el.textContent : [+el.getAttribute("x") || 0, +el.getAttribute("width") || 0]);
+      }
+    }
+    return snap;
+  };
+  const TWEEN_MS = 450;
+  let tweens = [];
+  const animatePanes = (snap) => {
+    if (reduce || !snap.size) return;
+    tweens = [];
+    for (const svg of PANE_SVGS()) {
+      const seen = new Map();
+      for (const el of svg.querySelectorAll("rect, text")) {
+        const key = markKey(el, svg, seen), old = snap.get(key);
+        if (el.tagName === "text") {
+          if (old !== undefined && old !== el.textContent) { el.classList.remove("flash"); el.getBoundingClientRect(); el.classList.add("flash"); }
+          continue;
+        }
+        const x1 = +el.getAttribute("x") || 0, w1 = +el.getAttribute("width") || 0;
+        const [x0, w0] = old || [x1, 0];   // a new bar grows from nothing at its own start
+        if (Math.abs(x0 - x1) < 0.05 && Math.abs(w0 - w1) < 0.05) continue;
+        tweens.push({ el, x0, w0, x1, w1 });
+        el.setAttribute("x", x0); el.setAttribute("width", Math.max(0, w0));
+      }
+    }
+    tweens.start = performance.now();
+  };
+  const stepTweens = (now) => {
+    if (!tweens.length) return;
+    const p = Math.min(1, (now - tweens.start) / TWEEN_MS), e = 1 - (1 - p) ** 3;
+    for (const t of tweens) { t.el.setAttribute("x", t.x0 + (t.x1 - t.x0) * e); t.el.setAttribute("width", Math.max(0, t.w0 + (t.w1 - t.w0) * e)); }
+    if (p >= 1) tweens = [];
+  };
   const setMonth = (k) => {
+    const snap = snapPanes();
     month = k;
     slider.value = String(k + 1);
     num.value = k < 0 ? "–" : String(k); num.textContent = num.value;
@@ -1671,6 +1726,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
     showPowerGlobe(k);
     showMoney(k);
     showPrices(k);
+    animatePanes(snap);
     paneHl = undefined;   // panes were redrawn; re-apply the hover highlight
   };
   // Show month k now; the deliveries between the old and new month fly on top.
@@ -1807,6 +1863,7 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
   };
   (function loop(now) {
     stepFlow(now);
+    stepTweens(now);
     if (tipEl && !tipEl.isConnected) { tipEl = null; hideTip(); }   // its pane redrew for another step
     anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
     // Light up both ends of every delivery in flight, rising and falling with the flight.
@@ -1859,10 +1916,10 @@ const RUN = {"policy":"fable-5-v4","seed":34024457028360,"rules":{"site_price":{
     controls.zoomSpeed = 0.5 * ((d - R) / d) / ((BASE_DIST - R) / BASE_DIST);
     controls.update();
     placeLabels();
-    // While deliveries fly or the run plays, the far side shows through dimmed; once still, the globe fades to opaque.
+    // While deliveries fly, the far side shows through dimmed; once they land and the run is paused, the globe fades to opaque.
     const still = !playing && !anims.length, op = occluderMat.opacity;
     const opTo = op + ((still ? 1 : 0.72) - op) * Math.min(1, dt / 400);
-    if (Math.abs(opTo - op) > 1e-4) occluderMat.opacity = Math.abs(opTo - (still ? 1 : 0.72)) < 0.003 ? (still ? 1 : 0.72) : opTo;
+    occluderMat.opacity = Math.abs(opTo - (still ? 1 : 0.72)) < 0.01 ? (still ? 1 : 0.72) : opTo;   // snap the tail, or it creeps for seconds
     const solid = occluderMat.opacity >= 1;   // fully opaque: write depth so nothing behind is drawn at all
     if (solid === occluderMat.transparent) { occluderMat.transparent = !solid; occluderMat.depthWrite = solid; occluderMat.needsUpdate = true; }
     renderer.render(scene, camera);
