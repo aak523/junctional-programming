@@ -114,6 +114,15 @@ teacher) stayed within run-to-run noise, and DPO and imitating its own best game
 The best model still misses 10 of 90 training runs and over-leases. Method, all results and replay commands:
 [train/README.md](train/README.md).
 
+## Next: v6 rules (branch `v6`, not yet judged)
+
+Three changes make over-commitment cost what it would in practice: GPU orders get dearer with volume (per source per
+month: the first 3k at list price, the next 3k at +10%, beyond that +25%); debt beyond $200M costs 3.5% a month instead
+of 2%; and a missed training run halves the next three funding payments. On tuning seeds 100–139 the reference and the
+oracle still meet every run. A stand-in for Hydrogen's early fleet drops from 86.5% to 81.4% of the reference and never
+beats it (0 of 40 worlds, against 1 under v5). A stand-in that buys ~20k GPUs early on credit lands at 70.2%. The judge
+tasks and frontier games are still v5. To try it: `git checkout v6 && python scripts/gap.py 100 8` (~15 min).
+
 ## Compute
 
 - **Gemini API:** the frontier runs above are Gemini 4 Hydrogen (`gemini/gemini-4-hydrogen`) inside OpenCode, run
