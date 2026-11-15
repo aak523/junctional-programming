@@ -274,6 +274,9 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/Line2.js"></script>
 <script>
+__OBJECTS__
+</script>
+<script>
 // Coastlines: Natural Earth 1:110m land outlines (public domain), as [lon, lat] polylines.
 const COAST = __COAST__;
 // One GPU World run: per month, per site, GPUs owned and powered (thousands, by generation).
@@ -641,7 +644,161 @@ const RUN = __RUN__;
   // Gen N launch: the first month gen N is on sale.
   const LAUNCH = (() => { const i = RUN.months.findIndex((m) => m.prices && m.prices.gpu.N != null); return i < 0 ? Infinity : i; })();
   let occBase = null, launchFx = null, launchedNow = false;
+  // ---------------------------------------------------------------- 3D objects (ported from viz/*3d.js)
+  // The vendor, both brokers and each site's power contracts as lit objects standing on their spots, in place
+  // of the outlines. Each is built in its own units and scaled down onto its anchor; all are rebuilt on a theme change.
+  const OBJ_GROW = 1.6;   // all objects together, against the globe
+  const OBJ_SCALE = Object.fromEntries(Object.entries({ campus: 0.0055, vendor: 0.0052, broker: 0.0068, power: 0.0026, cloud: 0.0045, sheet: 0.0042 })
+    .map(([k, v]) => [k, v * OBJ_GROW]));
+  const BROKER_MARKUP = { A: 1.10, B: 1.25 };
+  const objLights = { amb: new THREE.AmbientLight(0xffffff, 0.5), key: new THREE.DirectionalLight(0xffffff, 0.8) };
+  scene.add(objLights.amb, camera);
+  camera.add(objLights.key);   // lit from over the viewer's shoulder, wherever the globe is turned
+  objLights.key.position.set(1.2, 1.6, 0.6);
+  // Hide what the objects replace: datacentre stacks and outlines, supplier outlines and order stacks, and the
+  // power station outlines.
+  for (const id of Object.keys(SITES)) {
+    sites[id].visible = false;
+    for (const c of anchors[id].children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  }
+  for (const id of Object.keys(SUPPLIERS)) {
+    suppliers[id].visible = false;
+    for (const c of supplierAnchors[id].children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  }
+  for (const site of Object.keys(STATIONS)) for (const c of stationAnchors[site].children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  for (const a of Object.values(cloudAnchors)) for (const c of a.children) if (c instanceof THREE.LineSegments2) c.visible = false;
+  let objs = null, objCur = null;
+  const buildObjects = () => {
+    if (objs) for (const o of [...objs.all, objs.vendor]) o.group.parent.remove(o.group);
+    const dark = new THREE.Color(css("--bg")).getHSL({}).l < 0.5;
+    const T = Object.assign({}, OBJ3D.theme.THEMES[dark ? "dark" : "light"]);
+    T.site = Object.fromEntries(Object.keys(SITES).map((s) => [s, new THREE.Color(css(`--site-${s}`)).getHex()]));
+    const metal = (v) => (dark ? v : v * 0.12);
+    objLights.amb.intensity = dark ? 0.55 : 0.95;
+    objLights.key.intensity = dark ? 0.85 : 0.45;
+    // Each object is built in its entity's colour, as the rest of the page codes it: walls in the colour, roofs and
+    // plant darker, the apron a faint wash of it. Datacentres take their site colour, the vendor the gen it sells,
+    // brokers the supplier colour, power stations the power colour.
+    const bgC = new THREE.Color(css("--bg"));
+    const tint = (token) => {
+      const c = new THREE.Color(css(token)), mix = (t) => c.clone().lerp(bgC, t).getHex();
+      return Object.assign({}, T, { shed: mix(dark ? 0.3 : 0.15), roof: mix(dark ? 0.6 : 0.4), steel: mix(dark ? 0.15 : 0.1),
+        trim: c.clone().lerp(new THREE.Color(0xffffff), dark ? 0.35 : 0).getHex(), pad: mix(dark ? 0.92 : 0.88), hub: mix(dark ? 0.75 : 0.6) });
+    };
+    const all = [];
+    const place = (obj, anchor, sc) => { obj.group.scale.setScalar(sc); anchor.add(obj.group); all.push(obj); return obj; };
+    const campuses = {};
+    for (const site of Object.keys(SITES)) campuses[site] = place(new OBJ3D.campus.Campus({ theme: tint(`--site-${site}`), color: T.site[site], metal }), anchors[site], OBJ_SCALE.campus);
+    // The vendor is rebuilt in gen N's colour at the launch.
+    const vendorFor = (launched) => {
+      const v = new OBJ3D.vendor.Vendor({ theme: tint(launched ? "--gen-n" : "--gen-h"), metal });
+      v.group.scale.setScalar(OBJ_SCALE.vendor);
+      supplierAnchors.vendor.add(v.group);
+      v.launched = launched;
+      return v;
+    };
+    const brokers = {};
+    for (const b of ["A", "B"]) brokers[b] = place(new OBJ3D.broker.Broker({ theme: tint("--coast"), metal, markup: BROKER_MARKUP[b] }), supplierAnchors[b], OBJ_SCALE.broker);
+    // Power: one tower per contract at the site's station, side by side; made as they are needed.
+    const power = {};
+    const tower = (site) => place(new OBJ3D.power.Power({ theme: tint("--cmd-power"), color: T.site[site], metal }), stationAnchors[site], OBJ_SCALE.power);
+    // Cloud: the spot tap over its bucket, and a floating sheet per reserved contract beside it, made as needed.
+    const spots = {}, contracts = {};
+    for (const site of Object.keys(SITES)) spots[site] = place(new OBJ3D.spot.Spot({ theme: tint("--cmd-rent"), color: new THREE.Color(css("--cmd-rent")).getHex(), metal }),
+      cloudAnchors[`cloud-${site}`], OBJ_SCALE.cloud);
+    const sheet = (site) => place(new OBJ3D.contract.Contract({ theme: tint("--cmd-rent"), color: T.site[site] }), cloudAnchors[`cloud-${site}`], OBJ_SCALE.sheet);
+    objs = { campuses, vendor: vendorFor(launchedNow), vendorFor, brokers, power, tower, spots, contracts, sheet, all };
+  };
+  const buyOf = (om, oi) => {
+    const c = RUN.months[om] && RUN.months[om].commands[oi], t = c ? c.c.split(/\s+/) : [];
+    return t[0] === "buy_gpus" ? { qty: +t[1], gen: t[2], src: t[3], site: t[4] } : null;
+  };
+  // What each object shows at step k: orders outstanding (before this month's deliveries), what ships tonight,
+  // what the brokers stamped last month, and the power contracts not yet ended.
+  const objData = (k) => {
+    const m = M(k), kk = Math.max(k, 0), prev = k > 0 ? M(k - 1) : null;
+    const pend = (m.pending || []).map(([om, oi, left]) => { const b = buyOf(om, oi); return b && Object.assign(b, { left, placed: om }); }).filter(Boolean);
+    const budget = { H: 0, N: 0 };
+    for (const d of m.deliveries || []) if (d.src === "vendor") budget[d.gen] += d.qty;
+    const brokers = {};
+    for (const b of ["A", "B"]) brokers[b] = {
+      intake: pend.filter((o) => o.src === b && o.placed === k),
+      hold: pend.filter((o) => o.src === b && o.placed === k - 1),
+      resolved: (prev ? prev.deliveries : []).filter((d) => d.src === b).map((d) => ({ qty: d.qty, site: d.site, delivered: d.ok })),
+    };
+    // Campus: the fleet and its power, the month's demand served, training and unmet, spot taken, and
+    // the reserved, option and power figures it sizes its capacity by.
+    const campus = {};
+    for (const site of Object.keys(SITES)) {
+      const z = m.sites[site], x = (m.settle || {})[site] || {}, live = (m.power || []).filter((p) => p.site === site);
+      campus[site] = { ownedH: z.owned.H, ownedN: z.owned.N, poweredH: z.powered.H, poweredN: z.powered.N,
+        reserved: x.reserved || 0, option: 0, spot: x.spot || 0,
+        mw: live.filter((p) => p.start <= kk && kk < p.end).reduce((t, p) => t + p.mw, 0),
+        mwPending: live.filter((p) => p.start > kk).reduce((t, p) => t + p.mw, 0),
+        served: x.served || 0, training: x.training || 0, demand: x.demand || 0, unserved: Math.max(0, (x.demand || 0) - (x.served || 0)) };
+    }
+    // Cloud: the standing spot request and what it got, and every reservation (or exercised option) signed so far
+    // that has not ended. A contract runs from the month after it is signed; what the cap let through is not exported,
+    // so each is drawn at what was asked.
+    const cloud = {};
+    for (const site of Object.keys(SITES)) {
+      const x = (m.settle || {})[site] || {}, list = [];
+      for (let om = 0; om <= k; om++) for (const c of RUN.months[om].commands) {
+        const t = c.c.split(/\s+/);
+        if (!c.ok) continue;
+        if (t[0] === "reserve" && t[3] === site) list.push({ qty: +t[1], start: om + 1, end: om + 1 + +t[2] });
+        if (t[0] === "exercise_option" && t[2] === site) list.push({ qty: +t[1], start: om + 1, end: om + 7 });
+      }
+      cloud[site] = { spot: { site, level: x.spot_req || 0, cap: x.spot || 0 },
+        contracts: list.filter((c) => kk < c.end).map((c) => Object.assign(c, { site, month: kk })) };
+    }
+    const power = {};
+    for (const site of Object.keys(STATIONS)) {
+      const own = m.sites[site].owned;
+      power[site] = (m.power || []).filter((p) => p.site === site && kk < p.end).map((p) => ({ mw: p.mw, start: p.start, end: p.end, site, month: kk,
+        signed: p.ref ? p.ref[0] : p.start, ownedH: own.H, ownedN: own.N }));
+    }
+    return { campus, cloud, vendor: { month: kk, launched: k >= LAUNCH, exportActive: false, budget, queue: pend.filter((o) => o.src === "vendor") }, brokers, power };
+  };
+  const stepObjects = (now) => {
+    if (!objs || !objCur) return;
+    if (objs.vendor.launched !== objCur.vendor.launched) {
+      supplierAnchors.vendor.remove(objs.vendor.group);
+      objs.vendor = objs.vendorFor(objCur.vendor.launched);
+    }
+    const t = reduce ? 0 : now / 1000;
+    for (const site of Object.keys(SITES)) objs.campuses[site].update(objCur.campus[site], t);
+    objs.vendor.update(objCur.vendor, t);
+    for (const b of ["A", "B"]) objs.brokers[b].update(objCur.brokers[b], t);
+    const camQ = camera.getWorldQuaternion(new THREE.Quaternion()), parentQ = new THREE.Quaternion();
+    for (const site of Object.keys(SITES)) {
+      const c = objCur.cloud[site], pool = objs.contracts[site] || (objs.contracts[site] = []);
+      objs.spots[site].update(c.spot, t);
+      while (pool.length < c.contracts.length) pool.push(objs.sheet(site));
+      pool.forEach((o, i) => {   // two to a row, left of the tap (the label is on the right), rows stacked upward
+        o.group.visible = i < c.contracts.length;
+        if (!o.group.visible) return;
+        const sc = OBJ_SCALE.sheet;
+        o.group.position.set(-9.5 * OBJ_SCALE.cloud - (5 + (i % 2) * 10) * sc, Math.floor(i / 2) * 7.4 * sc, 0);
+        o.update(c.contracts[i], t);
+        // the sheet turns to face the camera: the camera's turn, taken out of the anchor's
+        o.card.quaternion.copy(o.group.getWorldQuaternion(parentQ).invert().multiply(camQ));
+      });
+    }
+    for (const site of Object.keys(STATIONS)) {
+      const list = objCur.power[site], pool = objs.power[site] || (objs.power[site] = []);
+      while (pool.length < list.length) pool.push(objs.tower(site));
+      const gap = 2 * OBJ3D.power.PAD_R;
+      pool.forEach((o, i) => {
+        o.group.visible = i < list.length;
+        if (!o.group.visible) return;
+        o.group.position.set((i - (list.length - 1) / 2) * gap * OBJ_SCALE.power, 0, 0);
+        o.update(list[i], t);
+      });
+    }
+  };
   const showMonth = (k) => {
+    objCur = objData(k);
     launchedNow = k >= LAUNCH;
     vendorPadMat.color = new THREE.Color(css(launchedNow ? "--gen-n" : "--gen-h")); showSites(M(k)); showSuppliers(M(k).waiting); showFlow(M(k)); };
 
@@ -1421,6 +1578,7 @@ const RUN = __RUN__;
     powerDashMat.color = powerPadMat.color.clone();
     parkedLineMat.color = new THREE.Color(css("--fg"));
     for (const id of Object.keys(padMat)) padMat[id].color = new THREE.Color(css(`--site-${id}`));
+    buildObjects();
     for (const [gen, token] of [["H", "--gen-h"], ["N", "--gen-n"]]) {
       const c = new THREE.Color(css(token));
       blockMat[gen].on.color = c;
@@ -2041,6 +2199,7 @@ const RUN = __RUN__;
     stepFlow(now);
     stepTweens(now);
     stepLaunchFx(now);
+    stepObjects(now);
     if (tipEl && !tipEl.isConnected) { tipEl = null; hideTip(); }   // its pane redrew for another step
     anims = anims.filter((a) => { const done = stepTransition(a, now); if (done) removeAnim(a); return !done; });
     // Light up both ends of every delivery in flight, rising and falling with the flight.
